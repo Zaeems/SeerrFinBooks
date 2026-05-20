@@ -1,0 +1,150 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+env:
+  JELLYFIN_VERSION: "10.11.2"
+  TARGET_ABI: "10.11.0.0"
+  REPO_OWNER: "varunaditya-plus"
+  REPO_NAME: "BetterSeerrTabs"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION=$(grep -m1 '<Version>' src/Jellyfin.Plugin.BetterSeerrTabs/Jellyfin.Plugin.BetterSeerrTabs.csproj | sed -E 's/.*<Version>([^<]+)<\/Version>.*/\1/')
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release version: $VERSION"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Build plugin
+        run: |
+          dotnet build src/Jellyfin.Plugin.BetterSeerrTabs/Jellyfin.Plugin.BetterSeerrTabs.csproj \
+            --configuration Release \
+            -p:JellyfinVersion=${{ env.JELLYFIN_VERSION }}
+
+      - name: Package release zip
+        id: package
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          OUT_DIR="${GITHUB_WORKSPACE}/src/Jellyfin.Plugin.BetterSeerrTabs/bin/Release/net9.0"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.0000000Z")
+          ZIP_NAME="Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip"
+          DIST_DIR="${GITHUB_WORKSPACE}/dist"
+          ZIP_PATH="${DIST_DIR}/${ZIP_NAME}"
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg timestamp "$TIMESTAMP" \
+            --arg targetAbi "${{ env.TARGET_ABI }}" \
+            --arg changelog "Release ${VERSION}." \
+            '{
+              category: "General",
+              changelog: $changelog,
+              description: "The best way to discover and request Movies and TV Shows through Jellyfin with tabs, using Seerr and TMDB.",
+              guid: "c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c",
+              name: "BetterSeerrTabs",
+              overview: "This plugin lets you add two extra tabs to your top bar, allowing you to discover new Movies and TV Shows, and easily request them in any quality profile you want.",
+              owner: "varunaditya-plus",
+              targetAbi: $targetAbi,
+              timestamp: $timestamp,
+              version: $version,
+              status: "Active",
+              autoUpdate: true,
+              assemblies: ["Jellyfin.Plugin.BetterSeerrTabs.dll"]
+            }' > "${OUT_DIR}/meta.json"
+
+          mkdir -p "${DIST_DIR}"
+          (
+            cd "${OUT_DIR}"
+            zip -j "${ZIP_PATH}" \
+              Jellyfin.Plugin.BetterSeerrTabs.dll \
+              meta.json \
+              thumb.png
+          )
+
+          CHECKSUM=$(md5sum "${ZIP_PATH}" | awk '{print toupper($1)}')
+          SOURCE_URL="https://github.com/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/releases/download/${VERSION}/${ZIP_NAME}"
+
+          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          echo "checksum=${CHECKSUM}" >> "$GITHUB_OUTPUT"
+          echo "source_url=${SOURCE_URL}" >> "$GITHUB_OUTPUT"
+          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
+
+      - name: Update manifest.json
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          jq --arg version "$VERSION" \
+             --arg changelog "Release ${VERSION}." \
+             --arg targetAbi "${{ env.TARGET_ABI }}" \
+             --arg sourceUrl "${{ steps.package.outputs.source_url }}" \
+             --arg checksum "${{ steps.package.outputs.checksum }}" \
+             --arg timestamp "${{ steps.package.outputs.timestamp }}" \
+             '
+             .[0].versions = (
+               [
+                 {
+                   version: $version,
+                   changelog: $changelog,
+                   targetAbi: $targetAbi,
+                   sourceUrl: $sourceUrl,
+                   checksum: $checksum,
+                   timestamp: $timestamp,
+                   dependencies: []
+                 }
+               ]
+               + (.[0].versions | map(select(.version != $version)))
+             )
+             ' manifest.json > manifest.json.tmp
+          mv manifest.json.tmp manifest.json
+
+      - name: Commit manifest.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          if git diff --staged --quiet; then
+            echo "manifest.json unchanged"
+          else
+            git commit -m "chore: update manifest for ${{ steps.version.outputs.version }}"
+            git push
+          fi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: BetterSeerrTabs ${{ steps.version.outputs.version }}
+          body: |
+            ## BetterSeerrTabs ${{ steps.version.outputs.version }}
+
+            Jellyfin 10.11 plugin for Seerr-powered Movies and TV discovery tabs.
+
+            ### Install from catalog
+            Add this repository URL in **Dashboard → Plugins → Repositories**:
+            ```
+            https://raw.githubusercontent.com/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/main/manifest.json
+            ```
+          files: dist/${{ steps.package.outputs.zip_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
