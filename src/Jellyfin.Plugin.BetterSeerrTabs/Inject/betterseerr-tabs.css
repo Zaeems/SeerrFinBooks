@@ -1,0 +1,43 @@
+.betterseerr-carousel-section .betterseerr-box-card {
+    flex: 0 0 auto;
+    width: 12em;
+    margin-right: 0.6em;
+    cursor: pointer;
+}
+
+.betterseerr-box-card .betterseerr-box-image {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 0.5em;
+    background-size: cover;
+    background-position: center;
+    background-color: var(--cardBackground, rgba(255, 255, 255, 0.08));
+}
+
+.betterseerr-box-card .betterseerr-box-label {
+    margin-top: 0.5em;
+    text-align: center;
+    color: var(--primaryTextColor);
+    font-size: 0.95em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.betterseerr-provider-card .betterseerr-box-image {
+    aspect-ratio: 1;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-color: var(--cardBackground, rgba(255, 255, 255, 0.06));
+}
+
+.betterseerr-empty-row {
+    padding: 0.5em 1.5em;
+    color: var(--secondaryTextColor);
+    font-style: italic;
+}
+
+.betterseerr-loading-row {
+    padding: 1em 1.5em;
+    color: var(--secondaryTextColor);
+}

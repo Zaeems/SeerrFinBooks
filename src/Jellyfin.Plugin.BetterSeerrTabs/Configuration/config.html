@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>BetterSeerrTabs</title>
+    <style>
+        #betterSeerrTabsConfigurationPage .bst-section {
+            margin-bottom: 1.5em;
+        }
+
+        #betterSeerrTabsConfigurationPage fieldset,
+        #betterSeerrTabsConfigurationPage .bst-form-section fieldset {
+            width: 100%;
+            max-width: none;
+            box-sizing: border-box;
+        }
+
+        #betterSeerrTabsConfigurationPage .betterSeerrTabsConfigurationForm {
+            width: 100%;
+        }
+
+        .bst-dep-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0.65em 0;
+            font-size: 0.95em;
+        }
+
+        .bst-dep-row .material-icons {
+            font-size: 22px !important;
+            line-height: 1;
+        }
+
+        .bst-dep-row.is-ok {
+            color: #4caf50;
+        }
+
+        .bst-dep-row.is-missing {
+            color: #e57373;
+        }
+
+        .bst-instructions-box {
+            padding: 12px 14px;
+            margin: 0 0 1em;
+            border-radius: 8px;
+            background: var(--cardBackground, rgba(255, 255, 255, 0.06));
+            border: 1px solid var(--divider, rgba(255, 255, 255, 0.12));
+        }
+
+        .bst-instructions-box ol {
+            margin: 8px 0 0 18px;
+        }
+
+        .bst-tab-mock {
+            margin: 0 0 1em;
+            padding: 1em;
+            border-radius: 8px;
+            background: var(--cardBackground, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--divider, rgba(255, 255, 255, 0.1));
+        }
+
+        .bst-tab-mock .inputContainer {
+            margin-bottom: 0.75em;
+        }
+
+        .bst-tab-mock .inputContainer:last-child {
+            margin-bottom: 0;
+        }
+
+        .bst-tab-mock .emby-input,
+        .bst-tab-mock .emby-textarea {
+            opacity: 0.92;
+            pointer-events: none;
+        }
+
+        .bst-tab-mock .emby-textarea {
+            min-height: 3.2em;
+            resize: none;
+        }
+
+        #bstFtWarning {
+            padding: 12px 14px;
+            margin: 0 0 1em;
+            border-radius: 8px;
+            background: color-mix(in srgb, #e5a00d 15%, transparent);
+            border-left: 3px solid #e5a00d;
+        }
+    </style>
+</head>
+<body>
+<div data-role="page" id="betterSeerrTabsConfigurationPage" class="page type-interior pluginConfigurationPage fullWidthContent">
+    <div class="content-primary">
+        <div class="verticalSection">
+            <h2 class="sectionTitle">BetterSeerrTabs</h2>
+        </div>
+
+        <div id="bstFtWarning" style="display:none;">
+            <strong>File Transformation required</strong>
+            <p class="fieldDescription" style="margin:6px 0 0;">
+                Install the <a class="sectionTitle" href="https://github.com/IAmParadox27/jellyfin-plugin-file-transformation" target="_blank">File Transformation</a> plugin so scripts and styles can be injected into the web UI.
+            </p>
+        </div>
+
+        <fieldset class="bst-section">
+            <legend class="sectionTitle">Dependencies</legend>
+            <div id="bstDepFileTransformation" class="bst-dep-row is-missing">
+                <i class="material-icons" aria-hidden="true">close</i>
+                <span>File Transformation</span>
+            </div>
+            <div id="bstDepCustomTabs" class="bst-dep-row is-missing">
+                <i class="material-icons" aria-hidden="true">close</i>
+                <span>Custom Tabs</span>
+            </div>
+        </fieldset>
+
+        <fieldset class="bst-section">
+            <legend class="sectionTitle">Add Custom Tabs</legend>
+            <div class="bst-instructions-box">
+                <p class="fieldDescription" style="margin:0 0 8px;">
+                    In <strong>Dashboard &gt; Plugins &gt; Custom Tabs</strong>, add two tabs using the values below.
+                </p>
+                <ol class="fieldDescription">
+                    <li>Set <strong>Display Text</strong> to the label shown for each tab.</li>
+                    <li>Paste the <strong>HTML Content</strong> into the matching field.</li>
+                </ol>
+                <p class="fieldDescription" style="margin:12px 0 0;">
+                    <a class="sectionTitle" href="/web/#/configurationpage?name=Custom%20Tabs">Open Custom Tabs settings</a>
+                </p>
+            </div>
+
+            <div class="bst-tab-mock">
+                <div class="inputContainer">
+                    <label class="inputLabel">Display Text</label>
+                    <input type="text" is="emby-input" class="emby-input" readonly value="Movies" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel">Html Content</label>
+                    <textarea class="emby-textarea emby-input" readonly>&lt;div class="sections betterseerr-movies-sections"&gt;&lt;/div&gt;</textarea>
+                </div>
+            </div>
+
+            <div class="bst-tab-mock">
+                <div class="inputContainer">
+                    <label class="inputLabel">Display Text</label>
+                    <input type="text" is="emby-input" class="emby-input" readonly value="TV Shows" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel">Html Content</label>
+                    <textarea class="emby-textarea emby-input" readonly>&lt;div class="sections betterseerr-tv-sections"&gt;&lt;/div&gt;</textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <form class="betterSeerrTabsConfigurationForm bst-form-section">
+            <fieldset class="bst-section bst-jellyseerr-fieldset">
+                <legend class="sectionTitle">Jellyseerr</legend>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="jellyseerrUrl">Jellyseerr URL</label>
+                    <input id="jellyseerrUrl" name="jellyseerrUrl" type="text" is="emby-input" class="emby-input" />
+                    <div class="fieldDescription">Internal URL used by the server (e.g. http://localhost:5055)</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="jellyseerrApiKey">Jellyseerr API Key</label>
+                    <input id="jellyseerrApiKey" name="jellyseerrApiKey" type="password" is="emby-input" class="emby-input" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="jellyseerrPreferredLanguages">Preferred Languages</label>
+                    <input id="jellyseerrPreferredLanguages" name="jellyseerrPreferredLanguages" type="text" is="emby-input" class="emby-input" />
+                    <div class="fieldDescription">Comma-separated ISO codes (e.g. en,de). Leave empty for all.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="watchRegion">Watch Region</label>
+                    <input id="watchRegion" name="watchRegion" type="text" is="emby-input" class="emby-input" />
+                    <div class="fieldDescription">Region for streaming provider carousel (e.g. US).</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="rowItemLimit">Items per row</label>
+                    <input id="rowItemLimit" name="rowItemLimit" type="number" is="emby-input" class="emby-input" min="5" max="40" />
+                </div>
+            </fieldset>
+
+            <fieldset class="bst-section bst-tmdb-fieldset">
+                <legend class="sectionTitle">TMDB</legend>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="tmdbApiKey">TMDB API Key</label>
+                    <input id="tmdbApiKey" name="tmdbApiKey" type="password" is="emby-input" class="emby-input" autocomplete="off" />
+                    <div class="fieldDescription">
+                        Optional. Your browser loads TMDB details and logos directly. Supports v3 API keys
+                        (<code>?api_key=</code>) and read-access JWT tokens (<code>Authorization: Bearer</code>).
+                        Logos: English, then en-US, then highest-rated. Request status still comes from Jellyseerr.
+                        <a class="sectionTitle" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">Get an API key</a>
+                    </div>
+                </div>
+            </fieldset>
+
+            <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                <span>Save</span>
+            </button>
+        </form>
+    </div>
+    <script type="text/javascript">
+        (function () {
+            const pluginId = 'c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c';
+            const form = document.querySelector('.betterSeerrTabsConfigurationForm');
+
+            function setDependencyRow(elementId, isInstalled, label) {
+                const row = document.getElementById(elementId);
+                if (!row) {
+                    return;
+                }
+                row.classList.toggle('is-ok', isInstalled);
+                row.classList.toggle('is-missing', !isInstalled);
+                row.querySelector('.material-icons').textContent = isInstalled ? 'check' : 'close';
+                row.querySelector('span').textContent = label;
+            }
+
+            function probePlugin(names) {
+                return ApiClient.ajax({
+                    type: 'GET',
+                    url: ApiClient.getUrl('/Plugins'),
+                    dataType: 'json'
+                }).then(function (plugins) {
+                    const lowered = names.map(function (n) { return n.toLowerCase(); });
+                    for (let i = 0; i < plugins.length; i++) {
+                        const nm = (plugins[i].Name || '').toLowerCase();
+                        if (lowered.indexOf(nm) !== -1 && plugins[i].Status === 'Active') {
+                            return true;
+                        }
+                    }
+                    return false;
+                }).catch(function () {
+                    return false;
+                });
+            }
+
+            function checkInstalledPlugins() {
+                Promise.all([
+                    probePlugin(['File Transformation']),
+                    probePlugin(['Custom Tabs'])
+                ]).then(function (results) {
+                    setDependencyRow('bstDepFileTransformation', results[0] === true, 'File Transformation');
+                    setDependencyRow('bstDepCustomTabs', results[1] === true, 'Custom Tabs');
+                    const ftWarn = document.getElementById('bstFtWarning');
+                    if (ftWarn) {
+                        ftWarn.style.display = results[0] ? 'none' : 'block';
+                    }
+                });
+            }
+
+            checkInstalledPlugins();
+
+            Dashboard.showLoadingMsg();
+            ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                document.querySelector('#jellyseerrUrl').value = config.JellyseerrUrl || '';
+                document.querySelector('#jellyseerrApiKey').value = config.JellyseerrApiKey || '';
+                document.querySelector('#jellyseerrPreferredLanguages').value = config.JellyseerrPreferredLanguages || 'en';
+                document.querySelector('#watchRegion').value = config.WatchRegion || 'US';
+                document.querySelector('#rowItemLimit').value = config.RowItemLimit || 20;
+                document.querySelector('#tmdbApiKey').value = config.TmdbApiKey || '';
+                Dashboard.hideLoadingMsg();
+            });
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    config.JellyseerrUrl = document.querySelector('#jellyseerrUrl').value;
+                    config.JellyseerrApiKey = document.querySelector('#jellyseerrApiKey').value;
+                    config.JellyseerrPreferredLanguages = document.querySelector('#jellyseerrPreferredLanguages').value;
+                    config.WatchRegion = document.querySelector('#watchRegion').value || 'US';
+                    config.RowItemLimit = parseInt(document.querySelector('#rowItemLimit').value, 10) || 20;
+                    config.TmdbApiKey = document.querySelector('#tmdbApiKey').value.trim();
+                    ApiClient.updatePluginConfiguration(pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

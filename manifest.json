@@ -1,0 +1,21 @@
+[
+  {
+    "guid": "c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c",
+    "name": "BetterSeerrTabs",
+    "description": "The best way to discover and request Movies and TV Shows through Jellyfin with tabs, using Seerr and TMDB.",
+    "overview": "This plugin lets you add two extra tabs to your top bar, allowing you to discover new Movies and TV Shows, and easily request them in any quality profile you want.",
+    "owner": "betterseerrtabs",
+    "category": "General",
+    "imageUrl": "",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "Initial public release.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "",
+        "checksum": "",
+        "timestamp": "2026-05-19T00:00:00Z"
+      }
+    ]
+  }
+]

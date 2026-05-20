@@ -1,0 +1,22 @@
+using Jellyfin.Plugin.BetterSeerrTabs.Services;
+using MediaBrowser.Controller;
+using MediaBrowser.Controller.Plugins;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Jellyfin.Plugin.BetterSeerrTabs;
+
+public class PluginServiceRegistrator : IPluginServiceRegistrator
+{
+    public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
+    {
+        serviceCollection.AddHttpClient();
+        serviceCollection.AddSingleton<ImageCacheService>(services =>
+        {
+            IHttpClientFactory httpClientFactory = services.GetRequiredService<IHttpClientFactory>();
+            return ActivatorUtilities.CreateInstance<ImageCacheService>(services, httpClientFactory.CreateClient());
+        });
+        serviceCollection.AddSingleton<JellyseerrDiscoveryService>();
+        serviceCollection.AddSingleton<JellyseerrRequestService>();
+        serviceCollection.AddSingleton<JellyseerrProxyService>();
+    }
+}
