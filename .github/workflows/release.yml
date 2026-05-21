@@ -26,7 +26,7 @@ jobs:
       - name: Parse version from commit message
         id: parse
         run: |
-          MSG="${{ github.event.head_commit.message }}"
+          MSG=$(jq -r '.head_commit.message' "$GITHUB_EVENT_PATH")
           if [[ "$MSG" =~ \(v([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\) ]]; then
             VERSION="${BASH_REMATCH[1]}"
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -86,13 +86,33 @@ jobs:
             --configuration Release \
             -p:JellyfinVersion=${{ env.JELLYFIN_VERSION }}
 
+      - name: Resolve Jellyfin zip ABI from latest jellyfin-web release
+        id: jellyfin
+        run: |
+          TAG=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/jellyfin/jellyfin-web/releases/latest \
+            | jq -r '.tag_name')
+
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unexpected jellyfin-web release tag: ${TAG}"
+            exit 1
+          fi
+
+          JELLYFIN_ABI=$(echo "${TAG#v}" | cut -d. -f1-2)
+          ZIP_NAME="Jellyfin.Plugin.BetterSeerrTabs_${JELLYFIN_ABI}.0.zip"
+          echo "jellyfin_abi=${JELLYFIN_ABI}" >> "$GITHUB_OUTPUT"
+          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Latest jellyfin-web tag: ${TAG} -> ABI ${JELLYFIN_ABI}, zip ${ZIP_NAME}"
+
       - name: Package release zip
         id: package
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           OUT_DIR="${GITHUB_WORKSPACE}/src/Jellyfin.Plugin.BetterSeerrTabs/bin/Release/net9.0"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.0000000Z")
-          ZIP_NAME="Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip"
+          ZIP_NAME="${{ steps.jellyfin.outputs.zip_name }}"
           DIST_DIR="${GITHUB_WORKSPACE}/dist"
           ZIP_PATH="${DIST_DIR}/${ZIP_NAME}"
 

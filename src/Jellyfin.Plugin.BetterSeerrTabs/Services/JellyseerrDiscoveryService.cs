@@ -21,7 +21,10 @@ public class JellyseerrDiscoveryService
         _logger = logger;
     }
 
-    public QueryResult<BaseItemDto> GetDiscoverRow(string username, string jellyseerrPath, string? mediaTypeFilter = null, int startIndex = 0, int? limit = null)
+    public QueryResult<BaseItemDto> GetAnimeRow(string username, int startIndex = 0, int? limit = null) =>
+        GetDiscoverRow(username, "/api/v1/discover/tv?genre=16&keywords=210024", "tv", startIndex, limit, useSeerrMapping: true);
+
+    public QueryResult<BaseItemDto> GetDiscoverRow(string username, string jellyseerrPath, string? mediaTypeFilter = null, int startIndex = 0, int? limit = null, bool useSeerrMapping = false)
     {
         PluginConfiguration config = BetterSeerrTabsPlugin.Instance.Configuration;
         if (string.IsNullOrWhiteSpace(config.JellyseerrUrl) || string.IsNullOrWhiteSpace(config.JellyseerrApiKey))
@@ -42,6 +45,11 @@ public class JellyseerrDiscoveryService
         }
 
         client.DefaultRequestHeaders.Add("X-Api-User", jellyseerrUserId.ToString());
+
+        // Seerr mapping needs to be used for Anime discovery because of Seerr's default filters applied on their direct API.
+        DiscoverItemFilterOptions mapping = useSeerrMapping
+            ? DiscoverItemFilterOptions.Seerr
+            : DiscoverItemFilterOptions.Default;
 
         List<BaseItemDto> items = new();
         int jellyseerrPage = 1;
@@ -90,7 +98,7 @@ public class JellyseerrDiscoveryService
                         continue;
                     }
 
-                    BaseItemDto? dto = MapDiscoverItem(item);
+                    BaseItemDto? dto = MapDiscoverItem(item, mapping);
                     if (dto == null)
                     {
                         continue;
@@ -295,7 +303,7 @@ public class JellyseerrDiscoveryService
         }
     }
 
-    private BaseItemDto? MapDiscoverItem(JObject item)
+    private BaseItemDto? MapDiscoverItem(JObject item, DiscoverItemFilterOptions filterOptions)
     {
         PluginConfiguration config = BetterSeerrTabsPlugin.Instance.Configuration;
 
@@ -305,8 +313,8 @@ public class JellyseerrDiscoveryService
         }
 
         string? language = item.Value<string>("originalLanguage");
-        // Optional comma-separated language allowlist from plugin config
-        if (!string.IsNullOrEmpty(config.JellyseerrPreferredLanguages) &&
+        if (filterOptions.ApplyLanguageFilter &&
+            !string.IsNullOrEmpty(config.JellyseerrPreferredLanguages) &&
             !string.IsNullOrEmpty(language) &&
             !config.JellyseerrPreferredLanguages.Split(',')
                 .Select(x => x.Trim())
@@ -315,8 +323,13 @@ public class JellyseerrDiscoveryService
             return null;
         }
 
-        // Skip titles already in the library. Discovery rows are for new requests only
-        if (item.Value<JObject>("mediaInfo") != null)
+        // Match Seerr default (hideAvailable=false): only hide available titles when configured.
+        if (filterOptions.HideAvailableInLibrary && IsAvailableInLibrary(item))
+        {
+            return null;
+        }
+
+        if (filterOptions.HideRequestedMedia && item.Value<JObject>("mediaInfo") != null)
         {
             return null;
         }
@@ -372,6 +385,36 @@ public class JellyseerrDiscoveryService
             .OfType<JObject>()
             .FirstOrDefault(x => string.Equals(x.Value<string>("jellyfinUsername"), username, StringComparison.OrdinalIgnoreCase))
             ?.Value<int>("id");
+    }
+
+    private static bool IsAvailableInLibrary(JObject item)
+    {
+        string? status = item.Value<JObject>("mediaInfo")?.Value<string>("status");
+        return string.Equals(status, "AVAILABLE", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "PARTIALLY_AVAILABLE", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class DiscoverItemFilterOptions
+    {
+        public static DiscoverItemFilterOptions Default { get; } = new()
+        {
+            ApplyLanguageFilter = true,
+            HideRequestedMedia = true,
+            HideAvailableInLibrary = false
+        };
+
+        // Pass TMDB filters through and show all results.
+        public static DiscoverItemFilterOptions Seerr { get; } = new()
+        {
+            ApplyLanguageFilter = false,
+            HideRequestedMedia = false,
+            HideAvailableInLibrary = false
+        };
+
+        public bool ApplyLanguageFilter { get; init; }
+
+        public bool HideRequestedMedia { get; init; }
+
+        public bool HideAvailableInLibrary { get; init; }
     }
 
     private static QueryResult<BaseItemDto> EmptyResult() => new()

@@ -216,7 +216,7 @@ public class BetterSeerrTabsController : ControllerBase
         [FromServices] IUserManager userManager,
         [FromQuery] int startIndex = 0,
         [FromQuery] int? limit = null) =>
-        DiscoverRow(userManager, "/api/v1/discover/tv?genre=16&originalLanguage=ja", "tv", startIndex, limit);
+        _discoveryService.GetAnimeRow(GetUsername(userManager) ?? string.Empty, startIndex, limit);
 
     [HttpGet("discover/movies/genre/{genreId}")]
     [Authorize]
