@@ -1,203 +1,402 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>BetterSeerrTabs</title>
+<div data-role="page" id="betterSeerrTabsConfigurationPage" class="page type-interior pluginConfigurationPage fullWidthContent">
     <style>
-        #betterSeerrTabsConfigurationPage .bst-section {
-            margin-bottom: 1.5em;
+        #betterSeerrTabsConfigurationPage {
+            padding: 2em 1em;
         }
 
-        #betterSeerrTabsConfigurationPage fieldset,
-        #betterSeerrTabsConfigurationPage .bst-form-section fieldset {
+        .bst-page-banner {
+            background: #fff;
+            color: #000;
             width: 100%;
-            max-width: none;
             box-sizing: border-box;
+            padding: 0.5em 1em;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: 500;
+            line-height: 1.3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        #betterSeerrTabsConfigurationPage .betterSeerrTabsConfigurationForm {
+        .bst-page-banner a {
+            color: #000;
+        }
+
+        #betterSeerrTabsConfigurationPage .content-primary {
+            margin: 0 auto;
+            padding-left: 5em !important;
+            padding-right: 5em !important;
+        }
+
+        #betterSeerrTabsConfigurationPage form,
+        #betterSeerrTabsConfigurationPage .readOnlyContent {
+            max-width: none !important;
+        }
+
+        .bst-container,
+        .betterSeerrTabsConfigurationForm {
+            display: flex;
+            flex-direction: column;
+            gap: 2.5em;
+        }
+
+        .betterSeerrTabsConfigurationForm {
             width: 100%;
         }
 
-        .bst-dep-row {
+        .bst-section-title {
+            text-align: center;
+            font-size: 1.35em;
+            font-weight: 400;
+            margin: 0 0 1em;
+            line-height: 1.3;
+        }
+
+        .bst-card {
+            border: 1px solid var(--divider, rgba(255, 255, 255, 0.2));
+            padding: 1em;
+        }
+
+        .bst-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 2em;
+            margin-bottom: 1.25em;
+        }
+
+        .bst-section-header--footer {
+            margin-bottom: 0;
+            margin-top: 0.65em;
+        }
+
+        .bst-link {
+            color: var(--accent, #52b2fa);
+            text-decoration: underline;
+            font-size: 1em;
+            line-height: 1.5;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .bst-dep-item {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin: 0.65em 0;
-            font-size: 0.95em;
+            font-size: 1.05em;
+            line-height: 1.5;
+            margin-bottom: 10px;
         }
 
-        .bst-dep-row .material-icons {
-            font-size: 22px !important;
-            line-height: 1;
-        }
-
-        .bst-dep-row.is-ok {
+        .bst-dep-item.is-ok {
             color: #4caf50;
         }
 
-        .bst-dep-row.is-missing {
-            color: #e57373;
+        .bst-dep-item.is-missing {
+            color: #ff5252;
         }
 
-        .bst-instructions-box {
-            padding: 12px 14px;
-            margin: 0 0 1em;
-            border-radius: 8px;
-            background: var(--cardBackground, rgba(255, 255, 255, 0.06));
-            border: 1px solid var(--divider, rgba(255, 255, 255, 0.12));
-        }
-
-        .bst-instructions-box ol {
-            margin: 8px 0 0 18px;
-        }
-
-        .bst-tab-mock {
-            margin: 0 0 1em;
-            padding: 1em;
-            border-radius: 8px;
-            background: var(--cardBackground, rgba(255, 255, 255, 0.04));
-            border: 1px solid var(--divider, rgba(255, 255, 255, 0.1));
-        }
-
-        .bst-tab-mock .inputContainer {
-            margin-bottom: 0.75em;
-        }
-
-        .bst-tab-mock .inputContainer:last-child {
+        .bst-dep-item:last-child,
+        .bst-input-group:last-child {
             margin-bottom: 0;
         }
 
-        .bst-tab-mock .emby-input,
-        .bst-tab-mock .emby-textarea {
-            opacity: 0.92;
-            pointer-events: none;
+        .bst-icon {
+            width: 1.2em;
+            text-align: center;
         }
 
-        .bst-tab-mock .emby-textarea {
-            min-height: 3.2em;
+        .bst-tabs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1em;
+        }
+
+        .bst-input-group {
+            margin-bottom: 1.75em;
+        }
+
+        .bst-label {
+            display: block;
+            font-size: 1em;
+            line-height: 1.4;
+            margin-bottom: 0.5em;
+        }
+
+        .bst-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            border: 2px solid var(--cardBackground, transparent);
+            background: var(--cardBackground, rgba(255, 255, 255, 0.08));
+            color: inherit;
+            font-size: 1.05em;
+            line-height: 1.4;
+        }
+
+        .bst-input:focus {
+            border-color: var(--accent, #00a4dc);
+            outline: none;
+        }
+
+        .bst-input.bst-textarea {
+            min-height: 110px;
             resize: none;
+            font-family: monospace;
+            font-size: 1em;
+            line-height: 1.5;
         }
 
-        #bstFtWarning {
-            padding: 12px 14px;
-            margin: 0 0 1em;
-            border-radius: 8px;
-            background: color-mix(in srgb, #e5a00d 15%, transparent);
-            border-left: 3px solid #e5a00d;
+        .bst-field-desc {
+            font-size: 0.92em;
+            color: var(--secondaryTextColor, rgba(255, 255, 255, 0.55));
+            margin-top: 0.55em;
+            line-height: 1.55;
+        }
+
+        .bst-field-desc--inline,
+        .bst-field-desc--footer {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bst-field-desc--inline {
+            margin: 0;
+            font-size: 1em;
+            line-height: 1.5;
+            color: inherit;
+        }
+
+        .bst-field-desc--footer {
+            margin-top: 0;
+        }
+
+        .betterSeerrTabsConfigurationForm .bst-field-desc {
+            color: #6a6a6a;
+        }
+
+        .bst-field-main {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25em;
+        }
+
+        .bst-label--side {
+            color: #fff;
+            font-size: 1.15em;
+            line-height: 1.4;
+            margin: 0;
+            padding-top: 0.65em;
+        }
+
+        .bst-input-stack {
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bst-input-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5em;
+        }
+
+        .bst-input-row > .bst-input-group {
+            flex: 1 1 14em;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .bst-input-row .bst-field-main {
+            gap: 0.75em;
+        }
+
+        .bst-input-row .bst-label--side {
+            flex: 0 0 auto;
+            font-size: 1.05em;
+            padding-top: 0.65em;
+            max-width: 42%;
+        }
+
+        .bst-save-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 0;
+            background: var(--accent, #00a4dc);
+            color: #fff;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 24px;
+            font-size: 1em;
+        }
+
+        .bst-save-btn:hover {
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .bst-tabs-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bst-input-row {
+                flex-direction: column;
+            }
+
+            .bst-field-main {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5em;
+            }
+
+            .bst-label--side {
+                flex: none;
+                max-width: none;
+                padding-top: 0;
+            }
         }
     </style>
-</head>
-<body>
-<div data-role="page" id="betterSeerrTabsConfigurationPage" class="page type-interior pluginConfigurationPage fullWidthContent">
+
     <div class="content-primary">
-        <div class="verticalSection">
-            <h2 class="sectionTitle">BetterSeerrTabs</h2>
-        </div>
-
-        <div id="bstFtWarning" style="display:none;">
-            <strong>File Transformation required</strong>
-            <p class="fieldDescription" style="margin:6px 0 0;">
-                Install the <a class="sectionTitle" href="https://github.com/IAmParadox27/jellyfin-plugin-file-transformation" target="_blank">File Transformation</a> plugin so scripts and styles can be injected into the web UI.
-            </p>
-        </div>
-
-        <fieldset class="bst-section">
-            <legend class="sectionTitle">Dependencies</legend>
-            <div id="bstDepFileTransformation" class="bst-dep-row is-missing">
-                <i class="material-icons" aria-hidden="true">close</i>
-                <span>File Transformation</span>
-            </div>
-            <div id="bstDepCustomTabs" class="bst-dep-row is-missing">
-                <i class="material-icons" aria-hidden="true">close</i>
-                <span>Custom Tabs</span>
-            </div>
-        </fieldset>
-
-        <fieldset class="bst-section">
-            <legend class="sectionTitle">Add Custom Tabs</legend>
-            <div class="bst-instructions-box">
-                <p class="fieldDescription" style="margin:0 0 8px;">
-                    In <strong>Dashboard &gt; Plugins &gt; Custom Tabs</strong>, add two tabs using the values below.
-                </p>
-                <ol class="fieldDescription">
-                    <li>Set <strong>Display Text</strong> to the label shown for each tab.</li>
-                    <li>Paste the <strong>HTML Content</strong> into the matching field.</li>
-                </ol>
-                <p class="fieldDescription" style="margin:12px 0 0;">
-                    <a class="sectionTitle" href="/web/#/configurationpage?name=Custom%20Tabs">Open Custom Tabs settings</a>
-                </p>
+        <div class="bst-container">
+            <div class="bst-page-banner">
+                <span>BetterSeerrTabs</span>
+                <a href="https://github.com/varunaditya-plus/BetterSeerrTabs" target="_blank" rel="noopener">Help</a>
             </div>
 
-            <div class="bst-tab-mock">
-                <div class="inputContainer">
-                    <label class="inputLabel">Display Text</label>
-                    <input type="text" is="emby-input" class="emby-input" readonly value="Movies" />
-                </div>
-                <div class="inputContainer">
-                    <label class="inputLabel">Html Content</label>
-                    <textarea class="emby-textarea emby-input" readonly>&lt;div class="sections betterseerr-movies-sections"&gt;&lt;/div&gt;</textarea>
-                </div>
-            </div>
-
-            <div class="bst-tab-mock">
-                <div class="inputContainer">
-                    <label class="inputLabel">Display Text</label>
-                    <input type="text" is="emby-input" class="emby-input" readonly value="TV Shows" />
-                </div>
-                <div class="inputContainer">
-                    <label class="inputLabel">Html Content</label>
-                    <textarea class="emby-textarea emby-input" readonly>&lt;div class="sections betterseerr-tv-sections"&gt;&lt;/div&gt;</textarea>
-                </div>
-            </div>
-        </fieldset>
-
-        <form class="betterSeerrTabsConfigurationForm bst-form-section">
-            <fieldset class="bst-section bst-jellyseerr-fieldset">
-                <legend class="sectionTitle">Jellyseerr</legend>
-                <div class="inputContainer">
-                    <label class="inputLabel" for="jellyseerrUrl">Jellyseerr URL</label>
-                    <input id="jellyseerrUrl" name="jellyseerrUrl" type="text" is="emby-input" class="emby-input" />
-                    <div class="fieldDescription">Internal URL used by the server (e.g. http://localhost:5055)</div>
-                </div>
-                <div class="inputContainer">
-                    <label class="inputLabel" for="jellyseerrApiKey">Jellyseerr API Key</label>
-                    <input id="jellyseerrApiKey" name="jellyseerrApiKey" type="password" is="emby-input" class="emby-input" />
-                </div>
-                <div class="inputContainer">
-                    <label class="inputLabel" for="jellyseerrPreferredLanguages">Preferred Languages</label>
-                    <input id="jellyseerrPreferredLanguages" name="jellyseerrPreferredLanguages" type="text" is="emby-input" class="emby-input" />
-                    <div class="fieldDescription">Comma-separated ISO codes (e.g. en,de). Leave empty for all.</div>
-                </div>
-                <div class="inputContainer">
-                    <label class="inputLabel" for="watchRegion">Watch Region</label>
-                    <input id="watchRegion" name="watchRegion" type="text" is="emby-input" class="emby-input" />
-                    <div class="fieldDescription">Region for streaming provider carousel (e.g. US).</div>
-                </div>
-                <div class="inputContainer">
-                    <label class="inputLabel" for="rowItemLimit">Items per row</label>
-                    <input id="rowItemLimit" name="rowItemLimit" type="number" is="emby-input" class="emby-input" min="5" max="40" />
-                </div>
-            </fieldset>
-
-            <fieldset class="bst-section bst-tmdb-fieldset">
-                <legend class="sectionTitle">TMDB</legend>
-                <div class="inputContainer">
-                    <label class="inputLabel" for="tmdbApiKey">TMDB API Key</label>
-                    <input id="tmdbApiKey" name="tmdbApiKey" type="password" is="emby-input" class="emby-input" autocomplete="off" />
-                    <div class="fieldDescription">
-                        Optional. Your browser loads TMDB details and logos directly. Supports v3 API keys
-                        (<code>?api_key=</code>) and read-access JWT tokens (<code>Authorization: Bearer</code>).
-                        Logos: English, then en-US, then highest-rated. Request status still comes from Jellyseerr.
-                        <a class="sectionTitle" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">Get an API key</a>
+            <!-- Dependencies Section -->
+            <div class="bst-section-container">
+                <div class="bst-section-title">Dependencies</div>
+                <div class="bst-card">
+                    <div id="bstDepFileTransformation" class="bst-dep-item is-missing">
+                        <span class="bst-icon">✕</span>
+                        <span>File transformation</span>
+                    </div>
+                    <div id="bstDepCustomTabs" class="bst-dep-item is-missing">
+                        <span class="bst-icon">✕</span>
+                        <span>Custom tabs</span>
                     </div>
                 </div>
-            </fieldset>
+            </div>
 
-            <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-                <span>Save</span>
-            </button>
-        </form>
+            <!-- Add Custom Tabs Section -->
+            <div class="bst-section-container">
+                <div class="bst-section-title">Add custom tabs</div>
+                <div class="bst-card">
+                    <div class="bst-section-header">
+                        <div class="bst-field-desc bst-field-desc--inline">
+                            In <strong>Dashboard → Plugins → Custom Tabs</strong>, add two tabs using the values below
+                        </div>
+                        <a class="bst-link" href="/web/#/configurationpage?name=Custom%20Tabs">Open Custom Tabs</a>
+                    </div>
+                    <div class="bst-tabs-grid">
+                        <div class="bst-card">
+                            <div class="bst-input-group">
+                                <label class="bst-label">Display text</label>
+                                <input type="text" class="bst-input" readonly value="Movies" />
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label">Html Content</label>
+                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections betterseerr-movies-sections"&gt;&lt;/div&gt;</textarea>
+                            </div>
+                        </div>
+                        <div class="bst-card">
+                            <div class="bst-input-group">
+                                <label class="bst-label">Display text</label>
+                                <input type="text" class="bst-input" readonly value="TV Shows" />
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label">Html Content</label>
+                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections betterseerr-tv-sections"&gt;&lt;/div&gt;</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <form class="betterSeerrTabsConfigurationForm">
+                <div class="bst-section-container">
+                    <div class="bst-section-title">Jellyseerr</div>
+                    <div class="bst-card">
+                        <div class="bst-input-group">
+                            <div class="bst-field-main">
+                                <label class="bst-label bst-label--side" for="jellyseerrUrl">Jellyseerr URL</label>
+                                <div class="bst-input-stack">
+                                    <input id="jellyseerrUrl" name="jellyseerrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:5055" />
+                                    <div class="bst-field-desc">Internal URL used by the server (e.g. http://localhost:5055)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-group">
+                            <div class="bst-field-main">
+                                <label class="bst-label bst-label--side" for="jellyseerrApiKey">Jellyseerr API Key</label>
+                                <div class="bst-input-stack">
+                                    <input id="jellyseerrApiKey" name="jellyseerrApiKey" type="password" class="bst-input" />
+                                    <div class="bst-field-desc">Access Key for Jellyseerr which you can get by going to Jellyseerr → Settings → API Key</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="jellyseerrPreferredLanguages">Preferred languages</label>
+                                    <div class="bst-input-stack">
+                                        <input id="jellyseerrPreferredLanguages" name="jellyseerrPreferredLanguages" type="text" class="bst-input" />
+                                        <div class="bst-field-desc">Comma-separated ISO codes.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="watchRegion">Watch region</label>
+                                    <div class="bst-input-stack">
+                                        <input id="watchRegion" name="watchRegion" type="text" class="bst-input" />
+                                        <div class="bst-field-desc">Region for streaming provider carousel.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="rowItemLimit">Items per row</label>
+                                    <div class="bst-input-stack">
+                                        <input id="rowItemLimit" name="rowItemLimit" type="number" class="bst-input" />
+                                        <div class="bst-field-desc">Less items means carousels load faster.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bst-section-container">
+                    <div class="bst-section-title">TMDB</div>
+                    <div class="bst-card">
+                        <div class="bst-input-group">
+                            <div class="bst-field-main">
+                                <label class="bst-label bst-label--side" for="tmdbApiKey">TMDB API Key</label>
+                                <div class="bst-input-stack">
+                                    <input id="tmdbApiKey" name="tmdbApiKey" type="password" class="bst-input" autocomplete="off" />
+                                    <div class="bst-section-header bst-section-header--footer">
+                                        <div class="bst-field-desc bst-field-desc--footer">
+                                            Optional, but recommended. This loads movie/tv details directly, meaning data in modals will load faster. Requesting still uses Jellyseerr.
+                                        </div>
+                                        <a class="bst-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">Get an API key</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="bst-save-btn">Save</button>
+            </form>
+        </div>
     </div>
+
     <script type="text/javascript">
         (function () {
             const pluginId = 'c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c';
@@ -205,13 +404,20 @@
 
             function setDependencyRow(elementId, isInstalled, label) {
                 const row = document.getElementById(elementId);
-                if (!row) {
-                    return;
-                }
+                if (!row) return;
+                
                 row.classList.toggle('is-ok', isInstalled);
                 row.classList.toggle('is-missing', !isInstalled);
-                row.querySelector('.material-icons').textContent = isInstalled ? 'check' : 'close';
-                row.querySelector('span').textContent = label;
+                
+                const icon = row.querySelector('.bst-icon');
+                if (icon) {
+                    icon.textContent = isInstalled ? '✓' : '✕';
+                }
+                
+                const textSpan = row.querySelector('span:not(.bst-icon)');
+                if (textSpan) {
+                    textSpan.textContent = label;
+                }
             }
 
             function probePlugin(names) {
@@ -238,12 +444,8 @@
                     probePlugin(['File Transformation']),
                     probePlugin(['Custom Tabs'])
                 ]).then(function (results) {
-                    setDependencyRow('bstDepFileTransformation', results[0] === true, 'File Transformation');
-                    setDependencyRow('bstDepCustomTabs', results[1] === true, 'Custom Tabs');
-                    const ftWarn = document.getElementById('bstFtWarning');
-                    if (ftWarn) {
-                        ftWarn.style.display = results[0] ? 'none' : 'block';
-                    }
+                    setDependencyRow('bstDepFileTransformation', results[0] === true, 'File transformation');
+                    setDependencyRow('bstDepCustomTabs', results[1] === true, 'Custom tabs');
                 });
             }
 
@@ -275,5 +477,4 @@
             });
         })();
     </script>
-</body>
-</html>
+</div>

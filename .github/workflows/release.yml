@@ -2,9 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+.[0-9]+"
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -14,25 +13,68 @@ env:
   TARGET_ABI: "10.11.0.0"
   REPO_OWNER: "varunaditya-plus"
   REPO_NAME: "BetterSeerrTabs"
+  CSPROJ: "src/Jellyfin.Plugin.BetterSeerrTabs/Jellyfin.Plugin.BetterSeerrTabs.csproj"
+  ASSEMBLY_INFO: "src/Jellyfin.Plugin.BetterSeerrTabs/Properties/AssemblyInfo.cs"
 
 jobs:
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      should_release: ${{ steps.parse.outputs.should_release }}
+    steps:
+      - name: Parse version from commit message
+        id: parse
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          if [[ "$MSG" =~ \(v([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Detected release version: $VERSION"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "No (vX.X.X.X) version found in commit message; skipping release."
+          fi
+
   release:
+    needs: extract-version
+    if: needs.extract-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Resolve version
         id: version
         run: |
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-          else
-            VERSION=$(grep -m1 '<Version>' src/Jellyfin.Plugin.BetterSeerrTabs/Jellyfin.Plugin.BetterSeerrTabs.csproj | sed -E 's/.*<Version>([^<]+)<\/Version>.*/\1/')
-          fi
+          VERSION="${{ needs.extract-version.outputs.version }}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Release version: $VERSION"
+
+      - name: Check tag does not already exist
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if git rev-parse "refs/tags/${VERSION}" >/dev/null 2>&1; then
+            echo "Tag ${VERSION} already exists. Aborting to avoid duplicate release."
+            exit 1
+          fi
+
+      - name: Update version in project files
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          sed -i "s/<Version>[0-9.]*<\\/Version>/<Version>${VERSION}<\\/Version>/" "${{ env.CSPROJ }}"
+
+          sed -i "s/\\[assembly: AssemblyVersion(\"[0-9.]*\")\\]/[assembly: AssemblyVersion(\"${VERSION}\")]/" "${{ env.ASSEMBLY_INFO }}"
+          sed -i "s/\\[assembly: AssemblyFileVersion(\"[0-9.]*\")\\]/[assembly: AssemblyFileVersion(\"${VERSION}\")]/" "${{ env.ASSEMBLY_INFO }}"
+
+          jq --arg version "$VERSION" '.version = $version' meta.json > meta.json.tmp
+          mv meta.json.tmp meta.json
+
+          echo "Updated version to ${VERSION} in csproj, AssemblyInfo, and meta.json"
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -40,7 +82,7 @@ jobs:
 
       - name: Build plugin
         run: |
-          dotnet build src/Jellyfin.Plugin.BetterSeerrTabs/Jellyfin.Plugin.BetterSeerrTabs.csproj \
+          dotnet build "${{ env.CSPROJ }}" \
             --configuration Release \
             -p:JellyfinVersion=${{ env.JELLYFIN_VERSION }}
 
@@ -74,6 +116,14 @@ jobs:
               autoUpdate: true,
               assemblies: ["Jellyfin.Plugin.BetterSeerrTabs.dll"]
             }' > "${OUT_DIR}/meta.json"
+
+          jq --arg version "$VERSION" \
+             --arg timestamp "$TIMESTAMP" \
+             --arg targetAbi "${{ env.TARGET_ABI }}" \
+             --arg changelog "Release ${VERSION}." \
+             '.version = $version | .timestamp = $timestamp | .targetAbi = $targetAbi | .changelog = $changelog' \
+             meta.json > meta.json.tmp
+          mv meta.json.tmp meta.json
 
           mkdir -p "${DIST_DIR}"
           (
@@ -119,32 +169,34 @@ jobs:
              ' manifest.json > manifest.json.tmp
           mv manifest.json.tmp manifest.json
 
-      - name: Commit manifest.json to main
+      - name: Commit version and manifest updates
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add manifest.json
+          git add manifest.json meta.json "${{ env.CSPROJ }}" "${{ env.ASSEMBLY_INFO }}"
           if git diff --staged --quiet; then
-            echo "manifest.json unchanged"
+            echo "No version file changes to commit"
           else
-            git commit -m "chore: update manifest for ${{ steps.version.outputs.version }}"
+            git commit -m "chore: bump version to ${VERSION}"
             git push origin HEAD:main
           fi
+
+      - name: Create and push release tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git tag -a "${VERSION}" -m "BetterSeerrTabs ${VERSION}"
+          git push origin "${VERSION}"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.version }}
           name: BetterSeerrTabs ${{ steps.version.outputs.version }}
           body: |
-            ## BetterSeerrTabs ${{ steps.version.outputs.version }}
+            This is the release for version ${{ steps.version.outputs.version }} of BetterSeerrTabs. To install, follow the instructions in the Readme.
 
-            Jellyfin 10.11 plugin for Seerr-powered Movies and TV discovery tabs.
-
-            ### Install from catalog
-            Add this repository URL in **Dashboard → Plugins → Repositories**:
-            ```
-            https://raw.githubusercontent.com/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}/main/manifest.json
-            ```
+            Changelog:
+            (add manually)
           files: dist/${{ steps.package.outputs.zip_name }}
-          generate_release_notes: true
           fail_on_unmatched_files: true

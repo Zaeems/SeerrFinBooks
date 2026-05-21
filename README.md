@@ -3,11 +3,11 @@
 <div alt style="text-align: center; transform: scale(.25);">
 	<picture>
 		<source media="(prefers-color-scheme: dark)" srcset="https://github.com/varunaditya-plus/BetterSeerrTabs/raw/main/assets/logo_dark.png" />
-		<img alt="BetterSeerrTabs Logo" src="https://github.com/varunaditya-plus/BetterSeerrTabs/raw/main/assets/logo_light.png" style="width: 370px;" />
+		<img alt="BetterSeerrTabs Logo" src="https://github.com/varunaditya-plus/BetterSeerrTabs/raw/main/assets/logo_light.png" style="width: 170px;" />
 	</picture>
 </div>
 
-## BetterSeerrTabs Plugin · Adding Seerr discovery directly in Jellyfin
+# BetterSeerrTabs
 ![GitHub License](https://img.shields.io/github/license/varunaditya-plus/BetterSeerrTabs?style=for-the-badge)
 ![GitHub Release](https://img.shields.io/github/v/release/varunaditya-plus/BetterSeerrTabs?style=for-the-badge)
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/varunaditya-plus/BetterSeerrTabs/total?style=for-the-badge)](https://github.com/varunaditya-plus/BetterSeerrTabs/releases/latest)
