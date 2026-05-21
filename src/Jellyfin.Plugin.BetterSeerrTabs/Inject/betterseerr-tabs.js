@@ -219,7 +219,10 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
 
                 return Promise.allSettled([
                     self.fetchJson('genres/' + mediaType),
-                    self.fetchJson('providers/' + mediaType)
+                    self.fetchJson('providers/' + mediaType),
+                    mediaType === 'movie'
+                        ? self.fetchJson('studios/movie')
+                        : self.fetchJson('networks/tv')
                 ]);
             }).then(function (carouselResults) {
                 if (!carouselResults || isStale()) {
@@ -234,6 +237,9 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     const providers = carouselResults[1].status === 'fulfilled'
                         ? self.asArray(carouselResults[1].value)
                         : [];
+                    const browseItems = carouselResults[2].status === 'fulfilled'
+                        ? self.asArray(carouselResults[2].value)
+                        : [];
 
                     if (carouselResults[0].status === 'rejected') {
                         console.warn('BetterSeerrTabs: genre carousel failed', carouselResults[0].reason);
@@ -241,12 +247,20 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     if (carouselResults[1].status === 'rejected') {
                         console.warn('BetterSeerrTabs: provider carousel failed', carouselResults[1].reason);
                     }
+                    if (carouselResults[2].status === 'rejected') {
+                        console.warn('BetterSeerrTabs: browse carousel failed', carouselResults[2].reason);
+                    }
 
                     if (genres.length) {
-                        container.appendChild(self.buildGenreCarousel('Browse by genre', genres, mediaType));
+                        container.appendChild(self.buildCarouselSection('Browse by genre', genres, mediaType, 'genre'));
                     }
                     if (providers.length) {
-                        container.appendChild(self.buildProviderCarousel('Browse by streaming service', providers, mediaType));
+                        container.appendChild(self.buildCarouselSection('Browse by streaming service', providers, mediaType, 'provider'));
+                    }
+                    if (browseItems.length) {
+                        const browseTitle = mediaType === 'movie' ? 'Browse by studio' : 'Browse by network';
+                        const browseKind = mediaType === 'movie' ? 'studio' : 'network';
+                        container.appendChild(self.buildCarouselSection(browseTitle, browseItems, mediaType, browseKind));
                     }
                     self.refreshScrollers(container);
                 } catch (err) {
@@ -262,11 +276,6 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 container.dataset.betterseerrLoaded = 'true';
                 container.innerHTML = '<div class="betterseerr-empty-row">Failed to load discovery rows. Check Jellyseerr settings and that your Jellyfin user is linked in Jellyseerr.</div>';
             });
-        },
-
-        fetchGridPage: function (path, startIndex, limit) {
-            const query = '?startIndex=' + encodeURIComponent(startIndex) + '&limit=' + encodeURIComponent(limit);
-            return this.fetchDiscover(path, query);
         },
 
         fetchDiscover: function (path, query) {
@@ -343,15 +352,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             return section;
         },
 
-        buildGenreCarousel: function (title, genres, mediaType) {
-            return this.buildCarouselSection(title, genres, mediaType, 'genre', false);
-        },
-
-        buildProviderCarousel: function (title, providers, mediaType) {
-            return this.buildCarouselSection(title, providers, mediaType, 'provider', true);
-        },
-
-        buildCarouselSection: function (title, items, mediaType, kind, isProvider) {
+        buildCarouselSection: function (title, items, mediaType, kind) {
             const section = document.createElement('div');
             section.className = 'verticalSection betterseerr-carousel-section';
 
@@ -375,7 +376,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             let html = '';
             const self = this;
             (items || []).forEach(function (item) {
-                html += self.createBoxCard(item, mediaType, kind, isProvider);
+                html += self.createBoxCard(item, mediaType, kind);
             });
 
             if (!html) {
@@ -392,35 +393,34 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             return section;
         },
 
-        createBoxCard: function (item, mediaType, kind, isProvider) {
-            const id = item.id || item.provider_id;
-            const name = item.name || item.provider_name || 'Unknown';
-            let imageUrl = '';
+        createBoxCard: function (item, mediaType, kind) {
+            const id = item.id;
+            const name = item.name || 'Unknown';
+            const safeName = this.escapeHtml(name);
+            return '<button type="button" class="betterseerr-box-card" data-kind="' + kind + '" data-media-type="' + mediaType + '" data-id="' + id + '" data-name="' + safeName + '">' +
+                '<span class="betterseerr-box-label">' + safeName + '</span>' +
+                '</button>';
+        },
 
-            if (isProvider && (item.logoPath || item.logo_path)) {
-                const logo = item.logoPath || item.logo_path;
-                imageUrl = 'https://image.tmdb.org/t/p/w300' + logo;
-            } else if (item.backdrops && item.backdrops.length > 0) {
-                let backdrop = item.backdrops[0];
-                if (backdrop && typeof backdrop === 'object') {
-                    backdrop = backdrop.filePath || backdrop.path || backdrop.backdropPath || backdrop.url;
-                }
-                if (typeof backdrop === 'string' && backdrop.length) {
-                    imageUrl = backdrop.startsWith('http') ? backdrop : ('https://image.tmdb.org/t/p/w780' + backdrop);
-                }
+        buildBrowseGridPath: function (kind, mediaType, id) {
+            const prefix = mediaType === 'tv' ? 'discover/tv' : 'discover/movies';
+            if (kind === 'genre') {
+                return prefix + '/genre/' + id;
             }
-
-            const cardClass = isProvider ? 'betterseerr-box-card betterseerr-provider-card' : 'betterseerr-box-card';
-            let html = '<div class="' + cardClass + '" data-kind="' + kind + '" data-media-type="' + mediaType + '" data-id="' + id + '">';
-            html += '<div class="betterseerr-box-image" style="background-image:url(\'' + imageUrl + '\')"></div>';
-            html += '<div class="betterseerr-box-label">' + this.escapeHtml(name) + '</div>';
-            html += '</div>';
-            return html;
+            if (kind === 'provider') {
+                return prefix + '/provider/' + id;
+            }
+            if (kind === 'studio') {
+                return 'discover/movies/studio/' + id;
+            }
+            if (kind === 'network') {
+                return 'discover/tv/network/' + id;
+            }
+            return null;
         },
 
         createDiscoverCards: function (items, forGrid) {
             let html = '';
-            let index = 0;
             const self = this;
             const cardType = forGrid ? 'portraitCard' : 'overflowPortraitCard';
             const padderType = forGrid ? 'cardPadder-portrait' : 'cardPadder-overflowPortrait';
@@ -445,7 +445,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     ? ' data-src="' + safeUrl + '"'
                     : '';
 
-                html += '<div class="card ' + cardType + ' betterseerr-discover-card" data-index="' + index + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '">';
+                html += '<div class="card ' + cardType + ' betterseerr-discover-card" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '">';
                 html += '   <div class="cardBox cardBox-bottompadded">';
                 html += '       <div class="cardScalable">';
                 html += '           <div class="cardPadder ' + padderType + ' lazy-hidden-children"></div>';
@@ -474,7 +474,6 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + year + '">' + yearText + '</span></bdi></div>';
                 html += '   </div>';
                 html += '</div>';
-                index++;
             }, this);
 
             return html;
@@ -540,22 +539,43 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
 
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('.betterseerr-view-more');
-                if (!btn) {
+                if (btn) {
+                    const container = btn.closest('.betterseerr-movies-sections, .betterseerr-tv-sections');
+                    if (!container) {
+                        return;
+                    }
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const path = btn.getAttribute('data-path');
+                    const title = btn.getAttribute('data-title');
+                    if (path && title) {
+                        self.openGridView(container, title, path);
+                    }
                     return;
                 }
 
-                const container = btn.closest('.betterseerr-movies-sections, .betterseerr-tv-sections');
-                if (!container) {
+                const boxCard = e.target.closest('.betterseerr-box-card');
+                if (!boxCard) {
+                    return;
+                }
+
+                const boxContainer = boxCard.closest('.betterseerr-movies-sections, .betterseerr-tv-sections');
+                if (!boxContainer) {
                     return;
                 }
 
                 e.preventDefault();
                 e.stopPropagation();
 
-                const path = btn.getAttribute('data-path');
-                const title = btn.getAttribute('data-title');
-                if (path && title) {
-                    self.openGridView(container, title, path);
+                const kind = boxCard.getAttribute('data-kind');
+                const mediaType = boxCard.getAttribute('data-media-type');
+                const id = boxCard.getAttribute('data-id');
+                const name = boxCard.getAttribute('data-name');
+                const browsePath = self.buildBrowseGridPath(kind, mediaType, id);
+                if (browsePath && name) {
+                    self.openGridView(boxContainer, name, browsePath);
                 }
             });
         },
@@ -692,7 +712,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 loadMoreBtn.disabled = true;
             }
 
-            self.fetchGridPage(path, loadedCount, pageSize).then(function (result) {
+            self.fetchDiscover(path, '?startIndex=' + encodeURIComponent(loadedCount) + '&limit=' + encodeURIComponent(pageSize)).then(function (result) {
                 gridView.dataset.loading = 'false';
                 status.style.display = 'none';
 

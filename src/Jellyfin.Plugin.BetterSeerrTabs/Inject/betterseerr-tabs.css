@@ -1,34 +1,28 @@
 .betterseerr-carousel-section .betterseerr-box-card {
     flex: 0 0 auto;
-    width: 12em;
-    margin-right: 0.6em;
-    cursor: pointer;
-}
-
-.betterseerr-box-card .betterseerr-box-image {
-    width: 100%;
+    width: 20em;
     aspect-ratio: 16 / 9;
+    margin: 0.6em 0.6em 0 0;
+    cursor: pointer;
+    background: var(--cardBackground, rgba(255, 255, 255, 0.06));
+    border: none;
     border-radius: 0.5em;
-    background-size: cover;
-    background-position: center;
-    background-color: var(--cardBackground, rgba(255, 255, 255, 0.08));
+    padding: 0 1em;
+    font: inherit;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .betterseerr-box-card .betterseerr-box-label {
-    margin-top: 0.5em;
     text-align: center;
     color: var(--primaryTextColor);
-    font-size: 0.95em;
+    font-size: 1.5em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.betterseerr-provider-card .betterseerr-box-image {
-    aspect-ratio: 1;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-color: var(--cardBackground, rgba(255, 255, 255, 0.06));
+    max-width: 100%;
 }
 
 .betterseerr-empty-row {

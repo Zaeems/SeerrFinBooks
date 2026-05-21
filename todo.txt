@@ -1,0 +1,4 @@
+- Add load animations when entering grid pages (View more/Browse by x)
+- Add logos for studios and networks
+- Add backgrounds for genres
+- Fix Anime series row

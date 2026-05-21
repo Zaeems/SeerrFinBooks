@@ -128,23 +128,83 @@ public class JellyseerrDiscoveryService
         };
     }
 
-    public JArray GetGenreSlider(string mediaType)
+    public JArray GetGenreSlider(string mediaType, string username)
     {
         string path = mediaType == "movie"
             ? "/api/v1/discover/genreslider/movie"
             : "/api/v1/discover/genreslider/tv";
-        return GetJsonArray(path);
+        return GetJsonArray(path, username);
     }
 
-    public JArray GetWatchProviders(string mediaType)
+    public JArray GetWatchProviders(string mediaType, string username)
     {
         PluginConfiguration config = BetterSeerrTabsPlugin.Instance.Configuration;
         string region = string.IsNullOrWhiteSpace(config.WatchRegion) ? "US" : config.WatchRegion;
         string path = mediaType == "movie"
             ? $"/api/v1/watchproviders/movies?watchRegion={Uri.EscapeDataString(region)}"
             : $"/api/v1/watchproviders/tv?watchRegion={Uri.EscapeDataString(region)}";
-        return GetJsonArray(path);
+        return GetJsonArray(path, username);
     }
+
+    public JArray GetStudios() => ToBrowseArray(MovieStudios);
+
+    public JArray GetNetworks() => ToBrowseArray(TvNetworks);
+
+    private static JArray ToBrowseArray(IEnumerable<(int Id, string Name)> items)
+    {
+        JArray array = new();
+        foreach ((int id, string name) in items)
+        {
+            array.Add(new JObject
+            {
+                ["id"] = id,
+                ["name"] = name
+            });
+        }
+
+        return array;
+    }
+
+    private static readonly (int Id, string Name)[] MovieStudios =
+    {
+        (2, "Disney"),
+        (127928, "20th Century Studios"),
+        (34, "Sony Pictures"),
+        (174, "Warner Bros. Pictures"),
+        (33, "Universal"),
+        (4, "Paramount"),
+        (3, "Pixar"),
+        (521, "Dreamworks"),
+        (420, "Marvel Studios"),
+        (9993, "DC"),
+        (41077, "A24")
+    };
+
+    private static readonly (int Id, string Name)[] TvNetworks =
+    {
+        (213, "Netflix"),
+        (2739, "Disney+"),
+        (1024, "Prime Video"),
+        (2552, "Apple TV+"),
+        (453, "Hulu"),
+        (49, "HBO"),
+        (4353, "Discovery+"),
+        (2, "ABC"),
+        (19, "FOX"),
+        (359, "Cinemax"),
+        (174, "AMC"),
+        (67, "Showtime"),
+        (318, "Starz"),
+        (71, "The CW"),
+        (6, "NBC"),
+        (16, "CBS"),
+        (4330, "Paramount+"),
+        (4, "BBC One"),
+        (56, "Cartoon Network"),
+        (80, "Adult Swim"),
+        (13, "Nickelodeon"),
+        (3353, "Peacock")
+    };
 
     public JObject? GetMediaDetails(string username, string mediaType, int mediaId)
     {
@@ -191,7 +251,7 @@ public class JellyseerrDiscoveryService
         }
     }
 
-    private JArray GetJsonArray(string path)
+    private JArray GetJsonArray(string path, string username)
     {
         PluginConfiguration config = BetterSeerrTabsPlugin.Instance.Configuration;
         if (string.IsNullOrWhiteSpace(config.JellyseerrUrl) || string.IsNullOrWhiteSpace(config.JellyseerrApiKey))
@@ -200,11 +260,21 @@ public class JellyseerrDiscoveryService
         }
 
         using HttpClient client = CreateClient(config);
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            int? jellyseerrUserId = ResolveJellyseerrUserId(client, username);
+            if (jellyseerrUserId != null)
+            {
+                client.DefaultRequestHeaders.Add("X-Api-User", jellyseerrUserId.ToString());
+            }
+        }
+
         try
         {
             HttpResponseMessage response = client.GetAsync(path).GetAwaiter().GetResult();
             if (!response.IsSuccessStatusCode)
             {
+                _logger.LogWarning("Jellyseerr request failed for {Path} with status {StatusCode}", path, response.StatusCode);
                 return new JArray();
             }
 

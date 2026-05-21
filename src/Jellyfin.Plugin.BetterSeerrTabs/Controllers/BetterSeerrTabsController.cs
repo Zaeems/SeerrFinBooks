@@ -218,6 +218,74 @@ public class BetterSeerrTabsController : ControllerBase
         [FromQuery] int? limit = null) =>
         DiscoverRow(userManager, "/api/v1/discover/tv?genre=16&originalLanguage=ja", "tv", startIndex, limit);
 
+    [HttpGet("discover/movies/genre/{genreId}")]
+    [Authorize]
+    public ActionResult<QueryResult<BaseItemDto>> MoviesByGenre(
+        int genreId,
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, $"/api/v1/discover/movies?genre={genreId}", "movie", startIndex, limit);
+
+    [HttpGet("discover/tv/genre/{genreId}")]
+    [Authorize]
+    public ActionResult<QueryResult<BaseItemDto>> TvByGenre(
+        int genreId,
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, $"/api/v1/discover/tv?genre={genreId}", "tv", startIndex, limit);
+
+    [HttpGet("discover/movies/studio/{studioId}")]
+    [Authorize]
+    public ActionResult<QueryResult<BaseItemDto>> MoviesByStudio(
+        int studioId,
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, $"/api/v1/discover/movies?studio={studioId}", "movie", startIndex, limit);
+
+    [HttpGet("discover/tv/network/{networkId}")]
+    [Authorize]
+    public ActionResult<QueryResult<BaseItemDto>> TvByNetwork(
+        int networkId,
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, $"/api/v1/discover/tv?network={networkId}", "tv", startIndex, limit);
+
+    [HttpGet("discover/movies/provider/{providerId}")]
+    [Authorize]
+    public ActionResult<QueryResult<BaseItemDto>> MoviesByProvider(
+        int providerId,
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null)
+    {
+        string region = BetterSeerrTabsPlugin.Instance.Configuration.WatchRegion;
+        if (string.IsNullOrWhiteSpace(region))
+        {
+            region = "US";
+        }
+        return DiscoverRow(userManager, $"/api/v1/discover/movies?watchProviders={providerId}&watchRegion={Uri.EscapeDataString(region)}", "movie", startIndex, limit);
+    }
+
+    [HttpGet("discover/tv/provider/{providerId}")]
+    [Authorize]
+    public ActionResult<QueryResult<BaseItemDto>> TvByProvider(
+        int providerId,
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null)
+    {
+        string region = BetterSeerrTabsPlugin.Instance.Configuration.WatchRegion;
+        if (string.IsNullOrWhiteSpace(region))
+        {
+            region = "US";
+        }
+        return DiscoverRow(userManager, $"/api/v1/discover/tv?watchProviders={providerId}&watchRegion={Uri.EscapeDataString(region)}", "tv", startIndex, limit);
+    }
+
     private ActionResult<QueryResult<BaseItemDto>> DiscoverRow(
         IUserManager userManager,
         string jellyseerrPath,
@@ -228,19 +296,51 @@ public class BetterSeerrTabsController : ControllerBase
 
     [HttpGet("genres/movie")]
     [Authorize]
-    public ActionResult<JArray> MovieGenres() => _discoveryService.GetGenreSlider("movie");
+    public ActionResult MovieGenres([FromServices] IUserManager userManager)
+    {
+        JArray data = _discoveryService.GetGenreSlider("movie", GetUsername(userManager) ?? string.Empty);
+        return Content(data.ToString(), "application/json");
+    }
 
     [HttpGet("genres/tv")]
     [Authorize]
-    public ActionResult<JArray> TvGenres() => _discoveryService.GetGenreSlider("tv");
+    public ActionResult TvGenres([FromServices] IUserManager userManager)
+    {
+        JArray data = _discoveryService.GetGenreSlider("tv", GetUsername(userManager) ?? string.Empty);
+        return Content(data.ToString(), "application/json");
+    }
 
     [HttpGet("providers/movie")]
     [Authorize]
-    public ActionResult<JArray> MovieProviders() => _discoveryService.GetWatchProviders("movie");
+    public ActionResult MovieProviders([FromServices] IUserManager userManager)
+    {
+        JArray data = _discoveryService.GetWatchProviders("movie", GetUsername(userManager) ?? string.Empty);
+        return Content(data.ToString(), "application/json");
+    }
 
     [HttpGet("providers/tv")]
     [Authorize]
-    public ActionResult<JArray> TvProviders() => _discoveryService.GetWatchProviders("tv");
+    public ActionResult TvProviders([FromServices] IUserManager userManager)
+    {
+        JArray data = _discoveryService.GetWatchProviders("tv", GetUsername(userManager) ?? string.Empty);
+        return Content(data.ToString(), "application/json");
+    }
+
+    [HttpGet("studios/movie")]
+    [Authorize]
+    public ActionResult MovieStudios()
+    {
+        JArray data = _discoveryService.GetStudios();
+        return Content(data.ToString(), "application/json");
+    }
+
+    [HttpGet("networks/tv")]
+    [Authorize]
+    public ActionResult TvNetworks()
+    {
+        JArray data = _discoveryService.GetNetworks();
+        return Content(data.ToString(), "application/json");
+    }
 
     [HttpGet("client-settings")]
     [Authorize]
