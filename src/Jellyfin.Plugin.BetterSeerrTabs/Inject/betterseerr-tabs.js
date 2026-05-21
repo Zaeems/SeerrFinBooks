@@ -19,6 +19,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
 
         _watchersReady: false,
         _handlersBound: false,
+        _gridPageSize: 40,
 
         init: function () {
             if (typeof ApiClient === 'undefined') {
@@ -30,6 +31,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 this._handlersBound = true;
                 this.bindRequestHandler();
                 this.bindCardClickHandler();
+                this.bindViewMoreHandler();
             }
 
             if (!this._watchersReady) {
@@ -183,8 +185,8 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             };
 
             Promise.allSettled(rows.map(function (row) {
-                return self.fetchRow(row.path).then(function (items) {
-                    return { row: row, items: items };
+                return self.fetchDiscover(row.path).then(function (result) {
+                    return { row: row, items: result.items };
                 });
             })).then(function (results) {
                 if (isStale()) {
@@ -207,7 +209,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 container.innerHTML = '';
                 loadedRows.forEach(function (result) {
                     try {
-                        container.appendChild(self.buildPosterRow(result.row.title, result.items));
+                        container.appendChild(self.buildPosterRow(result.row.title, result.items, result.row.path));
                     } catch (err) {
                         console.warn('BetterSeerrTabs: row render failed', result.row.title, err);
                     }
@@ -262,10 +264,27 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             });
         },
 
-        fetchRow: function (path) {
-            return this.fetchJson(path).then(function (data) {
+        fetchGridPage: function (path, startIndex, limit) {
+            const query = '?startIndex=' + encodeURIComponent(startIndex) + '&limit=' + encodeURIComponent(limit);
+            return this.fetchDiscover(path, query);
+        },
+
+        fetchDiscover: function (path, query) {
+            let url = ApiClient.getUrl('BetterSeerrTabs/' + path);
+            if (query) {
+                url += query;
+            }
+            return ApiClient.ajax({
+                url: url,
+                type: 'GET',
+                dataType: 'json'
+            }).then(function (data) {
                 const items = data && (data.Items || data.items || data.Results || data.results);
-                return Array.isArray(items) ? items : [];
+                const total = data && (data.TotalRecordCount ?? data.totalRecordCount ?? 0);
+                return {
+                    items: Array.isArray(items) ? items : [],
+                    total: total
+                };
             });
         },
 
@@ -277,7 +296,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             });
         },
 
-        buildPosterRow: function (title, items) {
+        buildPosterRow: function (title, items, path) {
             const section = document.createElement('div');
             section.className = 'verticalSection betterseerr-poster-section';
 
@@ -287,6 +306,17 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             h2.className = 'sectionTitle sectionTitle-cards';
             h2.textContent = title;
             titleContainer.appendChild(h2);
+
+            if (path && items && items.length > 0) {
+                const viewMore = document.createElement('button');
+                viewMore.type = 'button';
+                viewMore.className = 'betterseerr-view-more';
+                viewMore.textContent = 'View more \u2192';
+                viewMore.setAttribute('data-path', path);
+                viewMore.setAttribute('data-title', title);
+                titleContainer.appendChild(viewMore);
+            }
+
             section.appendChild(titleContainer);
 
             const scroller = document.createElement('div');
@@ -309,6 +339,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             itemsContainer.innerHTML = this.createDiscoverCards(items);
             scroller.appendChild(itemsContainer);
             section.appendChild(scroller);
+            this.initLazyImages(itemsContainer);
             return section;
         },
 
@@ -387,10 +418,12 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             return html;
         },
 
-        createDiscoverCards: function (items) {
+        createDiscoverCards: function (items, forGrid) {
             let html = '';
             let index = 0;
             const self = this;
+            const cardType = forGrid ? 'portraitCard' : 'overflowPortraitCard';
+            const padderType = forGrid ? 'cardPadder-portrait' : 'cardPadder-overflowPortrait';
 
             items.forEach(function (item) {
                 const mediaId = self.getProviderId(item, 'Tmdb') ||
@@ -407,12 +440,16 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     posterUrl = window.ApiClient.getUrl(posterUrl);
                 }
 
-                html += '<div class="card overflowPortraitCard betterseerr-discover-card" data-index="' + index + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '">';
+                const safeUrl = self.escapeHtml(posterUrl || '');
+                const imageAttrs = posterUrl
+                    ? ' data-src="' + safeUrl + '"'
+                    : '';
+
+                html += '<div class="card ' + cardType + ' betterseerr-discover-card" data-index="' + index + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '">';
                 html += '   <div class="cardBox cardBox-bottompadded">';
                 html += '       <div class="cardScalable">';
-                html += '           <div class="cardPadder cardPadder-overflowPortrait lazy-hidden-children"></div>';
-                html += '           <canvas aria-hidden="true" width="20" height="20" class="blurhash-canvas lazy-hidden"></canvas>';
-                html += '           <div class="cardImageContainer coveredImage cardContent lazy blurhashed lazy-image-fadein-fast" aria-label="' + safeName + '" style="background-image:url(\'' + posterUrl + '\');"></div>';
+                html += '           <div class="cardPadder ' + padderType + ' lazy-hidden-children"></div>';
+                html += '           <div class="cardImageContainer coveredImage cardContent lazy lazy-hidden"' + imageAttrs + ' aria-label="' + safeName + '"></div>';
                 html += '           <div class="cardOverlayContainer">';
                 html += '               <div class="cardImageContainer"></div>';
                 html += '               <div class="cardOverlayButton-br flex">';
@@ -447,7 +484,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             // Capturing runs before card navigation handlers
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('.discover-requestbutton');
-                if (!btn || !btn.closest('.betterseerr-movies-sections, .betterseerr-tv-sections')) {
+                if (!btn || !btn.closest('.betterseerr-movies-sections, .betterseerr-tv-sections, .betterseerr-grid-view')) {
                     return;
                 }
 
@@ -471,7 +508,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 }
 
                 const card = e.target.closest('.betterseerr-discover-card');
-                if (!card || !card.closest('.betterseerr-movies-sections, .betterseerr-tv-sections')) {
+                if (!card || !card.closest('.betterseerr-movies-sections, .betterseerr-tv-sections, .betterseerr-grid-view')) {
                     return;
                 }
 
@@ -491,6 +528,202 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             }, true);
         },
 
+        bindViewMoreHandler: function () {
+            const self = this;
+
+            document.addEventListener('contextmenu', function (e) {
+                if (e.target.closest('.betterseerr-grid-view')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('.betterseerr-view-more');
+                if (!btn) {
+                    return;
+                }
+
+                const container = btn.closest('.betterseerr-movies-sections, .betterseerr-tv-sections');
+                if (!container) {
+                    return;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const path = btn.getAttribute('data-path');
+                const title = btn.getAttribute('data-title');
+                if (path && title) {
+                    self.openGridView(container, title, path);
+                }
+            });
+        },
+
+        clearJellyfinSelection: function () {
+            const closeBtn = document.querySelector('.btnCloseSelectionPanel');
+            if (closeBtn) {
+                closeBtn.click();
+                return;
+            }
+
+            document.querySelectorAll('.itemSelectionPanel').forEach(function (panel) {
+                const parent = panel.parentNode;
+                if (parent) {
+                    parent.removeChild(panel);
+                    parent.classList.remove('withMultiSelect');
+                }
+            });
+
+            document.querySelectorAll('.selectionCommandsPanel').forEach(function (panel) {
+                if (panel.parentNode) {
+                    panel.parentNode.removeChild(panel);
+                }
+            });
+        },
+
+        openGridView: function (container, title, path) {
+            const self = this;
+            self.clearJellyfinSelection();
+
+            Array.from(container.children).forEach(function (child) {
+                if (!child.classList.contains('betterseerr-grid-view')) {
+                    child.style.display = 'none';
+                    child.dataset.betterseerrHidden = 'true';
+                }
+            });
+
+            let gridView = container.querySelector('.betterseerr-grid-view');
+            if (!gridView) {
+                gridView = document.createElement('div');
+                gridView.className = 'betterseerr-grid-view';
+
+                const header = document.createElement('div');
+                header.className = 'betterseerr-grid-header padded-left padded-right';
+
+                const backBtn = document.createElement('button');
+                backBtn.type = 'button';
+                backBtn.className = 'betterseerr-grid-back paper-icon-button-light emby-button';
+                backBtn.innerHTML = '<span class="material-icons" aria-hidden="true">arrow_back</span>';
+                backBtn.addEventListener('click', function () {
+                    self.closeGridView(container);
+                });
+
+                const heading = document.createElement('h2');
+                heading.className = 'betterseerr-grid-title sectionTitle sectionTitle-cards';
+
+                const itemsContainer = document.createElement('div');
+                itemsContainer.className = 'itemsContainer vertical-wrap padded-left padded-right';
+
+                const loadMore = document.createElement('div');
+                loadMore.className = 'betterseerr-grid-loadmore';
+                loadMore.style.display = 'none';
+
+                const loadMoreBtn = document.createElement('button');
+                loadMoreBtn.type = 'button';
+                loadMoreBtn.className = 'raised emby-button';
+                loadMoreBtn.textContent = 'Load more';
+                loadMore.appendChild(loadMoreBtn);
+
+                const status = document.createElement('div');
+                status.className = 'betterseerr-grid-status';
+                status.style.display = 'none';
+
+                header.appendChild(backBtn);
+                header.appendChild(heading);
+                gridView.appendChild(header);
+                gridView.appendChild(itemsContainer);
+                gridView.appendChild(loadMore);
+                gridView.appendChild(status);
+                container.appendChild(gridView);
+
+                loadMoreBtn.addEventListener('click', function () {
+                    self.loadMoreGridItems(gridView);
+                });
+            }
+
+            gridView.dataset.path = path;
+            gridView.dataset.loadedCount = '0';
+            gridView.querySelector('.betterseerr-grid-title').textContent = title;
+            gridView.querySelector('.itemsContainer').innerHTML = '';
+            gridView.querySelector('.betterseerr-grid-loadmore').style.display = 'none';
+            gridView.querySelector('.betterseerr-grid-status').style.display = 'none';
+            gridView.style.display = '';
+
+            self.loadMoreGridItems(gridView, true);
+        },
+
+        closeGridView: function (container) {
+            this.clearJellyfinSelection();
+
+            const gridView = container.querySelector('.betterseerr-grid-view');
+            if (gridView) {
+                gridView.style.display = 'none';
+            }
+
+            Array.from(container.children).forEach(function (child) {
+                if (child.dataset.betterseerrHidden === 'true') {
+                    child.style.display = '';
+                    delete child.dataset.betterseerrHidden;
+                }
+            });
+        },
+
+        loadMoreGridItems: function (gridView, isInitial) {
+            const self = this;
+            const path = gridView.dataset.path;
+            const itemsContainer = gridView.querySelector('.itemsContainer');
+            const loadMore = gridView.querySelector('.betterseerr-grid-loadmore');
+            const loadMoreBtn = loadMore.querySelector('button');
+            const status = gridView.querySelector('.betterseerr-grid-status');
+            const loadedCount = parseInt(gridView.dataset.loadedCount || '0', 10);
+            const pageSize = self._gridPageSize;
+
+            if (gridView.dataset.loading === 'true') {
+                return;
+            }
+
+            gridView.dataset.loading = 'true';
+            if (isInitial) {
+                status.textContent = 'Loading...';
+                status.style.display = '';
+            } else {
+                loadMoreBtn.textContent = 'Loading...';
+                loadMoreBtn.disabled = true;
+            }
+
+            self.fetchGridPage(path, loadedCount, pageSize).then(function (result) {
+                gridView.dataset.loading = 'false';
+                status.style.display = 'none';
+
+                if (!result.items.length && loadedCount === 0) {
+                    itemsContainer.innerHTML = '<div class="betterseerr-empty-row">No items to show</div>';
+                    loadMore.style.display = 'none';
+                    return;
+                }
+
+                itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(result.items, true));
+                self.initLazyImages(itemsContainer);
+                const newCount = loadedCount + result.items.length;
+                gridView.dataset.loadedCount = String(newCount);
+
+                const hasMore = result.items.length === pageSize &&
+                    (result.total === 0 || newCount < result.total);
+                loadMore.style.display = hasMore ? '' : 'none';
+                loadMoreBtn.textContent = 'Load more';
+                loadMoreBtn.disabled = false;
+            }).catch(function (err) {
+                gridView.dataset.loading = 'false';
+                status.style.display = 'none';
+                loadMoreBtn.textContent = 'Load more';
+                loadMoreBtn.disabled = false;
+                console.error('BetterSeerrTabs grid load failed:', err);
+                if (loadedCount === 0) {
+                    itemsContainer.innerHTML = '<div class="betterseerr-empty-row">Failed to load items.</div>';
+                }
+            });
+        },
+
         refreshScrollers: function (container) {
             const scrollers = container.querySelectorAll('[is="emby-scroller"]');
             scrollers.forEach(function (scroller) {
@@ -498,6 +731,66 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     scroller.enableMouseWheelScroll();
                 }
             });
+        },
+
+        initLazyImages: function (container) {
+            if (!container) {
+                return;
+            }
+
+            const self = this;
+            const images = container.querySelectorAll('.cardImageContainer.lazy[data-src]');
+
+            if (!images.length) {
+                return;
+            }
+
+            if (!self._lazyObserver) {
+                self._lazyObserver = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (!entry.isIntersecting) {
+                            return;
+                        }
+                        self.loadLazyImage(entry.target);
+                        self._lazyObserver.unobserve(entry.target);
+                    });
+                }, { rootMargin: '200px 0px' });
+            }
+
+            images.forEach(function (img) {
+                if (img.dataset.bstLazyBound === 'true') {
+                    return;
+                }
+                img.dataset.bstLazyBound = 'true';
+                self._lazyObserver.observe(img);
+            });
+        },
+
+        loadLazyImage: function (elem) {
+            const url = elem.getAttribute('data-src');
+            if (!url) {
+                return;
+            }
+
+            const preloader = new Image();
+            preloader.src = url;
+
+            preloader.onload = function () {
+                requestAnimationFrame(function () {
+                    elem.style.backgroundImage = "url('" + url.replace(/'/g, "\\'") + "')";
+                    elem.removeAttribute('data-src');
+                    elem.classList.add('lazy-image-fadein-fast');
+                    elem.classList.remove('lazy-hidden');
+
+                    elem.addEventListener('animationend', function onEnd() {
+                        const padder = elem.parentNode && elem.parentNode.querySelector('.cardPadder');
+                        if (padder) {
+                            padder.classList.add('lazy-hidden-children');
+                        }
+                        elem.removeEventListener('animationend', onEnd);
+                    });
+                });
+            };
         },
 
         getField: function (item) {

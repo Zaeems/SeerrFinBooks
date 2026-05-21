@@ -21,7 +21,7 @@ public class JellyseerrDiscoveryService
         _logger = logger;
     }
 
-    public QueryResult<BaseItemDto> GetDiscoverRow(string username, string jellyseerrPath, string? mediaTypeFilter = null)
+    public QueryResult<BaseItemDto> GetDiscoverRow(string username, string jellyseerrPath, string? mediaTypeFilter = null, int startIndex = 0, int? limit = null)
     {
         PluginConfiguration config = BetterSeerrTabsPlugin.Instance.Configuration;
         if (string.IsNullOrWhiteSpace(config.JellyseerrUrl) || string.IsNullOrWhiteSpace(config.JellyseerrApiKey))
@@ -44,15 +44,19 @@ public class JellyseerrDiscoveryService
         client.DefaultRequestHeaders.Add("X-Api-User", jellyseerrUserId.ToString());
 
         List<BaseItemDto> items = new();
-        int page = 1;
-        int limit = Math.Max(1, config.RowItemLimit);
+        int jellyseerrPage = 1;
+        int targetLimit = Math.Max(1, limit ?? config.RowItemLimit);
+        int skipped = 0;
+        int totalResults = 0;
+        bool isGridRequest = limit.HasValue;
+        int maxJellyseerrPages = isGridRequest ? 20 : 5;
 
-        // Paginate until RowItemLimit is met. cap at 5 pages to avoid long Seerr chains
-        while (items.Count < limit && page <= 5)
+        // Paginate until we have enough items or hit the max pages
+        while (items.Count < targetLimit && jellyseerrPage <= maxJellyseerrPages)
         {
             string path = jellyseerrPath.Contains('?', StringComparison.Ordinal)
-                ? $"{jellyseerrPath}&page={page}"
-                : $"{jellyseerrPath}?page={page}";
+                ? $"{jellyseerrPath}&page={jellyseerrPage}"
+                : $"{jellyseerrPath}?page={jellyseerrPage}";
 
             try
             {
@@ -70,9 +74,11 @@ public class JellyseerrDiscoveryService
                     break;
                 }
 
+                totalResults = json?.Value<int?>("totalResults") ?? totalResults;
+
                 foreach (JObject item in results.OfType<JObject>())
                 {
-                    if (items.Count >= limit)
+                    if (items.Count >= targetLimit)
                     {
                         break;
                     }
@@ -85,14 +91,22 @@ public class JellyseerrDiscoveryService
                     }
 
                     BaseItemDto? dto = MapDiscoverItem(item);
-                    if (dto != null)
+                    if (dto == null)
                     {
-                        items.Add(dto);
+                        continue;
                     }
+
+                    if (skipped < startIndex)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    items.Add(dto);
                 }
 
-                int totalPages = json?.Value<int?>("totalPages") ?? page;
-                if (page >= totalPages)
+                int totalPages = json?.Value<int?>("totalPages") ?? jellyseerrPage;
+                if (jellyseerrPage >= totalPages)
                 {
                     break;
                 }
@@ -103,14 +117,14 @@ public class JellyseerrDiscoveryService
                 break;
             }
 
-            page++;
+            jellyseerrPage++;
         }
 
         return new QueryResult<BaseItemDto>
         {
             Items = items,
-            StartIndex = 0,
-            TotalRecordCount = items.Count
+            StartIndex = startIndex,
+            TotalRecordCount = isGridRequest ? totalResults : items.Count
         };
     }
 

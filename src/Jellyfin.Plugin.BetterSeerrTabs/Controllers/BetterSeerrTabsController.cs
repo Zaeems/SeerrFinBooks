@@ -148,48 +148,83 @@ public class BetterSeerrTabsController : ControllerBase
 
     [HttpGet("discover/movies/trending")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> MoviesTrending([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/trending", "movie");
+    public ActionResult<QueryResult<BaseItemDto>> MoviesTrending(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/trending", "movie", startIndex, limit);
 
     [HttpGet("discover/movies/popular")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> MoviesPopular([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/movies?sortBy=popularity.desc", "movie");
+    public ActionResult<QueryResult<BaseItemDto>> MoviesPopular(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/movies?sortBy=popularity.desc", "movie", startIndex, limit);
 
     [HttpGet("discover/movies/top-rated")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> MoviesTopRated([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/movies?sortBy=vote_average.desc&voteCountGte=200", "movie");
+    public ActionResult<QueryResult<BaseItemDto>> MoviesTopRated(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/movies?sortBy=vote_average.desc&voteCountGte=200", "movie", startIndex, limit);
 
     [HttpGet("discover/movies/upcoming")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> MoviesUpcoming([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/movies/upcoming", "movie");
+    public ActionResult<QueryResult<BaseItemDto>> MoviesUpcoming(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/movies/upcoming", "movie", startIndex, limit);
 
     [HttpGet("discover/tv/trending")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> TvTrending([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/trending", "tv");
+    public ActionResult<QueryResult<BaseItemDto>> TvTrending(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/trending", "tv", startIndex, limit);
 
     [HttpGet("discover/tv/popular")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> TvPopular([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/tv?sortBy=popularity.desc", "tv");
+    public ActionResult<QueryResult<BaseItemDto>> TvPopular(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/tv?sortBy=popularity.desc", "tv", startIndex, limit);
 
     [HttpGet("discover/tv/top-rated")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> TvTopRated([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/tv?sortBy=vote_average.desc&voteCountGte=200", "tv");
+    public ActionResult<QueryResult<BaseItemDto>> TvTopRated(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/tv?sortBy=vote_average.desc&voteCountGte=200", "tv", startIndex, limit);
 
     [HttpGet("discover/tv/upcoming")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> TvUpcoming([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/tv/upcoming", "tv");
+    public ActionResult<QueryResult<BaseItemDto>> TvUpcoming(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/tv/upcoming", "tv", startIndex, limit);
 
     [HttpGet("discover/tv/anime")]
     [Authorize]
-    public ActionResult<QueryResult<BaseItemDto>> TvAnime([FromServices] IUserManager userManager) =>
-        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, "/api/v1/discover/tv?genre=16&originalLanguage=ja", "tv");
+    public ActionResult<QueryResult<BaseItemDto>> TvAnime(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int startIndex = 0,
+        [FromQuery] int? limit = null) =>
+        DiscoverRow(userManager, "/api/v1/discover/tv?genre=16&originalLanguage=ja", "tv", startIndex, limit);
+
+    private ActionResult<QueryResult<BaseItemDto>> DiscoverRow(
+        IUserManager userManager,
+        string jellyseerrPath,
+        string mediaType,
+        int startIndex,
+        int? limit) =>
+        _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, jellyseerrPath, mediaType, startIndex, limit);
 
     [HttpGet("genres/movie")]
     [Authorize]

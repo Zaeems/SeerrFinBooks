@@ -41,3 +41,70 @@
     padding: 1em 1.5em;
     color: var(--secondaryTextColor);
 }
+
+.betterseerr-poster-section .sectionTitleContainer-cards {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75em;
+}
+
+.betterseerr-view-more {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--secondaryTextColor, #999);
+    font-size: 0.85em;
+    font-weight: normal;
+    cursor: pointer;
+    white-space: nowrap;
+    opacity: 0.75;
+    transition: opacity 0.15s;
+}
+
+.betterseerr-view-more:hover,
+.betterseerr-view-more:focus {
+    opacity: 1;
+    color: var(--primaryTextColor, #ccc);
+}
+
+.betterseerr-grid-view {
+    padding-top: 0.5em;
+    padding-bottom: 2em;
+}
+
+.betterseerr-grid-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1em;
+}
+
+.betterseerr-grid-back {
+    flex-shrink: 0;
+}
+
+.betterseerr-grid-title {
+    margin: 0;
+}
+
+.betterseerr-grid-loadmore {
+    text-align: center;
+    padding: 1em 0 2em;
+}
+
+.betterseerr-grid-status {
+    padding: 1em 1.5em;
+    color: var(--secondaryTextColor);
+    text-align: center;
+}
+
+@keyframes betterseerr-fadein {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.betterseerr-discover-card .cardImageContainer.lazy-image-fadein-fast {
+    opacity: 1;
+    animation: betterseerr-fadein 0.1s;
+}

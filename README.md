@@ -36,9 +36,9 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 ### Install from plugin catalog
 1. Open **Dashboard → Plugins → Manage Repositories**.
 2. Click **New Repository** and paste this repository URL:
-
+```
 https://raw.githubusercontent.com/varunaditya-plus/BetterSeerrTabs/main/manifest.json
-
+```
 3. Now go back to **Plugins** in the sidebar, select **All** in the filters above the plugins, and click BetterSeerrTabs. Then click **Install**.
 4. Now you have to restart your Jellyfin instance. Go to **Dashboard** and click the **Restart** button. You're done!
 
