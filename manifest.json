@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs",
     "versions": [
       {
+        "version": "1.2.0.0",
+        "changelog": "Release 1.2.0.0.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.2.0.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
+        "checksum": "3DAFE099115B39FCB91B845E04E8B030",
+        "timestamp": "2026-05-21T21:07:42.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.0.0.1",
         "changelog": "Release 1.0.0.1.",
         "targetAbi": "10.11.0.0",
