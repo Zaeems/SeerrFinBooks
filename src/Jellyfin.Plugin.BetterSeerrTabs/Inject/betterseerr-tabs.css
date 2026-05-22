@@ -13,6 +13,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.betterseerr-box-backdrop {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.4;
+    pointer-events: none;
+    border-radius: inherit;
+    filter: saturate(1.25) brightness(1.05);
+}
+
+.betterseerr-box-card:has(.betterseerr-box-backdrop) .betterseerr-box-label {
+    position: relative;
+    z-index: 1;
 }
 
 .betterseerr-box-card .betterseerr-box-label {

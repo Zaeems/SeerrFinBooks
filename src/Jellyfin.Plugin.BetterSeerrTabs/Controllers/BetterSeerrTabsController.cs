@@ -143,7 +143,8 @@ public class BetterSeerrTabsController : ControllerBase
         return Ok(new
         {
             config.StreamingServiceUseImages,
-            config.StudioNetworkUseImages
+            config.StudioNetworkUseImages,
+            config.GenreUseBackdrops
         });
     }
 

@@ -465,6 +465,16 @@
                                 <span class="bst-toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="genreUseBackdrops">Genre background</label>
+                                <div class="bst-field-desc">Show a random movie or show background behind each genre box.</div>
+                            </div>
+                            <label class="bst-toggle">
+                                <input id="genreUseBackdrops" name="genreUseBackdrops" type="checkbox" checked />
+                                <span class="bst-toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -557,6 +567,7 @@
                 document.querySelector('#tmdbApiKey').value = config.TmdbApiKey || '';
                 document.querySelector('#streamingServiceUseImages').checked = config.StreamingServiceUseImages !== false;
                 document.querySelector('#studioNetworkUseImages').checked = config.StudioNetworkUseImages !== false;
+                document.querySelector('#genreUseBackdrops').checked = config.GenreUseBackdrops !== false;
                 Dashboard.hideLoadingMsg();
             });
 
@@ -572,7 +583,13 @@
                     config.TmdbApiKey = document.querySelector('#tmdbApiKey').value.trim();
                     config.StreamingServiceUseImages = document.querySelector('#streamingServiceUseImages').checked;
                     config.StudioNetworkUseImages = document.querySelector('#studioNetworkUseImages').checked;
-                    ApiClient.updatePluginConfiguration(pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                    config.GenreUseBackdrops = document.querySelector('#genreUseBackdrops').checked;
+                    ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                        if (window.betterSeerrTabsPlugin) {
+                            window.betterSeerrTabsPlugin.invalidateDisplaySettings();
+                        }
+                    });
                 });
             });
         })();

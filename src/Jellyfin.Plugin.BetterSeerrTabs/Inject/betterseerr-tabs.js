@@ -139,7 +139,8 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             const self = this;
             this.loadDisplaySettings().then(function () {
                 const settingsKey = String(self._displaySettings.StreamingServiceUseImages) + ':' +
-                    String(self._displaySettings.StudioNetworkUseImages);
+                    String(self._displaySettings.StudioNetworkUseImages) + ':' +
+                    String(self._displaySettings.GenreUseBackdrops);
 
                 if (container.dataset.betterseerrDisplaySettings !== settingsKey) {
                     container.dataset.betterseerrDisplaySettings = settingsKey;
@@ -326,7 +327,12 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
 
         loadDisplaySettings: function () {
             const self = this;
-            return this.fetchJson('display-settings').then(function (data) {
+            return ApiClient.ajax({
+                url: ApiClient.getUrl('BetterSeerrTabs/display-settings') + '?_=' + Date.now(),
+                type: 'GET',
+                dataType: 'json',
+                cache: false
+            }).then(function (data) {
                 self._displaySettings = {
                     StreamingServiceUseImages: self.readConfigBool(
                         data,
@@ -339,16 +345,31 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                         'StudioNetworkUseImages',
                         'studioNetworkUseImages',
                         true
+                    ),
+                    GenreUseBackdrops: self.readConfigBool(
+                        data,
+                        'GenreUseBackdrops',
+                        'genreUseBackdrops',
+                        true
                     )
                 };
                 return self._displaySettings;
             }).catch(function () {
                 self._displaySettings = {
                     StreamingServiceUseImages: true,
-                    StudioNetworkUseImages: true
+                    StudioNetworkUseImages: true,
+                    GenreUseBackdrops: true
                 };
                 return self._displaySettings;
             });
+        },
+
+        invalidateDisplaySettings: function () {
+            this._displaySettings = null;
+            document.querySelectorAll('.betterseerr-movies-sections, .betterseerr-tv-sections').forEach(function (section) {
+                delete section.dataset.betterseerrDisplaySettings;
+            });
+            this.scheduleRender();
         },
 
         readConfigBool: function (data, pascalKey, camelKey, defaultValue) {
@@ -471,16 +492,36 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             const logoUrl = showLogo ? this.buildBrowseLogoUrl(item.logo || item.logoPath) : null;
             let content = '';
 
+            if (kind === 'genre' && (this._displaySettings || {}).GenreUseBackdrops !== false) {
+                const backdrops = item.backdrops || [];
+                if (backdrops.length) {
+                    const backdropPath = backdrops[Math.floor(Math.random() * backdrops.length)];
+                    const backdropUrl = this.buildBrowseBackdropUrl(backdropPath);
+                    if (backdropUrl) {
+                        content += '<span class="betterseerr-box-backdrop" style="background-image: url(\'' + backdropUrl + '\')"></span>';
+                    }
+                }
+            }
+
             if (logoUrl) {
                 const logoClass = item.weirdSize ? 'betterseerr-box-logo-weird' : 'betterseerr-box-logo';
-                content = '<img class="' + logoClass + '" src="' + this.escapeHtml(logoUrl) + '" alt="' + safeName + '" loading="lazy" />';
+                content += '<img class="' + logoClass + '" src="' + this.escapeHtml(logoUrl) + '" alt="' + safeName + '" loading="lazy" />';
             } else {
-                content = '<span class="betterseerr-box-label">' + safeName + '</span>';
+                content += '<span class="betterseerr-box-label">' + safeName + '</span>';
             }
 
             return '<button type="button" class="betterseerr-box-card" data-kind="' + kind + '" data-media-type="' + mediaType + '" data-id="' + id + '" data-name="' + safeName + '">' +
                 content +
                 '</button>';
+        },
+
+        buildBrowseBackdropUrl: function (backdropPath) {
+            if (!backdropPath) {
+                return null;
+            }
+
+            const path = backdropPath.startsWith('/') ? backdropPath : '/' + backdropPath;
+            return 'https://image.tmdb.org/t/p/w780' + path;
         },
 
         buildBrowseLogoUrl: function (logoPath) {

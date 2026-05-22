@@ -27,4 +27,6 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool StreamingServiceUseImages { get; set; } = true;
 
     public bool StudioNetworkUseImages { get; set; } = true;
+
+    public bool GenreUseBackdrops { get; set; } = true;
 }
