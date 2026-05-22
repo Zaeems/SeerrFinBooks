@@ -237,6 +237,76 @@
             opacity: 0.9;
         }
 
+        .bst-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5em;
+            margin-bottom: 1.25em;
+        }
+
+        .bst-toggle-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .bst-toggle-copy {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bst-toggle-label {
+            display: block;
+            font-size: 1.05em;
+            line-height: 1.4;
+            color: #fff;
+        }
+
+        .bst-toggle {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+
+        .bst-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .bst-toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.18);
+            transition: background 0.2s ease;
+        }
+
+        .bst-toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            transition: transform 0.2s ease;
+        }
+
+        .bst-toggle input:checked + .bst-toggle-slider {
+            background: var(--accent, #00a4dc);
+        }
+
+        .bst-toggle input:checked + .bst-toggle-slider:before {
+            transform: translateX(22px);
+        }
+
+        .bst-toggle input:focus-visible + .bst-toggle-slider {
+            outline: 2px solid var(--accent, #00a4dc);
+            outline-offset: 2px;
+        }
+
         @media (max-width: 768px) {
             .bst-tabs-grid {
                 grid-template-columns: 1fr;
@@ -373,6 +443,32 @@
                 </div>
 
                 <div class="bst-section-container">
+                    <div class="bst-section-title">Display settings</div>
+                    <div class="bst-card">
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="streamingServiceUseImages">Streaming services</label>
+                                <div class="bst-field-desc">Show streaming service logos instead of text in browse carousels.</div>
+                            </div>
+                            <label class="bst-toggle">
+                                <input id="streamingServiceUseImages" name="streamingServiceUseImages" type="checkbox" checked />
+                                <span class="bst-toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="studioNetworkUseImages">Studio / Network</label>
+                                <div class="bst-field-desc">Show studio and network logos instead of text in browse carousels.</div>
+                            </div>
+                            <label class="bst-toggle">
+                                <input id="studioNetworkUseImages" name="studioNetworkUseImages" type="checkbox" checked />
+                                <span class="bst-toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bst-section-container">
                     <div class="bst-section-title">TMDB</div>
                     <div class="bst-card">
                         <div class="bst-input-group">
@@ -459,6 +555,8 @@
                 document.querySelector('#watchRegion').value = config.WatchRegion || 'US';
                 document.querySelector('#rowItemLimit').value = config.RowItemLimit || 20;
                 document.querySelector('#tmdbApiKey').value = config.TmdbApiKey || '';
+                document.querySelector('#streamingServiceUseImages').checked = config.StreamingServiceUseImages !== false;
+                document.querySelector('#studioNetworkUseImages').checked = config.StudioNetworkUseImages !== false;
                 Dashboard.hideLoadingMsg();
             });
 
@@ -472,6 +570,8 @@
                     config.WatchRegion = document.querySelector('#watchRegion').value || 'US';
                     config.RowItemLimit = parseInt(document.querySelector('#rowItemLimit').value, 10) || 20;
                     config.TmdbApiKey = document.querySelector('#tmdbApiKey').value.trim();
+                    config.StreamingServiceUseImages = document.querySelector('#streamingServiceUseImages').checked;
+                    config.StudioNetworkUseImages = document.querySelector('#studioNetworkUseImages').checked;
                     ApiClient.updatePluginConfiguration(pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
                 });
             });

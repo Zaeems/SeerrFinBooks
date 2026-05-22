@@ -134,6 +134,19 @@ public class BetterSeerrTabsController : ControllerBase
     [Authorize(Roles = "Administrator")]
     public ActionResult<PluginConfiguration> GetConfiguration() => BetterSeerrTabsPlugin.Instance.Configuration;
 
+    [HttpGet("display-settings")]
+    [Authorize]
+    public ActionResult GetDisplaySettings()
+    {
+        PluginConfiguration config = BetterSeerrTabsPlugin.Instance.Configuration;
+        Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        return Ok(new
+        {
+            config.StreamingServiceUseImages,
+            config.StudioNetworkUseImages
+        });
+    }
+
     [HttpGet("CachedImage/{cacheKey}")]
     public ActionResult GetCachedImage([FromRoute] string cacheKey)
     {
@@ -312,17 +325,17 @@ public class BetterSeerrTabsController : ControllerBase
 
     [HttpGet("providers/movie")]
     [Authorize]
-    public ActionResult MovieProviders([FromServices] IUserManager userManager)
+    public ActionResult MovieProviders()
     {
-        JArray data = _discoveryService.GetWatchProviders("movie", GetUsername(userManager) ?? string.Empty);
+        JArray data = _discoveryService.GetMovieStreamingServices();
         return Content(data.ToString(), "application/json");
     }
 
     [HttpGet("providers/tv")]
     [Authorize]
-    public ActionResult TvProviders([FromServices] IUserManager userManager)
+    public ActionResult TvProviders()
     {
-        JArray data = _discoveryService.GetWatchProviders("tv", GetUsername(userManager) ?? string.Empty);
+        JArray data = _discoveryService.GetTvStreamingServices();
         return Content(data.ToString(), "application/json");
     }
 

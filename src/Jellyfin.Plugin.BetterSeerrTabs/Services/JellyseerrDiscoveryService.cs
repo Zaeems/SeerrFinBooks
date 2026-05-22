@@ -158,60 +158,121 @@ public class JellyseerrDiscoveryService
 
     public JArray GetNetworks() => ToBrowseArray(TvNetworks);
 
-    private static JArray ToBrowseArray(IEnumerable<(int Id, string Name)> items)
+    public JArray GetMovieStreamingServices() => ToBrowseArray(MovieStreamingServices);
+
+    public JArray GetTvStreamingServices() => ToBrowseArray(TvStreamingServices);
+
+    private static JArray ToBrowseArray(IEnumerable<(int Id, string Name, string Logo, bool WeirdSize)> items)
     {
         JArray array = new();
-        foreach ((int id, string name) in items)
+        foreach ((int id, string name, string logo, bool weirdSize) in items)
         {
             array.Add(new JObject
             {
                 ["id"] = id,
-                ["name"] = name
+                ["name"] = name,
+                ["logo"] = logo,
+                ["weirdSize"] = weirdSize
             });
         }
 
         return array;
     }
 
-    private static readonly (int Id, string Name)[] MovieStudios =
+    private static readonly (int Id, string Name, string Logo, bool WeirdSize)[] MovieStudios =
     {
-        (2, "Disney"),
-        (127928, "20th Century Studios"),
-        (34, "Sony Pictures"),
-        (174, "Warner Bros. Pictures"),
-        (33, "Universal"),
-        (4, "Paramount"),
-        (3, "Pixar"),
-        (521, "Dreamworks"),
-        (420, "Marvel Studios"),
-        (9993, "DC"),
-        (41077, "A24")
+        (2, "Disney", "/wdrCwmRnLFJhEoH8GSfymY85KHT.png", true),
+        (127928, "20th Century Studios", "/h0rjX5vjW5r8yEnUBStFarjcLT4.png", true),
+        (34, "Sony Pictures", "/mtp1fvZbe4H991Ka1HOORl572VH.png", true),
+        (174, "Warner Bros. Pictures", "/zhD3hhtKB5qyv7ZeL4uLpNxgMVU.png", true),
+        (33, "Universal", "/8lvHyhjr8oUKOOy2dKXoALWKdp0.png", true),
+        (4, "Paramount", "/jay6WcMgagAklUt7i9Euwj1pzTF.png", true),
+        (3, "Pixar", "/1TjvGVDMYsj6JBxOAkUHpPEwLf7.png", false),
+        (521, "Dreamworks", "/3BPX5VGBov8SDqTV7wC1L1xShAS.png", true),
+        (420, "Marvel Studios", "/hUzeosd33nzE5MCNsZxCGEKTXaQ.png", false),
+        (9993, "DC", "not found", false),
+        (41077, "A24", "/1ZXsGaFPgrgS6ZZGS37AqD5uU12.png", false)
     };
 
-    private static readonly (int Id, string Name)[] TvNetworks =
+    private static readonly (int Id, string Name, string Logo, bool WeirdSize)[] TvNetworks =
     {
-        (213, "Netflix"),
-        (2739, "Disney+"),
-        (1024, "Prime Video"),
-        (2552, "Apple TV+"),
-        (453, "Hulu"),
-        (49, "HBO"),
-        (4353, "Discovery+"),
-        (2, "ABC"),
-        (19, "FOX"),
-        (359, "Cinemax"),
-        (174, "AMC"),
-        (67, "Showtime"),
-        (318, "Starz"),
-        (71, "The CW"),
-        (6, "NBC"),
-        (16, "CBS"),
-        (4330, "Paramount+"),
-        (4, "BBC One"),
-        (56, "Cartoon Network"),
-        (80, "Adult Swim"),
-        (13, "Nickelodeon"),
-        (3353, "Peacock")
+        (213, "Netflix", "/wwemzKWzjKYJFfCeiB57q3r4Bcm.png", false),
+        (2739, "Disney+", "/1edZOYAfoyZyZ3rklNSiUpXX30Q.png", true),
+        (1024, "Prime Video", "/w7HfLNm9CWwRmAMU58udl2L7We7.png", false),
+        (2552, "Apple TV+", "/bngHRFi794mnMq34gfVcm9nDxN1.png", false),
+        (453, "Hulu", "/pqUTCleNUiTLAVlelGxUgWn1ELh.png", false),
+        (49, "HBO", "/tuomPhY2UtuPTqqFnKMVHvSb724.png", false),
+        (4353, "Discovery+", "/1D1bS3Dyw4ScYnFWTlBOvJXC3nb.png", false),
+        (2, "ABC", "/2uy2ZWcplrSObIyt4x0Y9rkG6qO.png", true),
+        (19, "FOX", "/1DSpHrWyOORkL9N2QHX7Adt31mQ.png", false),
+        (359, "Cinemax", "not found", false),
+        (174, "AMC", "/pmvRmATOCaDykE6JrVoeYxlFHw3.png", false),
+        (67, "Showtime", "/Allse9kbjiP6ExaQrnSpIhkurEi.png", true),
+        (318, "Starz", "/qx3Y9LCaK4mq1ykFuDIfjshlo3U.png", false),
+        (71, "The CW", "/hEpcdJ4O6eitG9ADSnDXNUrlovS.png", false),
+        (6, "NBC", "/cm111bsDVlYaC1foL0itvEI4yLG.png", false),
+        (16, "CBS", "/wju8KhOUsR5y4bH9p3Jc50hhaLO.png", false),
+        (4330, "Paramount+", "/fi83B1oztoS47xxcemFdPMhIzK.png", false),
+        (4, "BBC One", "/uJjcCg3O4DMEjM0xtno9OWFciRP.png", false),
+        (56, "Cartoon Network", "/c5OC6oVCg6QP4eqzW6XIq17CQjI.png", false),
+        (80, "Adult Swim", "/tHZPHOLc6iF27G34cAZGPsMtMSy.png", false),
+        (13, "Nickelodeon", "/aYkLXz4dxHgOrFNH7Jv7Cpy56Ms.png", false),
+        (3353, "Peacock", "/gIAcGTjKKr0KOHL5s4O36roJ8p7.png", false)
+    };
+
+    private static readonly (int Id, string Name, string Logo, bool WeirdSize)[] MovieStreamingServices =
+    {
+        (8, "Netflix", "/wwemzKWzjKYJFfCeiB57q3r4Bcm.png", false),
+        (350, "Apple TV", "/bngHRFi794mnMq34gfVcm9nDxN1.png", false),
+        (9, "Amazon Prime Video", "/w7HfLNm9CWwRmAMU58udl2L7We7.png", false),
+        (337, "Disney Plus", "/1edZOYAfoyZyZ3rklNSiUpXX30Q.png", true),
+        (15, "Hulu", "/pqUTCleNUiTLAVlelGxUgWn1ELh.png", false),
+        (2303, "Paramount Plus Premium", "/fi83B1oztoS47xxcemFdPMhIzK.png", false),
+        (386, "Peacock Premium", "/gIAcGTjKKr0KOHL5s4O36roJ8p7.png", false),
+        (1899, "HBO Max", "/rAb4M1LjGpWASxpk6Va791A7Nkw.png", false),
+        (526, "AMC+", "/pmvRmATOCaDykE6JrVoeYxlFHw3.png", false),
+        (83, "The CW", "/hEpcdJ4O6eitG9ADSnDXNUrlovS.png", false),
+        (43, "Starz", "/qx3Y9LCaK4mq1ykFuDIfjshlo3U.png", false),
+        (209, "PBS", "/4Fn4eQmEmJZ9YWjiIhZ6cF1QHAi.png", false),
+        (79, "NBC", "/cm111bsDVlYaC1foL0itvEI4yLG.png", false),
+        (34, "MGM Plus", "/usUnaYV6hQnlVAXP6r4HwrlLFPG.png", true)
+    };
+
+    private static readonly (int Id, string Name, string Logo, bool WeirdSize)[] TvStreamingServices =
+    {
+        (8, "Netflix", "/wwemzKWzjKYJFfCeiB57q3r4Bcm.png", false),
+        (350, "Apple TV", "/bngHRFi794mnMq34gfVcm9nDxN1.png", false),
+        (9, "Amazon Prime Video", "/w7HfLNm9CWwRmAMU58udl2L7We7.png", false),
+        (337, "Disney Plus", "/1edZOYAfoyZyZ3rklNSiUpXX30Q.png", true),
+        (15, "Hulu", "/pqUTCleNUiTLAVlelGxUgWn1ELh.png", false),
+        (2303, "Paramount Plus Premium", "/fi83B1oztoS47xxcemFdPMhIzK.png", false),
+        (386, "Peacock Premium", "/gIAcGTjKKr0KOHL5s4O36roJ8p7.png", false),
+        (1899, "HBO Max", "/rAb4M1LjGpWASxpk6Va791A7Nkw.png", false),
+        (526, "AMC+", "/pmvRmATOCaDykE6JrVoeYxlFHw3.png", false),
+        (83, "The CW", "/hEpcdJ4O6eitG9ADSnDXNUrlovS.png", false),
+        (43, "Starz", "/qx3Y9LCaK4mq1ykFuDIfjshlo3U.png", false),
+        (209, "PBS", "/4Fn4eQmEmJZ9YWjiIhZ6cF1QHAi.png", false),
+        (123, "FXNow", "/aexGjtcs42DgRtZh7zOxayiry4J.png", false),
+        (79, "NBC", "/cm111bsDVlYaC1foL0itvEI4yLG.png", false),
+        (34, "MGM Plus", "/usUnaYV6hQnlVAXP6r4HwrlLFPG.png", true),
+        (211, "Freeform", "/jk2Z7WH6JnHSZrxouYh4sireM3a.png", false),
+        (156, "A&E", "/ptSTdU4GPNJ1M8UVEOtA0KgtuNk.png", false),
+        (157, "Lifetime", "/kEeaVLcJ6L6jq3v5YlPcjQs9igm.png", false),
+        (318, "Adult Swim", "/tHZPHOLc6iF27G34cAZGPsMtMSy.png", false),
+        (322, "USA Network", "/g1e0H0Ka97IG5SyInMXdJkHGKiH.png", false),
+        (365, "Bravo TV", "/wX5HsfS47u6UUCSpYXqaQ1x2qdu.png", false),
+        (363, "TNT", "/6ISsKwa2XUhSC6oBtHZjYf6xFqv.png", true),
+        (412, "TLC", "/6GRfZSrYh9D6C88n9kWlyrySB2l.png", false),
+        (406, "HGTV", "/tzTtKdQ7vC2FkBvJDUErOhBPdKJ.png", false),
+        (399, "Animal Planet", "/m3KrDu1g96YByhH0wp4OvyghgsG.png", true),
+        (403, "Discovery", "/tmttRFo2OiXQD0EHMxxlw8EzUuZ.png", false),
+        (422, "VH1", "/w9oUxxUiXTC1O1MzJSvsMjQbgft.png", false),
+        (506, "TBS", "/65r0kR6MfOBYF0gEQsJGM6v5fEG.png", false),
+        (508, "DisneyNOW", "/9AxUB1RdRnm0r5ki8Thb69Jo9Ma.png", false),
+        (520, "Discovery +", "/1D1bS3Dyw4ScYnFWTlBOvJXC3nb.png", false),
+        (1964, "National Geographic", "/5UtQpFierweXjriDoRf3LUVDjce.png", false),
+        (148, "ABC", "/2uy2ZWcplrSObIyt4x0Y9rkG6qO.png", true),
+        (155, "History", "/9fGgdJz17aBX7dOyfHJtsozB7bf.png", true)
     };
 
     public JObject? GetMediaDetails(string username, string mediaType, int mediaId)

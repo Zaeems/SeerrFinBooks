@@ -23,4 +23,8 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool DeveloperMode { get; set; }
 
     public int CacheBustCounter { get; set; }
+
+    public bool StreamingServiceUseImages { get; set; } = true;
+
+    public bool StudioNetworkUseImages { get; set; } = true;
 }

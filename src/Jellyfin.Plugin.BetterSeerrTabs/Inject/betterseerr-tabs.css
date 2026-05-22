@@ -25,6 +25,19 @@
     max-width: 100%;
 }
 
+.betterseerr-box-card .betterseerr-box-logo,
+.betterseerr-box-card .betterseerr-box-logo-weird {
+    object-fit: contain;
+    pointer-events: none;
+    width: 200px;
+    max-height: 65px;
+}
+
+/* Some of the logos need to be sized differently bc of how they look */
+.betterseerr-box-card .betterseerr-box-logo-weird {
+    max-height: 95px;
+}
+
 .betterseerr-empty-row {
     padding: 0.5em 1.5em;
     color: var(--secondaryTextColor);

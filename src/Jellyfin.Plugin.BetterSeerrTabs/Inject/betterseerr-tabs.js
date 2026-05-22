@@ -20,6 +20,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
         _watchersReady: false,
         _handlersBound: false,
         _gridPageSize: 40,
+        _displaySettings: null,
 
         init: function () {
             if (typeof ApiClient === 'undefined') {
@@ -135,16 +136,31 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 return;
             }
 
-            if (this.isContainerPopulated(container)) {
-                return;
-            }
+            const self = this;
+            this.loadDisplaySettings().then(function () {
+                const settingsKey = String(self._displaySettings.StreamingServiceUseImages) + ':' +
+                    String(self._displaySettings.StudioNetworkUseImages);
 
-            const hasError = container.querySelector('.betterseerr-empty-row');
-            if (hasError && container.dataset.betterseerrLoaded === 'true') {
-                return;
-            }
+                if (container.dataset.betterseerrDisplaySettings !== settingsKey) {
+                    container.dataset.betterseerrDisplaySettings = settingsKey;
+                    if (self.isContainerPopulated(container)) {
+                        container.innerHTML = '';
+                        delete container.dataset.betterseerrLoaded;
+                        delete container.dataset.betterseerrLoading;
+                    }
+                }
 
-            this.loadTab(type, container);
+                if (self.isContainerPopulated(container)) {
+                    return;
+                }
+
+                const hasError = container.querySelector('.betterseerr-empty-row');
+                if (hasError && container.dataset.betterseerrLoaded === 'true') {
+                    return;
+                }
+
+                self.loadTab(type, container);
+            });
         },
 
         loadTab: function (type, container) {
@@ -184,17 +200,20 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 return container.dataset.betterseerrLoadId !== loadId || !self.isContainerVisible(container);
             };
 
-            Promise.allSettled(rows.map(function (row) {
-                return self.fetchDiscover(row.path).then(function (result) {
-                    return { row: row, items: result.items };
-                });
-            })).then(function (results) {
+            Promise.allSettled([
+                self.loadDisplaySettings(),
+                ...rows.map(function (row) {
+                    return self.fetchDiscover(row.path).then(function (result) {
+                        return { row: row, items: result.items };
+                    });
+                })
+            ]).then(function (results) {
                 if (isStale()) {
                     return null;
                 }
 
                 const loadedRows = [];
-                results.forEach(function (result, index) {
+                results.slice(1).forEach(function (result, index) {
                     if (result.status === 'fulfilled') {
                         loadedRows.push(result.value);
                     } else {
@@ -305,6 +324,57 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             });
         },
 
+        loadDisplaySettings: function () {
+            const self = this;
+            return this.fetchJson('display-settings').then(function (data) {
+                self._displaySettings = {
+                    StreamingServiceUseImages: self.readConfigBool(
+                        data,
+                        'StreamingServiceUseImages',
+                        'streamingServiceUseImages',
+                        true
+                    ),
+                    StudioNetworkUseImages: self.readConfigBool(
+                        data,
+                        'StudioNetworkUseImages',
+                        'studioNetworkUseImages',
+                        true
+                    )
+                };
+                return self._displaySettings;
+            }).catch(function () {
+                self._displaySettings = {
+                    StreamingServiceUseImages: true,
+                    StudioNetworkUseImages: true
+                };
+                return self._displaySettings;
+            });
+        },
+
+        readConfigBool: function (data, pascalKey, camelKey, defaultValue) {
+            if (!data) {
+                return defaultValue;
+            }
+
+            const value = data[pascalKey] ?? data[camelKey];
+            if (value === true || value === false) {
+                return value;
+            }
+
+            return defaultValue;
+        },
+
+        shouldShowLogo: function (kind) {
+            const settings = this._displaySettings || {};
+            if (kind === 'provider') {
+                return settings.StreamingServiceUseImages !== false;
+            }
+            if (kind === 'studio' || kind === 'network') {
+                return settings.StudioNetworkUseImages !== false;
+            }
+            return false;
+        },
+
         buildPosterRow: function (title, items, path) {
             const section = document.createElement('div');
             section.className = 'verticalSection betterseerr-poster-section';
@@ -397,9 +467,29 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             const id = item.id;
             const name = item.name || 'Unknown';
             const safeName = this.escapeHtml(name);
+            const showLogo = this.shouldShowLogo(kind);
+            const logoUrl = showLogo ? this.buildBrowseLogoUrl(item.logo || item.logoPath) : null;
+            let content = '';
+
+            if (logoUrl) {
+                const logoClass = item.weirdSize ? 'betterseerr-box-logo-weird' : 'betterseerr-box-logo';
+                content = '<img class="' + logoClass + '" src="' + this.escapeHtml(logoUrl) + '" alt="' + safeName + '" loading="lazy" />';
+            } else {
+                content = '<span class="betterseerr-box-label">' + safeName + '</span>';
+            }
+
             return '<button type="button" class="betterseerr-box-card" data-kind="' + kind + '" data-media-type="' + mediaType + '" data-id="' + id + '" data-name="' + safeName + '">' +
-                '<span class="betterseerr-box-label">' + safeName + '</span>' +
+                content +
                 '</button>';
+        },
+
+        buildBrowseLogoUrl: function (logoPath) {
+            if (!logoPath || logoPath === 'not found') {
+                return null;
+            }
+
+            const path = logoPath.startsWith('/') ? logoPath : '/' + logoPath;
+            return 'https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,969696)' + path;
         },
 
         buildBrowseGridPath: function (kind, mediaType, id) {
