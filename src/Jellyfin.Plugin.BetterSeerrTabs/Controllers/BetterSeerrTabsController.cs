@@ -20,17 +20,20 @@ public class BetterSeerrTabsController : ControllerBase
     private readonly JellyseerrRequestService _requestService;
     private readonly JellyseerrProxyService _proxyService;
     private readonly ImageCacheService _imageCacheService;
+    private readonly TmdbBackdropService _tmdbBackdropService;
 
     public BetterSeerrTabsController(
         JellyseerrDiscoveryService discoveryService,
         JellyseerrRequestService requestService,
         JellyseerrProxyService proxyService,
-        ImageCacheService imageCacheService)
+        ImageCacheService imageCacheService,
+        TmdbBackdropService tmdbBackdropService)
     {
         _discoveryService = discoveryService;
         _requestService = requestService;
         _proxyService = proxyService;
         _imageCacheService = imageCacheService;
+        _tmdbBackdropService = tmdbBackdropService;
     }
 
     private Guid GetUserId()
@@ -144,7 +147,39 @@ public class BetterSeerrTabsController : ControllerBase
         {
             config.StreamingServiceUseImages,
             config.StudioNetworkUseImages,
-            config.GenreUseBackdrops
+            config.GenreUseBackdrops,
+            config.DiscoverUsePosters
+        });
+    }
+
+    [HttpGet("backdrop/{mediaType}/{tmdbId}")]
+    [Authorize]
+    public async Task<ActionResult> GetBackdrop(string mediaType, int tmdbId, CancellationToken cancellationToken)
+    {
+        if (tmdbId <= 0)
+        {
+            return NotFound();
+        }
+
+        if (!string.Equals(mediaType, "movie", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(mediaType, "tv", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest();
+        }
+
+        TmdbBackdropService.CachedBackdropDto? backdrop = await _tmdbBackdropService
+            .GetCachedBackdropAsync(mediaType, tmdbId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (backdrop == null || string.IsNullOrEmpty(backdrop.BackdropUrl))
+        {
+            return NotFound();
+        }
+
+        return Ok(new
+        {
+            backdropUrl = backdrop.BackdropUrl,
+            hasEnglishBackdrop = backdrop.HasEnglishBackdrop
         });
     }
 

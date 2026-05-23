@@ -1,0 +1,5 @@
+- add requests page with requests and sonarr/radarr progress
+- show progress/playability on moviecards and let user play directly from there
+- add layout editor for modal
+- add layout editor for carousel pages
+- add editor for horizontal/poster cards

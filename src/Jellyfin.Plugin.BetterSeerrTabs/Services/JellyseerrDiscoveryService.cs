@@ -411,6 +411,11 @@ public class JellyseerrDiscoveryService
                 $"https://image.tmdb.org/t/p/w600_and_h900_bestv2{posterPath}",
                 _logger);
 
+        string backdropPath = item.Value<string>("backdropPath") ?? item.Value<string>("backdrop_path") ?? string.Empty;
+        string backdropUrl = string.IsNullOrEmpty(backdropPath)
+            ? string.Empty
+            : ImageCacheHelper.GetCachedImageUrl(_imageCacheService, $"https://image.tmdb.org/t/p/w780{backdropPath}", _logger);
+
         float rating = item.Value<float?>("vote_average") ?? item.Value<float?>("voteAverage") ?? 0f;
         string? mediaType = item.Value<string>("mediaType");
 
@@ -424,6 +429,7 @@ public class JellyseerrDiscoveryService
             {
                 { "Jellyseerr", item.Value<int>("id").ToString() },
                 { "JellyseerrPoster", posterUrl },
+                { "JellyseerrBackdrop", backdropUrl },
                 { "Tmdb", item.Value<int?>("tmdbId")?.ToString() ?? string.Empty }
             },
             PremiereDate = DateTime.TryParse(dateTimeString, out DateTime dt) ? dt : DateTime.Parse("1970-01-01")

@@ -29,4 +29,6 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool StudioNetworkUseImages { get; set; } = true;
 
     public bool GenreUseBackdrops { get; set; } = true;
+
+    public bool DiscoverUsePosters { get; set; } = true;
 }

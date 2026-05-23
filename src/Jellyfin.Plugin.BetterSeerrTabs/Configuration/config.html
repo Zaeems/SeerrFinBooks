@@ -475,6 +475,16 @@
                                 <span class="bst-toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="discoverUsePosters">Poster thumbnails</label>
+                                <div class="bst-field-desc">Use portrait posters in discovery rows instead of landscape thumbnails. (Landscape thumbnails need TMDB API Key)</div>
+                            </div>
+                            <label class="bst-toggle">
+                                <input id="discoverUsePosters" name="discoverUsePosters" type="checkbox" checked />
+                                <span class="bst-toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -568,6 +578,7 @@
                 document.querySelector('#streamingServiceUseImages').checked = config.StreamingServiceUseImages !== false;
                 document.querySelector('#studioNetworkUseImages').checked = config.StudioNetworkUseImages !== false;
                 document.querySelector('#genreUseBackdrops').checked = config.GenreUseBackdrops !== false;
+                document.querySelector('#discoverUsePosters').checked = config.DiscoverUsePosters !== false;
                 Dashboard.hideLoadingMsg();
             });
 
@@ -584,6 +595,7 @@
                     config.StreamingServiceUseImages = document.querySelector('#streamingServiceUseImages').checked;
                     config.StudioNetworkUseImages = document.querySelector('#studioNetworkUseImages').checked;
                     config.GenreUseBackdrops = document.querySelector('#genreUseBackdrops').checked;
+                    config.DiscoverUsePosters = document.querySelector('#discoverUsePosters').checked;
                     ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
                         if (window.betterSeerrTabsPlugin) {

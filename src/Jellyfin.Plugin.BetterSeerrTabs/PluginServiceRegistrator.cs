@@ -15,6 +15,11 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
             IHttpClientFactory httpClientFactory = services.GetRequiredService<IHttpClientFactory>();
             return ActivatorUtilities.CreateInstance<ImageCacheService>(services, httpClientFactory.CreateClient());
         });
+        serviceCollection.AddSingleton<TmdbBackdropService>(services =>
+        {
+            IHttpClientFactory httpClientFactory = services.GetRequiredService<IHttpClientFactory>();
+            return ActivatorUtilities.CreateInstance<TmdbBackdropService>(services, httpClientFactory.CreateClient());
+        });
         serviceCollection.AddSingleton<JellyseerrDiscoveryService>();
         serviceCollection.AddSingleton<JellyseerrRequestService>();
         serviceCollection.AddSingleton<JellyseerrProxyService>();

@@ -140,7 +140,8 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             this.loadDisplaySettings().then(function () {
                 const settingsKey = String(self._displaySettings.StreamingServiceUseImages) + ':' +
                     String(self._displaySettings.StudioNetworkUseImages) + ':' +
-                    String(self._displaySettings.GenreUseBackdrops);
+                    String(self._displaySettings.GenreUseBackdrops) + ':' +
+                    String(self._displaySettings.DiscoverUsePosters);
 
                 if (container.dataset.betterseerrDisplaySettings !== settingsKey) {
                     container.dataset.betterseerrDisplaySettings = settingsKey;
@@ -351,6 +352,12 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                         'GenreUseBackdrops',
                         'genreUseBackdrops',
                         true
+                    ),
+                    DiscoverUsePosters: self.readConfigBool(
+                        data,
+                        'DiscoverUsePosters',
+                        'discoverUsePosters',
+                        true
                     )
                 };
                 return self._displaySettings;
@@ -358,10 +365,25 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 self._displaySettings = {
                     StreamingServiceUseImages: true,
                     StudioNetworkUseImages: true,
-                    GenreUseBackdrops: true
+                    GenreUseBackdrops: true,
+                    DiscoverUsePosters: true
                 };
                 return self._displaySettings;
             });
+        },
+
+        shouldUseBackdropThumbnails: function () {
+            return (this._displaySettings || {}).DiscoverUsePosters === false;
+        },
+
+        resolveImageUrl: function (url) {
+            if (!url) {
+                return '';
+            }
+            if (url.startsWith('http')) {
+                return url;
+            }
+            return window.ApiClient.getUrl(url);
         },
 
         invalidateDisplaySettings: function () {
@@ -439,7 +461,11 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             itemsContainer.innerHTML = this.createDiscoverCards(items);
             scroller.appendChild(itemsContainer);
             section.appendChild(scroller);
-            this.initLazyImages(itemsContainer);
+            if (this.shouldUseBackdropThumbnails()) {
+                this.hydrateDiscoverBackdropCards(itemsContainer);
+            } else {
+                this.initLazyImages(itemsContainer);
+            }
             return section;
         },
 
@@ -551,6 +577,28 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
         },
 
         createDiscoverCards: function (items, forGrid) {
+            if (this.shouldUseBackdropThumbnails()) {
+                return this.createDiscoverBackdropCards(items, forGrid);
+            }
+            return this.createDiscoverPosterCards(items, forGrid);
+        },
+
+        buildDiscoverYearText: function (item, safeName) {
+            const self = this;
+            const date = new Date(self.getField(item, 'PremiereDate', 'premiereDate', 'releaseDate', 'firstAirDate') || '');
+            const year = Number.isNaN(date.getFullYear()) ? '' : date.getFullYear();
+            const rating = Number(self.getField(item, 'CommunityRating', 'communityRating') || 0);
+            let yearText = '';
+            if (rating) {
+                yearText += '<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span> ' + rating.toFixed(1) + ' • ';
+            } else {
+                yearText += '<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span> - • ';
+            }
+            yearText += year;
+            return { year: year, yearText: yearText };
+        },
+
+        createDiscoverPosterCards: function (items, forGrid) {
             let html = '';
             const self = this;
             const cardType = forGrid ? 'portraitCard' : 'overflowPortraitCard';
@@ -592,22 +640,231 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 html += '       </div>';
                 html += '       <div class="cardText cardTextCentered cardText-first"><bdi><span title="' + safeName + '">' + safeName + '</span></bdi></div>';
 
-                const date = new Date(self.getField(item, 'PremiereDate', 'premiereDate', 'releaseDate', 'firstAirDate') || '');
-                const year = Number.isNaN(date.getFullYear()) ? '' : date.getFullYear();
-                const rating = Number(self.getField(item, 'CommunityRating', 'communityRating') || 0);
-                let yearText = '';
-                if (rating) {
-                    yearText += '<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span> ' + rating.toFixed(1) + ' • ';
-                } else {
-                    yearText += '<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span> - • ';
-                }
-                yearText += year;
-                html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + year + '">' + yearText + '</span></bdi></div>';
+                const meta = self.buildDiscoverYearText(item, safeName);
+                html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + meta.year + '">' + meta.yearText + '</span></bdi></div>';
                 html += '   </div>';
                 html += '</div>';
             }, this);
 
             return html;
+        },
+
+        createDiscoverBackdropCards: function (items, forGrid) {
+            let html = '';
+            const self = this;
+            const gridClass = forGrid ? ' betterseerr-discover-card--grid' : '';
+
+            items.forEach(function (item) {
+                const mediaId = self.getProviderId(item, 'Tmdb') ||
+                    self.getProviderId(item, 'Jellyseerr') ||
+                    self.getField(item, 'id', 'Id');
+                const mediaType = self.getField(item, 'SourceType', 'sourceType', 'mediaType', 'MediaType');
+                const safeName = self.escapeHtml(self.getField(item, 'Name', 'name', 'OriginalTitle', 'originalTitle') || 'Unknown');
+                if (!mediaId || !mediaType) {
+                    return;
+                }
+
+                let fallbackUrl = self.getProviderId(item, 'JellyseerrBackdrop');
+                fallbackUrl = self.resolveImageUrl(fallbackUrl);
+                const safeFallback = self.escapeHtml(fallbackUrl || '');
+                const fallbackAttr = safeFallback ? ' data-fallback-src="' + safeFallback + '"' : '';
+
+                html += '<div class="card betterseerr-discover-card betterseerr-discover-card--backdrop' + gridClass + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '"' + fallbackAttr + '>';
+                html += '   <div class="cardBox cardBox-bottompadded">';
+                html += '       <div class="cardScalable betterseerr-discover-backdrop-scalable">';
+                html += '           <div class="cardPadder betterseerr-discover-backdrop-padder"></div>';
+                html += '           <div class="cardImageContainer coveredImage cardContent betterseerr-discover-backdrop-image" aria-label="' + safeName + '">';
+                html += '               <span class="betterseerr-discover-backdrop-media"></span>';
+                html += '               <span class="betterseerr-discover-overlay-title betterseerr-box-label">' + safeName + '</span>';
+                html += '           </div>';
+                html += '           <div class="cardOverlayContainer">';
+                html += '               <div class="cardImageContainer"></div>';
+                html += '               <div class="cardOverlayButton-br flex">';
+                html += '                   <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="' + mediaId + '" data-media-type="' + mediaType + '">';
+                html += '                       <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>';
+                html += '                   </button>';
+                html += '               </div>';
+                html += '           </div>';
+                html += '       </div>';
+                html += '       <div class="cardText cardTextCentered cardText-first betterseerr-discover-title-below"><bdi><span title="' + safeName + '">' + safeName + '</span></bdi></div>';
+                const meta = self.buildDiscoverYearText(item, safeName);
+                html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + meta.year + '">' + meta.yearText + '</span></bdi></div>';
+                html += '   </div>';
+                html += '</div>';
+            }, this);
+
+            return html;
+        },
+
+        setDiscoverBackdropImage: function (card, url) {
+            if (!card || !url) {
+                return;
+            }
+
+            const media = card.querySelector('.betterseerr-discover-backdrop-media');
+            if (!media) {
+                return;
+            }
+
+            media.style.backgroundImage = "url('" + url.replace(/'/g, "\\'") + "')";
+        },
+
+        setDiscoverBackdropPresentation: function (card, mode) {
+            if (!card) {
+                return;
+            }
+
+            card.classList.remove(
+                'betterseerr-discover-card--english',
+                'betterseerr-discover-card--fallback'
+            );
+
+            if (mode === 'english') {
+                card.classList.add('betterseerr-discover-card--english');
+                return;
+            }
+
+            if (mode === 'fallback') {
+                card.classList.add('betterseerr-discover-card--fallback');
+            }
+        },
+
+        ensureTmdbApiKey: function () {
+            const self = this;
+            if (self._tmdbApiKey !== undefined) {
+                return Promise.resolve(self._tmdbApiKey);
+            }
+
+            if (!self._tmdbApiKeyPromise) {
+                self._tmdbApiKeyPromise = self.fetchJson('client-settings').then(function (data) {
+                    const key = (data && (data.tmdbApiKey || data.TmdbApiKey)) || '';
+                    self._tmdbApiKey = String(key).trim();
+                    return self._tmdbApiKey;
+                }).catch(function () {
+                    self._tmdbApiKey = '';
+                    return '';
+                });
+            }
+
+            return self._tmdbApiKeyPromise;
+        },
+
+        fetchTmdbBackdropUrl: function (mediaType, tmdbId) {
+            const self = this;
+            const cacheKey = mediaType + ':' + tmdbId;
+
+            if (self._backdropInflight && self._backdropInflight[cacheKey]) {
+                return self._backdropInflight[cacheKey];
+            }
+
+            if (!self._backdropInflight) {
+                self._backdropInflight = {};
+            }
+
+            const promise = self.fetchJson('backdrop/' + encodeURIComponent(mediaType) + '/' + encodeURIComponent(tmdbId))
+                .then(function (data) {
+                    const url = data && (data.backdropUrl || data.BackdropUrl);
+                    const hasEnglish = !!(data && (data.hasEnglishBackdrop || data.HasEnglishBackdrop));
+                    return {
+                        url: url ? self.resolveImageUrl(url) : '',
+                        hasEnglishBackdrop: hasEnglish
+                    };
+                })
+                .catch(function () {
+                    return { url: '', hasEnglishBackdrop: false };
+                })
+                .finally(function () {
+                    delete self._backdropInflight[cacheKey];
+                });
+
+            self._backdropInflight[cacheKey] = promise;
+            return promise;
+        },
+
+        applyDiscoverBackdropResult: function (card, result, seerrFallbackUrl) {
+            const self = this;
+            const url = result && result.url;
+            const hasEnglish = result && result.hasEnglishBackdrop;
+
+            if (url && hasEnglish) {
+                self.setDiscoverBackdropPresentation(card, 'english');
+                self.setDiscoverBackdropImage(card, url);
+                return;
+            }
+
+            const fallbackUrl = url || seerrFallbackUrl;
+            if (fallbackUrl) {
+                self.setDiscoverBackdropPresentation(card, 'fallback');
+                self.setDiscoverBackdropImage(card, fallbackUrl);
+            }
+        },
+
+        hydrateDiscoverBackdropCard: function (card) {
+            const self = this;
+            if (!card || card.dataset.backdropLoaded === 'true') {
+                return Promise.resolve();
+            }
+
+            const seerrFallback = card.getAttribute('data-fallback-src') || '';
+            const mediaId = card.dataset.tmdbId;
+            const mediaType = card.dataset.mediaType;
+
+            return self.ensureTmdbApiKey().then(function (apiKey) {
+                if (!apiKey) {
+                    self.applyDiscoverBackdropResult(card, null, seerrFallback);
+                    card.dataset.backdropLoaded = 'true';
+                    return;
+                }
+
+                if (!mediaId || !mediaType) {
+                    self.applyDiscoverBackdropResult(card, null, seerrFallback);
+                    card.dataset.backdropLoaded = 'true';
+                    return;
+                }
+
+                return self.fetchTmdbBackdropUrl(mediaType, mediaId).then(function (result) {
+                    self.applyDiscoverBackdropResult(card, result, seerrFallback);
+                    card.dataset.backdropLoaded = 'true';
+                });
+            });
+        },
+
+        hydrateDiscoverBackdropCards: function (container) {
+            const self = this;
+            if (!container) {
+                return;
+            }
+
+            const cards = container.querySelectorAll('.betterseerr-discover-card--backdrop:not([data-backdrop-hydrate-queued]):not([data-backdrop-loaded])');
+            if (!cards.length) {
+                return;
+            }
+
+            if (!self._backdropHydrateQueue) {
+                self._backdropHydrateQueue = [];
+                self._backdropHydrateActive = 0;
+            }
+
+            cards.forEach(function (card) {
+                card.dataset.backdropHydrateQueued = 'true';
+                self._backdropHydrateQueue.push(card);
+            });
+
+            self.pumpBackdropHydrateQueue();
+        },
+
+        pumpBackdropHydrateQueue: function () {
+            const self = this;
+            const maxConcurrent = 4;
+
+            while (self._backdropHydrateActive < maxConcurrent && self._backdropHydrateQueue.length) {
+                const card = self._backdropHydrateQueue.shift();
+                self._backdropHydrateActive++;
+                self.hydrateDiscoverBackdropCard(card).finally(function () {
+                    self._backdropHydrateActive--;
+                    self.pumpBackdropHydrateQueue();
+                });
+            }
         },
 
         bindRequestHandler: function () {
@@ -854,7 +1111,11 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 }
 
                 itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(result.items, true));
-                self.initLazyImages(itemsContainer);
+                if (self.shouldUseBackdropThumbnails()) {
+                    self.hydrateDiscoverBackdropCards(itemsContainer);
+                } else {
+                    self.initLazyImages(itemsContainer);
+                }
                 const newCount = loadedCount + result.items.length;
                 gridView.dataset.loadedCount = String(newCount);
 

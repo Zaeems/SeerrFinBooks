@@ -133,3 +133,88 @@
     opacity: 1;
     animation: betterseerr-fadein 0.1s;
 }
+
+.betterseerr-discover-card--backdrop {
+    flex: 0 0 auto;
+    width: 20em;
+}
+
+.betterseerr-discover-card--backdrop .betterseerr-discover-backdrop-scalable {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.5em;
+}
+
+.betterseerr-discover-backdrop-padder {
+    padding-bottom: 56.25%;
+}
+
+.betterseerr-discover-card--backdrop .betterseerr-discover-backdrop-image {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: inherit;
+}
+
+.betterseerr-discover-backdrop-media {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.betterseerr-discover-overlay-title {
+    display: none;
+}
+
+.betterseerr-discover-title-below {
+    display: none;
+}
+
+/* English backdrop: full image, title below */
+.betterseerr-discover-card--backdrop.betterseerr-discover-card--english .betterseerr-discover-backdrop-media {
+    opacity: 1;
+    filter: none;
+}
+
+.betterseerr-discover-card--backdrop.betterseerr-discover-card--english .betterseerr-discover-title-below {
+    display: block;
+}
+
+/* No English backdrop: genre dimmed image w/ title on image */
+.betterseerr-discover-card--backdrop.betterseerr-discover-card--fallback .betterseerr-discover-backdrop-media {
+    opacity: 0.4;
+    filter: saturate(1.25) brightness(1.05);
+}
+
+.betterseerr-discover-card--backdrop.betterseerr-discover-card--fallback .betterseerr-discover-overlay-title {
+    display: -webkit-box;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: var(--primaryTextColor);
+    font-size: 1.1em;
+    font-weight: 600;
+    padding: 0 0.75em;
+    white-space: normal;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+}
+
+.betterseerr-discover-card--backdrop .cardOverlayContainer {
+    border-radius: inherit;
+}
+
+.betterseerr-grid-view .betterseerr-discover-card--backdrop.betterseerr-discover-card--grid {
+    width: 100%;
+    max-width: 20em;
+}
