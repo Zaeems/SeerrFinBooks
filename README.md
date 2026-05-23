@@ -21,9 +21,10 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 ---
 
 ## Features
-- **Add**: A bunch of really
-- **cool**: features when I
-- **have**: a bunch of time
+- **Movie and TV tabs**: New pages for discovering content using Custom Tabs
+- **Discovery sections**: Carousels sorting movies/tv shows to be discovered by (eg. Trending, Popular, etc.)
+- **Genres, Movie Studios, TV Networks**: A bunch of genres, studio and network boxes which can be sorted by
+- **Grid screens**: Screens to view more content from any section/genre/studio/network
 
 
 ## Installation
