@@ -138,10 +138,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
 
             const self = this;
             this.loadDisplaySettings().then(function () {
-                const settingsKey = String(self._displaySettings.StreamingServiceUseImages) + ':' +
-                    String(self._displaySettings.StudioNetworkUseImages) + ':' +
-                    String(self._displaySettings.GenreUseBackdrops) + ':' +
-                    String(self._displaySettings.DiscoverUsePosters);
+                const settingsKey = self.getDisplaySettingsKey();
 
                 if (container.dataset.betterseerrDisplaySettings !== settingsKey) {
                     container.dataset.betterseerrDisplaySettings = settingsKey;
@@ -358,7 +355,8 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                         'DiscoverUsePosters',
                         'discoverUsePosters',
                         true
-                    )
+                    ),
+                    DisplayCustomizations: self.parseDisplayCustomizations(data)
                 };
                 return self._displaySettings;
             }).catch(function () {
@@ -366,10 +364,98 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     StreamingServiceUseImages: true,
                     StudioNetworkUseImages: true,
                     GenreUseBackdrops: true,
-                    DiscoverUsePosters: true
+                    DiscoverUsePosters: true,
+                    DisplayCustomizations: self.parseDisplayCustomizations(null)
                 };
                 return self._displaySettings;
             });
+        },
+
+        parseDisplayCustomizations: function (data) {
+            const root = (data && (data.DisplayCustomizations || data.displayCustomizations)) || {};
+            return {
+                StreamingService: root.StreamingService || root.streamingService || {},
+                StudioNetwork: root.StudioNetwork || root.studioNetwork || {},
+                GenreBackdrop: root.GenreBackdrop || root.genreBackdrop || {},
+                DiscoverBackdrop: root.DiscoverBackdrop || root.discoverBackdrop || {}
+            };
+        },
+
+        getDisplaySettingsKey: function () {
+            const settings = this._displaySettings || {};
+            return [
+                settings.StreamingServiceUseImages,
+                settings.StudioNetworkUseImages,
+                settings.GenreUseBackdrops,
+                settings.DiscoverUsePosters,
+                JSON.stringify(settings.DisplayCustomizations || {})
+            ].join(':');
+        },
+
+        normalizeHexColor: function (value, fallback) {
+            const raw = String(value || fallback || '').replace('#', '').trim();
+            if (/^[0-9a-fA-F]{6}$/.test(raw)) {
+                return raw.toLowerCase();
+            }
+
+            return String(fallback || 'ffffff').replace('#', '').toLowerCase();
+        },
+
+        getDisplayStyle: function (styleKey) {
+            const settings = this._displaySettings || {};
+            const customizations = settings.DisplayCustomizations || {};
+            const configKeyMap = {
+                streamingService: 'StreamingService',
+                studioNetwork: 'StudioNetwork',
+                genreBackdrop: 'GenreBackdrop',
+                discoverBackdrop: 'DiscoverBackdrop'
+            };
+            const defaults = {
+                streamingService: { duotoneEnabled: true, duotoneLight: 'ffffff', duotoneDark: '969696' },
+                studioNetwork: { duotoneEnabled: true, duotoneLight: 'ffffff', duotoneDark: '969696' },
+                genreBackdrop: { duotoneEnabled: false, duotoneLight: 'ffffff', duotoneDark: '969696' },
+                discoverBackdrop: { duotoneEnabled: false, duotoneLight: 'ffffff', duotoneDark: '969696' }
+            };
+            const fallback = defaults[styleKey] || defaults.streamingService;
+            const source = customizations[configKeyMap[styleKey]] || {};
+
+            return {
+                duotoneEnabled: this.readConfigBool(source, 'DuotoneEnabled', 'duotoneEnabled', fallback.duotoneEnabled),
+                duotoneLight: this.normalizeHexColor(source.DuotoneLight ?? source.duotoneLight, fallback.duotoneLight),
+                duotoneDark: this.normalizeHexColor(source.DuotoneDark ?? source.duotoneDark, fallback.duotoneDark)
+            };
+        },
+
+        buildTmdbImageUrl: function (path, styleKey, size) {
+            if (!path) {
+                return null;
+            }
+
+            const pathNorm = path.startsWith('/') ? path : '/' + path;
+            let sizePart = size || 'w780';
+
+            if (styleKey) {
+                const style = this.getDisplayStyle(styleKey);
+                if (style.duotoneEnabled) {
+                    sizePart += '_filter(duotone,' + style.duotoneDark + ',' + style.duotoneLight + ')';
+                }
+            }
+
+            return 'https://image.tmdb.org/t/p/' + sizePart + pathNorm;
+        },
+
+        buildDiscoverPosterUrl: function (item) {
+            const posterPath = this.getProviderId(item, 'TmdbPosterPath');
+            if (this.getDisplayStyle('discoverBackdrop').duotoneEnabled && posterPath) {
+                return this.buildTmdbImageUrl(posterPath, 'discoverBackdrop', 'w600_and_h900_bestv2');
+            }
+
+            let posterUrl = this.getProviderId(item, 'JellyseerrPoster');
+            if (posterUrl && !posterUrl.startsWith('http')) {
+                posterUrl = window.ApiClient.getUrl(posterUrl);
+            }
+
+            return posterUrl || null;
         },
 
         shouldUseBackdropThumbnails: function () {
@@ -441,11 +527,6 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
 
             section.appendChild(titleContainer);
 
-            const scroller = document.createElement('div');
-            scroller.setAttribute('is', 'emby-scroller');
-            scroller.className = 'padded-top-focusscale padded-bottom-focusscale emby-scroller';
-            scroller.setAttribute('data-centerfocus', 'true');
-
             const itemsContainer = document.createElement('div');
             itemsContainer.setAttribute('is', 'emby-itemscontainer');
             itemsContainer.className = 'itemsContainer scrollSlider focuscontainer-x';
@@ -459,14 +540,30 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             }
 
             itemsContainer.innerHTML = this.createDiscoverCards(items);
-            scroller.appendChild(itemsContainer);
-            section.appendChild(scroller);
+            this.appendHorizontalScroller(section, itemsContainer, { focusScale: true });
             if (this.shouldUseBackdropThumbnails()) {
                 this.hydrateDiscoverBackdropCards(itemsContainer);
             } else {
                 this.initLazyImages(itemsContainer);
             }
             return section;
+        },
+
+        appendHorizontalScroller: function (section, itemsContainer, options) {
+            const settings = options || {};
+            const scroller = document.createElement('div');
+            scroller.setAttribute('is', 'emby-scroller');
+            scroller.className = settings.focusScale
+                ? 'padded-top-focusscale padded-bottom-focusscale emby-scroller'
+                : 'emby-scroller';
+            scroller.setAttribute('data-centerfocus', 'true');
+
+            scroller.appendChild(itemsContainer);
+
+            const scrollerWrap = document.createElement('div');
+            scrollerWrap.className = 'betterseerr-scroller-wrap emby-scroller-container';
+            scrollerWrap.appendChild(scroller);
+            section.appendChild(scrollerWrap);
         },
 
         buildCarouselSection: function (title, items, mediaType, kind) {
@@ -480,11 +577,6 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             h2.textContent = title;
             titleContainer.appendChild(h2);
             section.appendChild(titleContainer);
-
-            const scroller = document.createElement('div');
-            scroller.setAttribute('is', 'emby-scroller');
-            scroller.className = 'padded-top-focusscale padded-bottom-focusscale emby-scroller';
-            scroller.setAttribute('data-centerfocus', 'true');
 
             const itemsContainer = document.createElement('div');
             itemsContainer.setAttribute('is', 'emby-itemscontainer');
@@ -505,8 +597,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             }
 
             itemsContainer.innerHTML = html;
-            scroller.appendChild(itemsContainer);
-            section.appendChild(scroller);
+            this.appendHorizontalScroller(section, itemsContainer, { focusScale: false });
             return section;
         },
 
@@ -515,14 +606,20 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             const name = item.name || 'Unknown';
             const safeName = this.escapeHtml(name);
             const showLogo = this.shouldShowLogo(kind);
-            const logoUrl = showLogo ? this.buildBrowseLogoUrl(item.logo || item.logoPath) : null;
+            const logoStyleKey = kind === 'provider'
+                ? 'streamingService'
+                : (kind === 'studio' || kind === 'network' ? 'studioNetwork' : null);
+            const logoPath = item.logo || item.logoPath;
+            const logoUrl = showLogo && logoStyleKey && logoPath && logoPath !== 'not found'
+                ? this.buildTmdbImageUrl(logoPath, logoStyleKey)
+                : null;
             let content = '';
 
             if (kind === 'genre' && (this._displaySettings || {}).GenreUseBackdrops !== false) {
                 const backdrops = item.backdrops || [];
                 if (backdrops.length) {
                     const backdropPath = backdrops[Math.floor(Math.random() * backdrops.length)];
-                    const backdropUrl = this.buildBrowseBackdropUrl(backdropPath);
+                    const backdropUrl = this.buildTmdbImageUrl(backdropPath, 'genreBackdrop');
                     if (backdropUrl) {
                         content += '<span class="betterseerr-box-backdrop" style="background-image: url(\'' + backdropUrl + '\')"></span>';
                     }
@@ -539,24 +636,6 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             return '<button type="button" class="betterseerr-box-card" data-kind="' + kind + '" data-media-type="' + mediaType + '" data-id="' + id + '" data-name="' + safeName + '">' +
                 content +
                 '</button>';
-        },
-
-        buildBrowseBackdropUrl: function (backdropPath) {
-            if (!backdropPath) {
-                return null;
-            }
-
-            const path = backdropPath.startsWith('/') ? backdropPath : '/' + backdropPath;
-            return 'https://image.tmdb.org/t/p/w780' + path;
-        },
-
-        buildBrowseLogoUrl: function (logoPath) {
-            if (!logoPath || logoPath === 'not found') {
-                return null;
-            }
-
-            const path = logoPath.startsWith('/') ? logoPath : '/' + logoPath;
-            return 'https://image.tmdb.org/t/p/w780_filter(duotone,ffffff,969696)' + path;
         },
 
         buildBrowseGridPath: function (kind, mediaType, id) {
@@ -609,14 +688,10 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     self.getProviderId(item, 'Jellyseerr') ||
                     self.getField(item, 'id', 'Id');
                 const mediaType = self.getField(item, 'SourceType', 'sourceType', 'mediaType', 'MediaType');
-                let posterUrl = self.getProviderId(item, 'JellyseerrPoster');
+                let posterUrl = self.buildDiscoverPosterUrl(item);
                 const safeName = self.escapeHtml(self.getField(item, 'Name', 'name', 'OriginalTitle', 'originalTitle') || 'Unknown');
                 if (!mediaId || !mediaType) {
                     return;
-                }
-
-                if (posterUrl && !posterUrl.startsWith('http')) {
-                    posterUrl = window.ApiClient.getUrl(posterUrl);
                 }
 
                 const safeUrl = self.escapeHtml(posterUrl || '');
@@ -666,10 +741,13 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
 
                 let fallbackUrl = self.getProviderId(item, 'JellyseerrBackdrop');
                 fallbackUrl = self.resolveImageUrl(fallbackUrl);
+                const tmdbBackdropPath = self.getProviderId(item, 'TmdbBackdropPath') || '';
                 const safeFallback = self.escapeHtml(fallbackUrl || '');
+                const safeBackdropPath = self.escapeHtml(tmdbBackdropPath);
                 const fallbackAttr = safeFallback ? ' data-fallback-src="' + safeFallback + '"' : '';
+                const backdropPathAttr = safeBackdropPath ? ' data-tmdb-backdrop-path="' + safeBackdropPath + '"' : '';
 
-                html += '<div class="card betterseerr-discover-card betterseerr-discover-card--backdrop' + gridClass + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '"' + fallbackAttr + '>';
+                html += '<div class="card betterseerr-discover-card betterseerr-discover-card--backdrop' + gridClass + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '"' + fallbackAttr + backdropPathAttr + '>';
                 html += '   <div class="cardBox cardBox-bottompadded">';
                 html += '       <div class="cardScalable betterseerr-discover-backdrop-scalable">';
                 html += '           <div class="cardPadder betterseerr-discover-backdrop-padder"></div>';
@@ -696,8 +774,8 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             return html;
         },
 
-        setDiscoverBackdropImage: function (card, url) {
-            if (!card || !url) {
+        setDiscoverBackdropImage: function (card, cachedUrl) {
+            if (!card) {
                 return;
             }
 
@@ -706,7 +784,21 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 return;
             }
 
-            media.style.backgroundImage = "url('" + url.replace(/'/g, "\\'") + "')";
+            const path = card.getAttribute('data-tmdb-backdrop-path') || '';
+            const style = this.getDisplayStyle('discoverBackdrop');
+            let displayUrl = style.duotoneEnabled && path
+                ? (this.buildTmdbImageUrl(path, 'discoverBackdrop') || '')
+                : '';
+
+            if (!displayUrl) {
+                displayUrl = cachedUrl || '';
+            }
+
+            if (!displayUrl) {
+                return;
+            }
+
+            media.style.backgroundImage = "url('" + displayUrl.replace(/'/g, "\\'") + "')";
         },
 
         setDiscoverBackdropPresentation: function (card, mode) {
@@ -767,6 +859,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     const hasEnglish = !!(data && (data.hasEnglishBackdrop || data.HasEnglishBackdrop));
                     return {
                         url: url ? self.resolveImageUrl(url) : '',
+                        path: (data && (data.tmdbBackdropPath || data.TmdbBackdropPath)) || '',
                         hasEnglishBackdrop: hasEnglish
                     };
                 })
@@ -786,6 +879,10 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             const url = result && result.url;
             const hasEnglish = result && result.hasEnglishBackdrop;
 
+            if (result && result.path) {
+                card.setAttribute('data-tmdb-backdrop-path', result.path);
+            }
+
             if (url && hasEnglish) {
                 self.setDiscoverBackdropPresentation(card, 'english');
                 self.setDiscoverBackdropImage(card, url);
@@ -793,7 +890,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             }
 
             const fallbackUrl = url || seerrFallbackUrl;
-            if (fallbackUrl) {
+            if (fallbackUrl || card.getAttribute('data-tmdb-backdrop-path')) {
                 self.setDiscoverBackdropPresentation(card, 'fallback');
                 self.setDiscoverBackdropImage(card, fallbackUrl);
             }
@@ -1137,11 +1234,18 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
         },
 
         refreshScrollers: function (container) {
-            const scrollers = container.querySelectorAll('[is="emby-scroller"]');
-            scrollers.forEach(function (scroller) {
-                if (scroller.enableMouseWheelScroll) {
-                    scroller.enableMouseWheelScroll();
-                }
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    const scrollers = container.querySelectorAll('[is="emby-scroller"]');
+                    scrollers.forEach(function (scroller) {
+                        if (scroller.scroller && scroller.scroller.reload) {
+                            scroller.scroller.reload();
+                        }
+                        if (scroller.enableMouseWheelScroll) {
+                            scroller.enableMouseWheelScroll();
+                        }
+                    });
+                });
             });
         },
 

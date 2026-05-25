@@ -148,7 +148,8 @@ public class BetterSeerrTabsController : ControllerBase
             config.StreamingServiceUseImages,
             config.StudioNetworkUseImages,
             config.GenreUseBackdrops,
-            config.DiscoverUsePosters
+            config.DiscoverUsePosters,
+            displayCustomizations = DisplayCustomizationsHelper.Resolve(config)
         });
     }
 
@@ -179,6 +180,7 @@ public class BetterSeerrTabsController : ControllerBase
         return Ok(new
         {
             backdropUrl = backdrop.BackdropUrl,
+            tmdbBackdropPath = backdrop.TmdbBackdropPath,
             hasEnglishBackdrop = backdrop.HasEnglishBackdrop
         });
     }

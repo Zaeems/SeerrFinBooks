@@ -31,4 +31,6 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool GenreUseBackdrops { get; set; } = true;
 
     public bool DiscoverUsePosters { get; set; } = true;
+
+    public string DisplayCustomizationsJson { get; set; } = string.Empty;
 }

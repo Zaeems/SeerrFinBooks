@@ -58,6 +58,7 @@ public class TmdbBackdropService
         var dto = new CachedBackdropDto
         {
             BackdropUrl = backdropUrl,
+            TmdbBackdropPath = path,
             HasEnglishBackdrop = pick.HasEnglishBackdrop
         };
         _cache[cacheKey] = dto;
@@ -67,6 +68,8 @@ public class TmdbBackdropService
     public sealed class CachedBackdropDto
     {
         public string BackdropUrl { get; init; } = string.Empty;
+
+        public string TmdbBackdropPath { get; init; } = string.Empty;
 
         public bool HasEnglishBackdrop { get; init; }
     }

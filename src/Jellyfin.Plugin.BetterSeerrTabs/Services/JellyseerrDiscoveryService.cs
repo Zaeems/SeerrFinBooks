@@ -430,6 +430,8 @@ public class JellyseerrDiscoveryService
                 { "Jellyseerr", item.Value<int>("id").ToString() },
                 { "JellyseerrPoster", posterUrl },
                 { "JellyseerrBackdrop", backdropUrl },
+                { "TmdbPosterPath", posterPath },
+                { "TmdbBackdropPath", backdropPath },
                 { "Tmdb", item.Value<int?>("tmdbId")?.ToString() ?? string.Empty }
             },
             PremiereDate = DateTime.TryParse(dateTimeString, out DateTime dt) ? dt : DateTime.Parse("1970-01-01")

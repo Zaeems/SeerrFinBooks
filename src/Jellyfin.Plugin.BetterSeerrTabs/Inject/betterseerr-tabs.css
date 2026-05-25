@@ -2,7 +2,7 @@
     flex: 0 0 auto;
     width: 20em;
     aspect-ratio: 16 / 9;
-    margin: 0.6em 0.6em 0 0;
+    margin: 0 0.6em 0 0;
     cursor: pointer;
     background: var(--cardBackground, rgba(255, 255, 255, 0.06));
     border: none;
@@ -217,4 +217,19 @@
 .betterseerr-grid-view .betterseerr-discover-card--backdrop.betterseerr-discover-card--grid {
     width: 100%;
     max-width: 20em;
+}
+
+.betterseerr-scroller-wrap {
+    position: relative;
+}
+
+.betterseerr-scroller-wrap > .emby-scrollbuttons {
+    top: 50%;
+    transform: translateY(-50%);
+    min-height: 0;
+    padding-top: 0;
+}
+
+.betterseerr-carousel-section .itemsContainer > .betterseerr-box-card:first-child {
+    margin-left: 0;
 }
