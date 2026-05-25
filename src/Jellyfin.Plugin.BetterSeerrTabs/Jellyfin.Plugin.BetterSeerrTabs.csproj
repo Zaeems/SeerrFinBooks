@@ -29,6 +29,8 @@
         <EmbeddedResource Include="Inject\betterseerr-tabs.css" />
         <EmbeddedResource Include="Inject\betterseerr-modal.js" />
         <EmbeddedResource Include="Inject\betterseerr-modal.css" />
+        <EmbeddedResource Include="Inject\betterseerr-requests.js" />
+        <EmbeddedResource Include="Inject\betterseerr-requests.css" />
     </ItemGroup>
 
     <ItemGroup>

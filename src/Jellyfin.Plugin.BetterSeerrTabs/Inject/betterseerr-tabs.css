@@ -1,6 +1,13 @@
+.betterseerr-movies-sections,
+.betterseerr-tv-sections,
+.betterseerr-requests-sections {
+    --betterseerr-discover-backdrop-width: 20em;
+    --betterseerr-discover-portrait-width: 13.333em;
+}
+
 .betterseerr-carousel-section .betterseerr-box-card {
     flex: 0 0 auto;
-    width: 20em;
+    width: var(--betterseerr-discover-backdrop-width);
     aspect-ratio: 16 / 9;
     margin: 0 0.6em 0 0;
     cursor: pointer;
@@ -136,7 +143,12 @@
 
 .betterseerr-discover-card--backdrop {
     flex: 0 0 auto;
-    width: 20em;
+    width: var(--betterseerr-discover-backdrop-width);
+}
+
+.betterseerr-poster-section .betterseerr-discover-card:not(.betterseerr-discover-card--backdrop),
+.betterseerr-grid-view .betterseerr-discover-card:not(.betterseerr-discover-card--backdrop) {
+    width: var(--betterseerr-discover-portrait-width);
 }
 
 .betterseerr-discover-card--backdrop .betterseerr-discover-backdrop-scalable {
@@ -216,7 +228,7 @@
 
 .betterseerr-grid-view .betterseerr-discover-card--backdrop.betterseerr-discover-card--grid {
     width: 100%;
-    max-width: 20em;
+    max-width: var(--betterseerr-discover-backdrop-width);
 }
 
 .betterseerr-scroller-wrap {

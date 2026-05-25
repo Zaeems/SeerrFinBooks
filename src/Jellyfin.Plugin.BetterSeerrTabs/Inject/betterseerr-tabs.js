@@ -99,8 +99,56 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             });
         },
 
+        attachCustomTabGuard: function (tabs) {
+            if (!tabs || tabs.dataset.bstCustomTabGuard === 'true') {
+                return;
+            }
+
+            tabs.dataset.bstCustomTabGuard = 'true';
+            const self = this;
+
+            tabs.addEventListener('beforetabchange', function (event) {
+                const index = parseInt(event.detail && event.detail.selectedTabIndex, 10);
+                if (isNaN(index) || index < 2) {
+                    return;
+                }
+
+                setTimeout(function () {
+                    self.onCustomTabShown();
+                }, 0);
+            }, true);
+
+            // Jellyfin HomeView only defines controllers for 0/1 while Custom Tabs use data-index >= 2. It throws error for anything else unless we stop that handler.
+            tabs.addEventListener('tabchange', function (event) {
+                const index = parseInt(event.detail && event.detail.selectedTabIndex, 10);
+                if (isNaN(index) || index < 2) {
+                    return;
+                }
+
+                event.stopImmediatePropagation();
+            }, true);
+        },
+
+        onCustomTabShown: function () {
+            const self = this;
+            setTimeout(function () {
+                self.scheduleRender();
+                if (typeof window.__betterSeerrRequestsEnsureMounted === 'function') {
+                    window.__betterSeerrRequestsEnsureMounted();
+                }
+            }, 0);
+        },
+
         setupCustomTabWatchers: function () {
             const self = this;
+
+            document.addEventListener('viewbeforeshow', function (event) {
+                if (!event.target || event.target.id !== 'indexPage') {
+                    return;
+                }
+
+                self.attachCustomTabGuard(document.querySelector('.tabs-viewmenubar [is="emby-tabs"]'));
+            }, true);
 
             document.addEventListener('viewshow', function () {
                 self.scheduleRender();
@@ -109,11 +157,12 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             document.addEventListener('click', function (e) {
                 if (e.target.closest('.emby-tab-button')) {
                     setTimeout(function () {
-                        self.scheduleRender();
-                    }, 250);
+                        self.onCustomTabShown();
+                    }, 150);
                 }
             });
 
+            self.attachCustomTabGuard(document.querySelector('.tabs-viewmenubar [is="emby-tabs"]'));
             self.scheduleRender();
         },
 
@@ -655,14 +704,28 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             return null;
         },
 
-        createDiscoverCards: function (items, forGrid) {
-            if (this.shouldUseBackdropThumbnails()) {
-                return this.createDiscoverBackdropCards(items, forGrid);
+        createDiscoverCards: function (items, forGrid, options) {
+            options = options || {};
+            const useBackdrop = options.forceBackdrop === true ||
+                (options.forceBackdrop !== false && this.shouldUseBackdropThumbnails());
+            if (useBackdrop) {
+                return this.createDiscoverBackdropCards(items, forGrid, options);
             }
-            return this.createDiscoverPosterCards(items, forGrid);
+            return this.createDiscoverPosterCards(items, forGrid, options);
         },
 
-        buildDiscoverYearText: function (item, safeName) {
+        normalizeDiscoverMediaType: function (value) {
+            const normalized = String(value || '').toLowerCase();
+            if (normalized === 'series' || normalized === 'tv') {
+                return 'tv';
+            }
+            if (normalized === 'movie') {
+                return 'movie';
+            }
+            return value;
+        },
+
+        buildDiscoverYearText: function (item) {
             const self = this;
             const date = new Date(self.getField(item, 'PremiereDate', 'premiereDate', 'releaseDate', 'firstAirDate') || '');
             const year = Number.isNaN(date.getFullYear()) ? '' : date.getFullYear();
@@ -677,17 +740,24 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             return { year: year, yearText: yearText };
         },
 
-        createDiscoverPosterCards: function (items, forGrid) {
+        createDiscoverPosterCards: function (items, forGrid, options) {
             let html = '';
             const self = this;
+            options = options || {};
+            const interactive = options.interactive !== false;
+            const includeMetaText = options.includeMetaText !== false;
             const cardType = forGrid ? 'portraitCard' : 'overflowPortraitCard';
             const padderType = forGrid ? 'cardPadder-portrait' : 'cardPadder-overflowPortrait';
+            const staticClass = interactive ? '' : ' betterseerr-discover-card--static';
+            const boxClass = includeMetaText ? 'cardBox cardBox-bottompadded' : 'cardBox';
 
             items.forEach(function (item) {
                 const mediaId = self.getProviderId(item, 'Tmdb') ||
                     self.getProviderId(item, 'Jellyseerr') ||
                     self.getField(item, 'id', 'Id');
-                const mediaType = self.getField(item, 'SourceType', 'sourceType', 'mediaType', 'MediaType');
+                const mediaType = self.normalizeDiscoverMediaType(
+                    self.getField(item, 'SourceType', 'sourceType', 'mediaType', 'MediaType')
+                );
                 let posterUrl = self.buildDiscoverPosterUrl(item);
                 const safeName = self.escapeHtml(self.getField(item, 'Name', 'name', 'OriginalTitle', 'originalTitle') || 'Unknown');
                 if (!mediaId || !mediaType) {
@@ -699,24 +769,27 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     ? ' data-src="' + safeUrl + '"'
                     : '';
 
-                html += '<div class="card ' + cardType + ' betterseerr-discover-card" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '">';
-                html += '   <div class="cardBox cardBox-bottompadded">';
+                html += '<div class="card ' + cardType + ' betterseerr-discover-card' + staticClass + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '">';
+                html += '   <div class="' + boxClass + '">';
                 html += '       <div class="cardScalable">';
                 html += '           <div class="cardPadder ' + padderType + ' lazy-hidden-children"></div>';
                 html += '           <div class="cardImageContainer coveredImage cardContent lazy lazy-hidden"' + imageAttrs + ' aria-label="' + safeName + '"></div>';
-                html += '           <div class="cardOverlayContainer">';
-                html += '               <div class="cardImageContainer"></div>';
-                html += '               <div class="cardOverlayButton-br flex">';
-                html += '                   <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="' + mediaId + '" data-media-type="' + mediaType + '">';
-                html += '                       <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>';
-                html += '                   </button>';
-                html += '               </div>';
-                html += '           </div>';
+                if (interactive) {
+                    html += '           <div class="cardOverlayContainer">';
+                    html += '               <div class="cardImageContainer"></div>';
+                    html += '               <div class="cardOverlayButton-br flex">';
+                    html += '                   <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="' + mediaId + '" data-media-type="' + mediaType + '">';
+                    html += '                       <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>';
+                    html += '                   </button>';
+                    html += '               </div>';
+                    html += '           </div>';
+                }
                 html += '       </div>';
-                html += '       <div class="cardText cardTextCentered cardText-first"><bdi><span title="' + safeName + '">' + safeName + '</span></bdi></div>';
-
-                const meta = self.buildDiscoverYearText(item, safeName);
-                html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + meta.year + '">' + meta.yearText + '</span></bdi></div>';
+                if (includeMetaText) {
+                    html += '       <div class="cardText cardTextCentered cardText-first"><bdi><span title="' + safeName + '">' + safeName + '</span></bdi></div>';
+                    const meta = self.buildDiscoverYearText(item);
+                    html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + meta.year + '">' + meta.yearText + '</span></bdi></div>';
+                }
                 html += '   </div>';
                 html += '</div>';
             }, this);
@@ -724,16 +797,23 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
             return html;
         },
 
-        createDiscoverBackdropCards: function (items, forGrid) {
+        createDiscoverBackdropCards: function (items, forGrid, options) {
             let html = '';
             const self = this;
+            options = options || {};
+            const interactive = options.interactive !== false;
+            const includeMetaText = options.includeMetaText !== false;
             const gridClass = forGrid ? ' betterseerr-discover-card--grid' : '';
+            const staticClass = interactive ? '' : ' betterseerr-discover-card--static';
+            const boxClass = includeMetaText ? 'cardBox cardBox-bottompadded' : 'cardBox';
 
             items.forEach(function (item) {
                 const mediaId = self.getProviderId(item, 'Tmdb') ||
                     self.getProviderId(item, 'Jellyseerr') ||
                     self.getField(item, 'id', 'Id');
-                const mediaType = self.getField(item, 'SourceType', 'sourceType', 'mediaType', 'MediaType');
+                const mediaType = self.normalizeDiscoverMediaType(
+                    self.getField(item, 'SourceType', 'sourceType', 'mediaType', 'MediaType')
+                );
                 const safeName = self.escapeHtml(self.getField(item, 'Name', 'name', 'OriginalTitle', 'originalTitle') || 'Unknown');
                 if (!mediaId || !mediaType) {
                     return;
@@ -747,26 +827,30 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 const fallbackAttr = safeFallback ? ' data-fallback-src="' + safeFallback + '"' : '';
                 const backdropPathAttr = safeBackdropPath ? ' data-tmdb-backdrop-path="' + safeBackdropPath + '"' : '';
 
-                html += '<div class="card betterseerr-discover-card betterseerr-discover-card--backdrop' + gridClass + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '"' + fallbackAttr + backdropPathAttr + '>';
-                html += '   <div class="cardBox cardBox-bottompadded">';
+                html += '<div class="card betterseerr-discover-card betterseerr-discover-card--backdrop' + gridClass + staticClass + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '"' + fallbackAttr + backdropPathAttr + '>';
+                html += '   <div class="' + boxClass + '">';
                 html += '       <div class="cardScalable betterseerr-discover-backdrop-scalable">';
                 html += '           <div class="cardPadder betterseerr-discover-backdrop-padder"></div>';
                 html += '           <div class="cardImageContainer coveredImage cardContent betterseerr-discover-backdrop-image" aria-label="' + safeName + '">';
                 html += '               <span class="betterseerr-discover-backdrop-media"></span>';
                 html += '               <span class="betterseerr-discover-overlay-title betterseerr-box-label">' + safeName + '</span>';
                 html += '           </div>';
-                html += '           <div class="cardOverlayContainer">';
-                html += '               <div class="cardImageContainer"></div>';
-                html += '               <div class="cardOverlayButton-br flex">';
-                html += '                   <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="' + mediaId + '" data-media-type="' + mediaType + '">';
-                html += '                       <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>';
-                html += '                   </button>';
-                html += '               </div>';
-                html += '           </div>';
+                if (interactive) {
+                    html += '           <div class="cardOverlayContainer">';
+                    html += '               <div class="cardImageContainer"></div>';
+                    html += '               <div class="cardOverlayButton-br flex">';
+                    html += '                   <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="' + mediaId + '" data-media-type="' + mediaType + '">';
+                    html += '                       <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>';
+                    html += '                   </button>';
+                    html += '               </div>';
+                    html += '           </div>';
+                }
                 html += '       </div>';
-                html += '       <div class="cardText cardTextCentered cardText-first betterseerr-discover-title-below"><bdi><span title="' + safeName + '">' + safeName + '</span></bdi></div>';
-                const meta = self.buildDiscoverYearText(item, safeName);
-                html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + meta.year + '">' + meta.yearText + '</span></bdi></div>';
+                if (includeMetaText) {
+                    html += '       <div class="cardText cardTextCentered cardText-first betterseerr-discover-title-below"><bdi><span title="' + safeName + '">' + safeName + '</span></bdi></div>';
+                    const meta = self.buildDiscoverYearText(item);
+                    html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + meta.year + '">' + meta.yearText + '</span></bdi></div>';
+                }
                 html += '   </div>';
                 html += '</div>';
             }, this);
@@ -937,6 +1021,14 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 return;
             }
 
+            cards.forEach(function (card) {
+                const fallbackUrl = card.getAttribute('data-fallback-src') || '';
+                if (card.getAttribute('data-tmdb-backdrop-path') || fallbackUrl) {
+                    self.setDiscoverBackdropPresentation(card, 'fallback');
+                    self.setDiscoverBackdropImage(card, fallbackUrl);
+                }
+            });
+
             if (!self._backdropHydrateQueue) {
                 self._backdropHydrateQueue = [];
                 self._backdropHydrateActive = 0;
@@ -992,7 +1084,8 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 }
 
                 const card = e.target.closest('.betterseerr-discover-card');
-                if (!card || !card.closest('.betterseerr-movies-sections, .betterseerr-tv-sections, .betterseerr-grid-view')) {
+                if (!card || card.classList.contains('betterseerr-discover-card--static') ||
+                    !card.closest('.betterseerr-movies-sections, .betterseerr-tv-sections, .betterseerr-grid-view')) {
                     return;
                 }
 

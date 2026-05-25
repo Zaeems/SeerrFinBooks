@@ -25,10 +25,12 @@ public static class TransformationPatches
         string cssLinks =
             fontLinks +
             $"<link rel=\"stylesheet\" href=\"/BetterSeerrTabs/betterseerr-tabs.css{cacheParam}\" />" +
-            $"<link rel=\"stylesheet\" href=\"/BetterSeerrTabs/betterseerr-modal.css{cacheParam}\" />";
+            $"<link rel=\"stylesheet\" href=\"/BetterSeerrTabs/betterseerr-modal.css{cacheParam}\" />" +
+            $"<link rel=\"stylesheet\" href=\"/BetterSeerrTabs/betterseerr-requests.css{cacheParam}\" />";
         string scripts =
             $"<script defer src=\"/BetterSeerrTabs/betterseerr-modal.js{cacheParam}\"></script>" +
-            $"<script defer src=\"/BetterSeerrTabs/betterseerr-tabs.js{cacheParam}\"></script>";
+            $"<script defer src=\"/BetterSeerrTabs/betterseerr-tabs.js{cacheParam}\"></script>" +
+            $"<script defer src=\"/BetterSeerrTabs/betterseerr-requests.js{cacheParam}\"></script>";
 
         return payload.Contents!
             .Replace("</head>", $"{cssLinks}</head>", StringComparison.Ordinal)

@@ -11,7 +11,7 @@
     "versions": [
       {
         "version": "1.2.5.0",
-        "changelog": "Release 1.2.5.0.",
+        "changelog": "Duotone customization using tmdb filter for images, and \"Customize\" button on configuration page to select colors for the duotone filter.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.2.5.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
         "checksum": "99099573E57AA622F8415F1A58CABF41",
@@ -20,7 +20,7 @@
       },
       {
         "version": "1.2.4.0",
-        "changelog": "Release 1.2.4.0.",
+        "changelog": "Added support for landscape thumbnails in discovery cards, with a setting to switch between landscape/portrait thumbnails.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.2.4.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
         "checksum": "A2AD8B0492A76AE56F3F4A73DF63BAE3",
@@ -29,7 +29,7 @@
       },
       {
         "version": "1.2.3.0",
-        "changelog": "Release 1.2.3.0.",
+        "changelog": "Added genre background for genre boxes, with a toggleable setting.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.2.3.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
         "checksum": "2C6879DE41EFF21CE0E5C4E3DD8E4458",
@@ -38,7 +38,7 @@
       },
       {
         "version": "1.2.2.0",
-        "changelog": "Release 1.2.2.0.",
+        "changelog": "Added streaming service, studio and network logo images instead of text, with a toggleable setting.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.2.2.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
         "checksum": "5089077AC9F21184324C4EAB58E8AF53",
@@ -47,7 +47,7 @@
       },
       {
         "version": "1.2.1.0",
-        "changelog": "Release 1.2.1.0.",
+        "changelog": "Fixed anime carousel/section not showing content due to Seerr's filters.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.2.1.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
         "checksum": "07E64F8C7CC2DCB2F25E769BD913B424",
@@ -56,7 +56,7 @@
       },
       {
         "version": "1.2.0.0",
-        "changelog": "Release 1.2.0.0.",
+        "changelog": "Added \"View more\" button to see a grid page with all content in a section. Completed genre, studio and network boxes so they open grid pages on click.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.2.0.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
         "checksum": "3DAFE099115B39FCB91B845E04E8B030",
@@ -65,7 +65,7 @@
       },
       {
         "version": "1.0.0.1",
-        "changelog": "Release 1.0.0.1.",
+        "changelog": "Updated UI on configuration page (in settings).",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.0.0.1/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
         "checksum": "6D73CCCA785F8D582A2974E10ED81548",
@@ -74,7 +74,7 @@
       },
       {
         "version": "1.0.0.0",
-        "changelog": "Release 1.0.0.0.",
+        "changelog": "First version of BetterSeerrTabs with discovery tabs and request modal.",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.0.0.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
         "checksum": "F89AE8BD5A9003E935EB26BC9D7C1DAA",

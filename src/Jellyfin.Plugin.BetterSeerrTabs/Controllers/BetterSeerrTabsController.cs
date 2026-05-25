@@ -18,6 +18,7 @@ public class BetterSeerrTabsController : ControllerBase
 {
     private readonly JellyseerrDiscoveryService _discoveryService;
     private readonly JellyseerrRequestService _requestService;
+    private readonly JellyseerrRequestsService _requestsService;
     private readonly JellyseerrProxyService _proxyService;
     private readonly ImageCacheService _imageCacheService;
     private readonly TmdbBackdropService _tmdbBackdropService;
@@ -25,12 +26,14 @@ public class BetterSeerrTabsController : ControllerBase
     public BetterSeerrTabsController(
         JellyseerrDiscoveryService discoveryService,
         JellyseerrRequestService requestService,
+        JellyseerrRequestsService requestsService,
         JellyseerrProxyService proxyService,
         ImageCacheService imageCacheService,
         TmdbBackdropService tmdbBackdropService)
     {
         _discoveryService = discoveryService;
         _requestService = requestService;
+        _requestsService = requestsService;
         _proxyService = proxyService;
         _imageCacheService = imageCacheService;
         _tmdbBackdropService = tmdbBackdropService;
@@ -87,6 +90,14 @@ public class BetterSeerrTabsController : ControllerBase
     [HttpGet("betterseerr-modal.css")]
     [Produces("text/css")]
     public ActionResult GetModalStylesheet() => ServeEmbedded("Inject.betterseerr-modal.css", "text/css");
+
+    [HttpGet("betterseerr-requests.js")]
+    [Produces("application/javascript")]
+    public ActionResult GetRequestsScript() => ServeEmbedded("Inject.betterseerr-requests.js", "application/javascript");
+
+    [HttpGet("betterseerr-requests.css")]
+    [Produces("text/css")]
+    public ActionResult GetRequestsStylesheet() => ServeEmbedded("Inject.betterseerr-requests.css", "text/css");
 
     [HttpGet("jellyseerr/{*path}")]
     [Authorize]
@@ -424,6 +435,48 @@ public class BetterSeerrTabsController : ControllerBase
 
         JArray options = _requestService.GetRequestOptions(username, mediaType);
         return Content(options.ToString(), "application/json");
+    }
+
+    [HttpGet("requests")]
+    [Authorize]
+    public async Task<ActionResult> GetRequests(
+        [FromServices] IUserManager userManager,
+        [FromQuery] int take = 20,
+        [FromQuery] int skip = 0,
+        CancellationToken cancellationToken = default)
+    {
+        string? username = GetUsername(userManager);
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return Forbid();
+        }
+
+        (int statusCode, string body) = await _requestsService
+            .GetRequestsAsync(username, take, skip, cancellationToken)
+            .ConfigureAwait(false);
+
+        return new ContentResult
+        {
+            StatusCode = statusCode,
+            Content = body,
+            ContentType = "application/json"
+        };
+    }
+
+    [HttpGet("proxy/avatar")]
+    [Authorize]
+    public async Task<ActionResult> ProxyAvatar([FromQuery] string? path, CancellationToken cancellationToken)
+    {
+        (byte[]? data, string? contentType) = await _requestsService
+            .GetAvatarAsync(path, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (data == null || contentType == null)
+        {
+            return NotFound();
+        }
+
+        return File(data, contentType);
     }
 
     [HttpPost("request")]
