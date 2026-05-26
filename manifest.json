@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs",
     "versions": [
       {
+        "version": "1.3.1.0",
+        "changelog": "Added request card actions so users can go directly to the Jellyfin library for downloaded media, or open a modal to request content again",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.3.1.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
+        "checksum": "B3E9E18C37D94421D7B3747B613775B6",
+        "timestamp": "2026-05-26T06:37:32.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.3.0.0",
         "changelog": "Release 1.3.0.0.",
         "targetAbi": "10.11.0.0",
