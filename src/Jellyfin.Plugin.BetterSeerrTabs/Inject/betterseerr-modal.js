@@ -6,6 +6,7 @@
     const IMDB_ICON = '<svg width="2em" height="2em" fill="currentColor" viewBox="0 0 32 32"><path d="M8.4,21.1H5.9V9.9h3.8l0.7,4.7h0.1L11,9.9h3.8v11.2h-2.5v-6.7h-0.1l-0.9,6.7H9.4l-1-6.7h0L8.4,21.1z"/><path d="M15.8,9.8c0.4,0,3.2-0.1,4.7,0.1c1.2,0.1,1.8,1.1,1.9,2.3c0.1,2.2,0.1,4.4,0.1,6.6c0,0.2,0,0.5-0.1,0.8c-0.2,0.9-0.7,1.4-1.9,1.5c-1.5,0.1-3,0.1-4.4,0.1c0,0-0.1,0-0.2,0V9.8z M18.8,11.9v7.2c0.5,0,0.8-0.2,0.8-0.7c0-1.9,0-3.9,0-5.9C19.6,12,19.4,11.8,18.8,11.9z"/><path d="M2,21.1V9.9h2.9v11.2H2z"/><path d="M29.9,14.1c-0.1-0.8-0.6-1.2-1.4-1.4c-0.8-0.1-1.6,0-2.3,0.7V9.9h-2.8v11.2H26c0.1-0.2,0.1-0.4,0.2-0.5c0.1,0.1,0.2,0.2,0.3,0.3c0.7,0.5,1.5,0.6,2.3,0.3c0.7-0.3,1-0.9,1-1.6c0-0.8,0.1-1.7,0.1-2.6C30,16,30,15,29.9,14.1z M27.1,19.1c0,0.2-0.2,0.4-0.4,0.4s-0.4-0.2-0.4-0.4v-4.3c0-0.2,0.2-0.4,0.4-0.4s0.4,0.2,0.4,0.4V19.1z"/></svg>';
 
     let activeDetailsRoot = null;
+    let activeSeasonRoot = null;
     let activeQualityRoot = null;
     let escapeHandler = null;
 
@@ -386,14 +387,32 @@
         }
     }
 
+    function closeSeasonModal() {
+        if (activeSeasonRoot) {
+            activeSeasonRoot.remove();
+            activeSeasonRoot = null;
+        }
+    }
+
     function closeDetailsModal() {
         closeQualityModal();
+        closeSeasonModal();
         if (activeDetailsRoot) {
             activeDetailsRoot.remove();
             activeDetailsRoot = null;
         }
         removeEscapeHandler();
         document.body.style.overflow = '';
+    }
+
+    function getRequestableSeasons(details) {
+        return (details.seasons || [])
+            .filter(function (season) {
+                return season.episodeCount !== 0 && season.seasonNumber > 0;
+            })
+            .sort(function (a, b) {
+                return a.seasonNumber - b.seasonNumber;
+            });
     }
 
     function submitRequest(mediaId, mediaType, option, onSuccess) {
@@ -405,6 +424,10 @@
             RootFolder: option.rootFolder || null,
             Is4k: !!option.is4k
         };
+
+        if (mediaType === 'tv' && option.seasons && option.seasons.length) {
+            payload.Seasons = option.seasons.slice().sort(function (a, b) { return a - b; });
+        }
 
         return ApiClient.ajax({
             url: ApiClient.getUrl('BetterSeerrTabs/request'),
@@ -428,7 +451,167 @@
         });
     }
 
-    function openQualityModal(mediaId, mediaType, title, onSuccess, is4k) {
+    function openSeasonModal(mediaId, mediaType, title, onSuccess, is4k) {
+        closeSeasonModal();
+        is4k = !!is4k;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bst-quality-wrapper';
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'bst-quality-backdrop';
+        backdrop.addEventListener('click', closeSeasonModal);
+
+        const panel = document.createElement('div');
+        panel.className = 'bst-quality-panel';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-modal', 'true');
+
+        const header = document.createElement('div');
+        header.className = 'bst-quality-header';
+        header.innerHTML = '<h3 id="bst-season-title">Select seasons</h3>';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'bst-quality-close';
+        closeBtn.setAttribute('aria-label', 'Close');
+        closeBtn.innerHTML = CLOSE_ICON;
+        closeBtn.addEventListener('click', closeSeasonModal);
+        header.appendChild(closeBtn);
+
+        const list = document.createElement('div');
+        list.className = 'bst-quality-list';
+        list.innerHTML = '<div class="bst-quality-loading">Loading seasons…</div>';
+
+        const footer = document.createElement('div');
+        footer.className = 'bst-quality-footer';
+
+        const continueBtn = document.createElement('button');
+        continueBtn.type = 'button';
+        continueBtn.className = 'bst-quality-continue';
+        continueBtn.textContent = 'Continue';
+        continueBtn.disabled = true;
+        footer.appendChild(continueBtn);
+
+        panel.appendChild(header);
+        panel.appendChild(list);
+        panel.appendChild(footer);
+        wrapper.appendChild(backdrop);
+        wrapper.appendChild(panel);
+        document.body.appendChild(wrapper);
+        activeSeasonRoot = wrapper;
+
+        let selectedSeasons = [];
+
+        continueBtn.addEventListener('click', function () {
+            const seasons = selectedSeasons.slice();
+            closeSeasonModal();
+            openQualityModal(mediaId, mediaType, title, onSuccess, is4k, seasons);
+        });
+
+        fetchJellyseerrDetails(mediaId, mediaType).then(function (details) {
+            list.innerHTML = '';
+            const seasons = getRequestableSeasons(details);
+
+            if (!seasons.length) {
+                list.innerHTML = '<div class="bst-quality-empty">No seasons available.</div>';
+                continueBtn.disabled = true;
+                return;
+            }
+
+            const selectAllRow = document.createElement('label');
+            selectAllRow.className = 'bst-season-option bst-season-select-all';
+            const selectAllInput = document.createElement('input');
+            selectAllInput.type = 'checkbox';
+            selectAllInput.className = 'bst-season-checkbox';
+            const selectAllText = document.createElement('span');
+            selectAllText.className = 'bst-season-label';
+            selectAllText.textContent = 'Select all';
+            selectAllRow.appendChild(selectAllInput);
+            selectAllRow.appendChild(selectAllText);
+
+            function syncSelectAll() {
+                const seasonNumbers = seasons.map(function (s) { return s.seasonNumber; });
+                selectAllInput.checked = seasonNumbers.every(function (num) {
+                    return selectedSeasons.indexOf(num) !== -1;
+                });
+                selectAllInput.indeterminate = selectedSeasons.length > 0 && !selectAllInput.checked;
+                continueBtn.disabled = selectedSeasons.length === 0;
+            }
+
+            selectAllInput.addEventListener('change', function () {
+                if (selectAllInput.checked) {
+                    selectedSeasons = seasons.map(function (s) { return s.seasonNumber; });
+                } else {
+                    selectedSeasons = [];
+                }
+                list.querySelectorAll('.bst-season-row-input').forEach(function (input) {
+                    input.checked = selectedSeasons.indexOf(parseInt(input.value, 10)) !== -1;
+                });
+                syncSelectAll();
+            });
+
+            list.appendChild(selectAllRow);
+
+            seasons.forEach(function (season) {
+                const seasonNumber = season.seasonNumber;
+
+                const row = document.createElement('label');
+                row.className = 'bst-season-option';
+
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.className = 'bst-season-checkbox bst-season-row-input';
+                input.value = String(seasonNumber);
+
+                const label = document.createElement('span');
+                label.className = 'bst-season-label';
+                const displayName = season.name && season.name !== 'Season ' + seasonNumber
+                    ? season.name
+                    : 'Season ' + seasonNumber;
+                label.appendChild(document.createTextNode(displayName));
+
+                if (season.episodeCount) {
+                    const episodes = document.createElement('span');
+                    episodes.className = 'bst-season-episodes';
+                    episodes.textContent = ' (' + season.episodeCount +
+                        (season.episodeCount === 1 ? ' episode' : ' episodes') + ')';
+                    label.appendChild(episodes);
+                }
+
+                row.appendChild(input);
+                row.appendChild(label);
+
+                input.addEventListener('change', function () {
+                    if (input.checked) {
+                        if (selectedSeasons.indexOf(seasonNumber) === -1) {
+                            selectedSeasons.push(seasonNumber);
+                        }
+                    } else {
+                        selectedSeasons = selectedSeasons.filter(function (n) {
+                            return n !== seasonNumber;
+                        });
+                    }
+                    syncSelectAll();
+                });
+
+                list.appendChild(row);
+            });
+
+            syncSelectAll();
+        }).catch(function (err) {
+            console.error('BetterSeerr seasons:', err);
+            list.innerHTML = '<div class="bst-quality-empty">Failed to load seasons.</div>';
+            continueBtn.disabled = true;
+        });
+    }
+
+    function openQualityModal(mediaId, mediaType, title, onSuccess, is4k, selectedSeasons) {
+        if (mediaType === 'tv' && selectedSeasons === undefined) {
+            openSeasonModal(mediaId, mediaType, title, onSuccess, is4k);
+            return;
+        }
+
         closeQualityModal();
         is4k = !!is4k;
 
@@ -501,7 +684,8 @@
                         serverId: opt.serverId,
                         profileId: opt.profileId,
                         rootFolder: opt.rootFolder,
-                        is4k: is4k
+                        is4k: is4k,
+                        seasons: selectedSeasons
                     }, function () {
                         closeQualityModal();
                         if (typeof onSuccess === 'function') {
@@ -541,14 +725,6 @@
         const trailerKey = getTrailerKey(data);
         const tmdbId = data.id;
         const imdbId = data.externalIds && (data.externalIds.imdbId || data.externalIds.imdb_id);
-        const mediaInfo = data.mediaInfo;
-        // 4 = available, 5 = requested (also used for 4K)
-        const requestLabel = mediaInfo && mediaInfo.status === 5 ? 'Requested' :
-            (mediaInfo && mediaInfo.status === 4 ? 'Available' : 'Request');
-        const request4kLabel = mediaInfo && mediaInfo.status4k === 5 ? '4K Requested' :
-            (mediaInfo && mediaInfo.status4k === 4 ? '4K Available' :
-                (mediaInfo && (mediaInfo.status4k === 2 || mediaInfo.status4k === 3) ? '4K Pending' : 'Request 4K'));
-
         const root = document.createElement('div');
         root.className = 'bst-popout-wrapper';
 
@@ -648,33 +824,19 @@
         const requestBtn = document.createElement('button');
         requestBtn.type = 'button';
         requestBtn.className = 'bst-btn-request';
-        requestBtn.textContent = requestLabel;
-        if (mediaInfo && (mediaInfo.status === 4 || mediaInfo.status === 5)) {
-            requestBtn.disabled = true;
-        } else {
-            requestBtn.addEventListener('click', function () {
-                openQualityModal(mediaId, mediaType, title, function () {
-                    requestBtn.textContent = 'Requested';
-                    requestBtn.disabled = true;
-                });
-            });
-        }
+        requestBtn.textContent = 'Request';
+        requestBtn.addEventListener('click', function () {
+            openQualityModal(mediaId, mediaType, title);
+        });
         actionsLeft.appendChild(requestBtn);
 
         const request4kBtn = document.createElement('button');
         request4kBtn.type = 'button';
         request4kBtn.className = 'bst-btn-request-4k';
-        request4kBtn.textContent = request4kLabel;
-        if (mediaInfo && (mediaInfo.status4k === 2 || mediaInfo.status4k === 3 || mediaInfo.status4k === 4 || mediaInfo.status4k === 5)) {
-            request4kBtn.disabled = true;
-        } else {
-            request4kBtn.addEventListener('click', function () {
-                openQualityModal(mediaId, mediaType, title, function () {
-                    request4kBtn.textContent = '4K Requested';
-                    request4kBtn.disabled = true;
-                }, true);
-            });
-        }
+        request4kBtn.textContent = 'Request 4K';
+        request4kBtn.addEventListener('click', function () {
+            openQualityModal(mediaId, mediaType, title, undefined, true);
+        });
         actionsLeft.appendChild(request4kBtn);
 
         if (trailerKey) {
@@ -851,6 +1013,8 @@
                 if (e.key === 'Escape') {
                     if (activeQualityRoot) {
                         closeQualityModal();
+                    } else if (activeSeasonRoot) {
+                        closeSeasonModal();
                     } else {
                         closeDetailsModal();
                     }

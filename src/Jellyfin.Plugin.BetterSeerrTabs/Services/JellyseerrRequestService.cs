@@ -158,7 +158,14 @@ public class JellyseerrRequestService
 
         if (payload.MediaType == "tv")
         {
-            body["seasons"] = "all";
+            if (payload.Seasons is { Count: > 0 })
+            {
+                body["seasons"] = new JArray(payload.Seasons);
+            }
+            else
+            {
+                body["seasons"] = "all";
+            }
         }
 
         if (payload.ServerId != null)

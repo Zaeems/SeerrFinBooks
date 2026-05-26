@@ -21,4 +21,7 @@ public class DiscoverRequestPayload
 
     [JsonPropertyName("Is4k")]
     public bool Is4k { get; set; }
+
+    [JsonPropertyName("Seasons")]
+    public List<int>? Seasons { get; set; }
 }
