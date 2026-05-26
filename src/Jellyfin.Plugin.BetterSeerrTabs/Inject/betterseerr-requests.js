@@ -130,6 +130,78 @@
         });
     }
 
+    function isPlayableRequest(item) {
+        const label = (item.mediaStatusLabel || '').toLowerCase();
+        return (label === 'available' || label === 'partially available') && item.jellyfinItemId;
+    }
+
+    function navigateToJellyfinItem(itemId) {
+        if (!itemId || typeof ApiClient === 'undefined') {
+            return;
+        }
+
+        function openDetails(id, item) {
+            if (window.AppRouter && typeof AppRouter.showItem === 'function') {
+                AppRouter.showItem(item || { Id: id, ServerId: ApiClient.serverId() });
+                return;
+            }
+
+            if (window.Dashboard && typeof Dashboard.navigate === 'function') {
+                Dashboard.navigate('details?id=' + encodeURIComponent(id));
+            }
+        }
+
+        ApiClient.getItem(ApiClient.getCurrentUserId(), itemId)
+            .then(function (item) {
+                openDetails(itemId, item);
+            })
+            .catch(function () {
+                openDetails(itemId);
+            });
+    }
+
+    function openRequestModal(tmdbId, mediaType) {
+        if (!tmdbId || !mediaType) {
+            return;
+        }
+
+        if (window.betterSeerrModal && typeof window.betterSeerrModal.open === 'function') {
+            window.betterSeerrModal.open(tmdbId, mediaType);
+        }
+    }
+
+    function renderCardActions(item) {
+        if (!item.tmdbId) {
+            return '';
+        }
+
+        const safeTitle = escapeHtml(item.title || 'content');
+        const mediaType = item.type === 'tv' ? 'tv' : 'movie';
+        const safeTmdbId = escapeHtml(String(item.tmdbId));
+        const safeMediaType = escapeHtml(mediaType);
+        let html = '<div class="betterseerr-request-card-actions">';
+
+        if (isPlayableRequest(item)) {
+            const safeItemId = escapeHtml(String(item.jellyfinItemId));
+            html +=
+                '<button type="button" class="betterseerr-request-action-btn betterseerr-request-play-btn" ' +
+                    'data-jellyfin-item-id="' + safeItemId + '" ' +
+                    'aria-label="Open ' + safeTitle + ' in Jellyfin" title="Open in Jellyfin">' +
+                    '<span class="material-icons" aria-hidden="true">play_arrow</span>' +
+                '</button>';
+        }
+
+        html +=
+            '<button type="button" class="betterseerr-request-action-btn betterseerr-request-modal-btn" ' +
+                'data-tmdb-id="' + safeTmdbId + '" data-media-type="' + safeMediaType + '" ' +
+                'aria-label="View request details for ' + safeTitle + '" title="Request details">' +
+                '<span class="material-icons" aria-hidden="true">download</span>' +
+            '</button>' +
+            '</div>';
+
+        return html;
+    }
+
     function mapRequestToDiscoverItem(item) {
         const mediaType = item.type === 'tv' ? 'tv' : 'movie';
         const providerIds = {};
@@ -233,7 +305,7 @@
         return (
             '<article class="betterseerr-request-box ' + layoutClass + '" data-request-id="' + escapeHtml(String(item.id || '')) + '" hidden>' +
                 '<div class="betterseerr-request-box-inner">' +
-                    '<div class="betterseerr-request-card-slot">' + discoverCard + '</div>' +
+                    '<div class="betterseerr-request-card-slot">' + discoverCard + renderCardActions(item) + '</div>' +
                     renderContentBlock(item) +
                 '</div>' +
             '</article>'
@@ -505,6 +577,25 @@
         container.dataset.betterseerrRequestsBound = 'true';
 
         container.addEventListener('click', function (event) {
+            const modalBtn = event.target.closest('.betterseerr-request-modal-btn');
+            if (modalBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                openRequestModal(
+                    modalBtn.getAttribute('data-tmdb-id'),
+                    modalBtn.getAttribute('data-media-type')
+                );
+                return;
+            }
+
+            const playBtn = event.target.closest('.betterseerr-request-play-btn');
+            if (playBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+                navigateToJellyfinItem(playBtn.getAttribute('data-jellyfin-item-id'));
+                return;
+            }
+
             const tab = event.target.closest('.betterseerr-requests-filter');
             if (tab) {
                 event.preventDefault();

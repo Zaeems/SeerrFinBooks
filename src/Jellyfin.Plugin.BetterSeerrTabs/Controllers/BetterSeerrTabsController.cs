@@ -445,14 +445,15 @@ public class BetterSeerrTabsController : ControllerBase
         [FromQuery] int skip = 0,
         CancellationToken cancellationToken = default)
     {
+        Guid userId = GetUserId();
         string? username = GetUsername(userManager);
-        if (string.IsNullOrWhiteSpace(username))
+        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(username))
         {
             return Forbid();
         }
 
         (int statusCode, string body) = await _requestsService
-            .GetRequestsAsync(username, take, skip, cancellationToken)
+            .GetRequestsAsync(userId, username, take, skip, cancellationToken)
             .ConfigureAwait(false);
 
         return new ContentResult

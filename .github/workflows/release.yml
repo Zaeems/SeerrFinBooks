@@ -22,16 +22,30 @@ jobs:
     outputs:
       version: ${{ steps.parse.outputs.version }}
       should_release: ${{ steps.parse.outputs.should_release }}
+      changelog: ${{ steps.parse.outputs.changelog }}
     steps:
       - name: Parse version from commit message
         id: parse
         run: |
-          MSG=$(jq -r '.head_commit.message' "$GITHUB_EVENT_PATH")
+          MSG=$(jq -r '.head_commit.message' "$GITHUB_EVENT_PATH" | head -n1)
           if [[ "$MSG" =~ \(v([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\) ]]; then
             VERSION="${BASH_REMATCH[1]}"
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "should_release=true" >> "$GITHUB_OUTPUT"
             echo "Detected release version: $VERSION"
+
+            CHANGELOG=$(printf '%s' "$MSG" | sed -E 's/[[:space:]]*\(v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\)[[:space:]]*$//')
+            if [[ "$CHANGELOG" == *:* ]]; then
+              CHANGELOG="${CHANGELOG#*:}"
+            fi
+            CHANGELOG=$(printf '%s' "$CHANGELOG" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
+            if [[ -z "$CHANGELOG" ]]; then
+              CHANGELOG="Release ${VERSION}."
+            fi
+            echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "$CHANGELOG" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "Changelog: $CHANGELOG"
           else
             echo "should_release=false" >> "$GITHUB_OUTPUT"
             echo "No (vX.X.X.X) version found in commit message; skipping release."
@@ -108,6 +122,8 @@ jobs:
 
       - name: Package release zip
         id: package
+        env:
+          CHANGELOG: ${{ needs.extract-version.outputs.changelog }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           OUT_DIR="${GITHUB_WORKSPACE}/src/Jellyfin.Plugin.BetterSeerrTabs/bin/Release/net9.0"
@@ -120,7 +136,7 @@ jobs:
             --arg version "$VERSION" \
             --arg timestamp "$TIMESTAMP" \
             --arg targetAbi "${{ env.TARGET_ABI }}" \
-            --arg changelog "Release ${VERSION}." \
+            --arg changelog "$CHANGELOG" \
             '{
               category: "General",
               changelog: $changelog,
@@ -140,7 +156,7 @@ jobs:
           jq --arg version "$VERSION" \
              --arg timestamp "$TIMESTAMP" \
              --arg targetAbi "${{ env.TARGET_ABI }}" \
-             --arg changelog "Release ${VERSION}." \
+             --arg changelog "$CHANGELOG" \
              '.version = $version | .timestamp = $timestamp | .targetAbi = $targetAbi | .changelog = $changelog' \
              meta.json > meta.json.tmp
           mv meta.json.tmp meta.json
@@ -163,10 +179,12 @@ jobs:
           echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
 
       - name: Update manifest.json
+        env:
+          CHANGELOG: ${{ needs.extract-version.outputs.changelog }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           jq --arg version "$VERSION" \
-             --arg changelog "Release ${VERSION}." \
+             --arg changelog "$CHANGELOG" \
              --arg targetAbi "${{ env.TARGET_ABI }}" \
              --arg sourceUrl "${{ steps.package.outputs.source_url }}" \
              --arg checksum "${{ steps.package.outputs.checksum }}" \
@@ -217,6 +235,6 @@ jobs:
             This is the release for version ${{ steps.version.outputs.version }} of BetterSeerrTabs. To install, follow the instructions in the Readme.
 
             Changelog:
-            (add manually)
+            ${{ needs.extract-version.outputs.changelog }}
           files: dist/${{ steps.package.outputs.zip_name }}
           fail_on_unmatched_files: true

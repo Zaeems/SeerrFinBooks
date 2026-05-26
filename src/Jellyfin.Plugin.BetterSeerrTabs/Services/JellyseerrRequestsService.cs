@@ -1,4 +1,10 @@
+using System.Globalization;
+using Jellyfin.Data.Enums;
+using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Plugin.BetterSeerrTabs.Configuration;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Querying;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -7,13 +13,18 @@ namespace Jellyfin.Plugin.BetterSeerrTabs.Services;
 public class JellyseerrRequestsService
 {
     private readonly ILogger<JellyseerrRequestsService> _logger;
+    private readonly ILibraryManager _libraryManager;
+    private readonly IUserManager _userManager;
 
-    public JellyseerrRequestsService(ILogger<JellyseerrRequestsService> logger)
+    public JellyseerrRequestsService(ILogger<JellyseerrRequestsService> logger, ILibraryManager libraryManager, IUserManager userManager)
     {
         _logger = logger;
+        _libraryManager = libraryManager;
+        _userManager = userManager;
     }
 
     public async Task<(int StatusCode, string Body)> GetRequestsAsync(
+        Guid userId,
         string username,
         int take,
         int skip,
@@ -60,12 +71,14 @@ public class JellyseerrRequestsService
             }
 
             Dictionary<string, JObject?> detailCache = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, Guid?> libraryItemCache = new(StringComparer.OrdinalIgnoreCase);
+            User? user = _userManager.GetUserById(userId);
             JArray mappedRequests = new();
 
             foreach (JObject req in results.OfType<JObject>())
             {
                 JObject? details = await GetMediaDetailsAsync(client, req, detailCache, cancellationToken).ConfigureAwait(false);
-                mappedRequests.Add(MapRequest(req, details));
+                mappedRequests.Add(MapRequest(req, details, user, libraryItemCache));
             }
 
             return (200, BuildResponse(data, mappedRequests).ToString());
@@ -189,7 +202,7 @@ public class JellyseerrRequestsService
         return details;
     }
 
-    private static JObject MapRequest(JObject req, JObject? details)
+    private JObject MapRequest(JObject req, JObject? details, User? user, Dictionary<string, Guid?> libraryItemCache)
     {
         JObject? media = req.Value<JObject>("media");
         JObject? requestedBy = req.Value<JObject>("requestedBy");
@@ -234,7 +247,56 @@ public class JellyseerrRequestsService
             mapped["releaseSortDate"] = GetReleaseSortDate(mapped, details).ToString("o");
         }
 
+        if (user != null && tmdbId.HasValue && IsPlayableMediaStatus(mediaStatus))
+        {
+            Guid? jellyfinItemId = ResolveLibraryItemId(user, type, tmdbId.Value, libraryItemCache);
+            if (jellyfinItemId.HasValue)
+            {
+                mapped["jellyfinItemId"] = jellyfinItemId.Value.ToString("N", CultureInfo.InvariantCulture);
+            }
+        }
+
         return mapped;
+    }
+
+    private static bool IsPlayableMediaStatus(int? mediaStatus) => mediaStatus is 4 or 5;
+
+    private Guid? ResolveLibraryItemId(User user, string? type, int tmdbId, Dictionary<string, Guid?> cache)
+    {
+        string cacheKey = $"{type}:{tmdbId}";
+        if (cache.TryGetValue(cacheKey, out Guid? cached))
+        {
+            return cached;
+        }
+
+        Guid? itemId = null;
+        try
+        {
+            BaseItemKind[] itemTypes = string.Equals(type, "tv", StringComparison.OrdinalIgnoreCase)
+                ? new[] { BaseItemKind.Series }
+                : new[] { BaseItemKind.Movie };
+
+            InternalItemsQuery query = new(user)
+            {
+                Recursive = true,
+                IncludeItemTypes = itemTypes,
+                HasAnyProviderId = new Dictionary<string, string>
+                {
+                    { "Tmdb", tmdbId.ToString(CultureInfo.InvariantCulture) }
+                },
+                Limit = 1
+            };
+
+            QueryResult<BaseItem> result = _libraryManager.GetItemsResult(query);
+            itemId = result.Items.FirstOrDefault()?.Id;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to resolve Jellyfin item for {Type}/{TmdbId}", type, tmdbId);
+        }
+
+        cache[cacheKey] = itemId;
+        return itemId;
     }
 
     private static JArray GetSeasonNumbers(JArray? seasons)
