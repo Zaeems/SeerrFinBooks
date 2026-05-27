@@ -262,3 +262,26 @@
         max-width: none;
     }
 }
+
+/* ElegantFin fixes */
+html.betterseerr-elegantfin .betterseerr-requests-panel .sectionTitleContainer-cards {
+    margin: 0 !important;
+}
+
+html.betterseerr-elegantfin .betterseerr-requests-panel .sectionTitleContainer-cards .sectionTitle-cards {
+    margin: 0 !important;
+    padding-top: 0 !important;
+}
+
+html.betterseerr-elegantfin .betterseerr-request-card-slot .card,
+html.betterseerr-elegantfin .betterseerr-request-card-slot .betterseerr-discover-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    flex: 0 0 auto !important;
+}
+
+html.betterseerr-elegantfin .betterseerr-request-box--landscape .betterseerr-request-card-slot .betterseerr-discover-card--backdrop {
+    width: 100% !important;
+    max-width: 100% !important;
+}

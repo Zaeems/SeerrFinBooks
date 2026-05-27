@@ -33,6 +33,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 this.bindRequestHandler();
                 this.bindCardClickHandler();
                 this.bindViewMoreHandler();
+                this.loadDisplaySettings();
             }
 
             if (!this._watchersReady) {
@@ -405,8 +406,15 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                         'discoverUsePosters',
                         true
                     ),
+                    ElegantFinFixes: self.readConfigBool(
+                        data,
+                        'ElegantFinFixes',
+                        'elegantFinFixes',
+                        false
+                    ),
                     DisplayCustomizations: self.parseDisplayCustomizations(data)
                 };
+                self.syncElegantFinFixes();
                 return self._displaySettings;
             }).catch(function () {
                 self._displaySettings = {
@@ -414,8 +422,10 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     StudioNetworkUseImages: true,
                     GenreUseBackdrops: true,
                     DiscoverUsePosters: true,
+                    ElegantFinFixes: false,
                     DisplayCustomizations: self.parseDisplayCustomizations(null)
                 };
+                self.syncElegantFinFixes();
                 return self._displaySettings;
             });
         },
@@ -437,8 +447,14 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 settings.StudioNetworkUseImages,
                 settings.GenreUseBackdrops,
                 settings.DiscoverUsePosters,
+                settings.ElegantFinFixes,
                 JSON.stringify(settings.DisplayCustomizations || {})
             ].join(':');
+        },
+
+        syncElegantFinFixes: function () {
+            const enabled = (this._displaySettings || {}).ElegantFinFixes === true;
+            document.documentElement.classList.toggle('betterseerr-elegantfin', enabled);
         },
 
         normalizeHexColor: function (value, fallback) {
@@ -522,11 +538,14 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
         },
 
         invalidateDisplaySettings: function () {
+            const self = this;
             this._displaySettings = null;
             document.querySelectorAll('.betterseerr-movies-sections, .betterseerr-tv-sections').forEach(function (section) {
                 delete section.dataset.betterseerrDisplaySettings;
             });
-            this.scheduleRender();
+            this.loadDisplaySettings().then(function () {
+                self.scheduleRender();
+            });
         },
 
         readConfigBool: function (data, pascalKey, camelKey, defaultValue) {

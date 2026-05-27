@@ -34,5 +34,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public bool DiscoverUsePosters { get; set; } = true;
 
+    public bool ElegantFinFixes { get; set; }
+
     public string DisplayCustomizationsJson { get; set; } = string.Empty;
 }

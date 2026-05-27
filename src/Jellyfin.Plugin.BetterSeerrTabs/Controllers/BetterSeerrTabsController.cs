@@ -160,6 +160,7 @@ public class BetterSeerrTabsController : ControllerBase
             config.StudioNetworkUseImages,
             config.GenreUseBackdrops,
             config.DiscoverUsePosters,
+            config.ElegantFinFixes,
             displayCustomizations = DisplayCustomizationsHelper.Resolve(config)
         });
     }

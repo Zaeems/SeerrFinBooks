@@ -245,3 +245,41 @@
 .betterseerr-carousel-section .itemsContainer > .betterseerr-box-card:first-child {
     margin-left: 0;
 }
+
+/* ElegantFin fixes */
+html.betterseerr-elegantfin .betterseerr-movies-sections .betterseerr-discover-card,
+html.betterseerr-elegantfin .betterseerr-tv-sections .betterseerr-discover-card,
+html.betterseerr-elegantfin .betterseerr-grid-view .betterseerr-discover-card {
+    padding: 0 !important;
+    flex: 0 0 auto !important;
+}
+
+html.betterseerr-elegantfin .betterseerr-discover-card--backdrop {
+    width: var(--betterseerr-discover-backdrop-width) !important;
+}
+
+html.betterseerr-elegantfin .betterseerr-poster-section .betterseerr-discover-card:not(.betterseerr-discover-card--backdrop),
+html.betterseerr-elegantfin .betterseerr-grid-view .betterseerr-discover-card:not(.betterseerr-discover-card--backdrop) {
+    width: var(--betterseerr-discover-portrait-width) !important;
+}
+
+html.betterseerr-elegantfin .betterseerr-grid-view .betterseerr-discover-card--backdrop.betterseerr-discover-card--grid {
+    width: 100% !important;
+    max-width: var(--betterseerr-discover-backdrop-width) !important;
+}
+
+html.betterseerr-elegantfin .betterseerr-movies-sections > .verticalSection:not(:first-child),
+html.betterseerr-elegantfin .betterseerr-tv-sections > .verticalSection:not(:first-child) {
+    margin-top: 1em;
+}
+
+html.betterseerr-elegantfin .betterseerr-movies-sections .sectionTitleContainer-cards,
+html.betterseerr-elegantfin .betterseerr-tv-sections .sectionTitleContainer-cards {
+    margin: 0 !important;
+}
+
+html.betterseerr-elegantfin .betterseerr-movies-sections .sectionTitleContainer-cards .sectionTitle-cards,
+html.betterseerr-elegantfin .betterseerr-tv-sections .sectionTitleContainer-cards .sectionTitle-cards {
+    margin: 0 !important;
+    padding-top: 0 !important;
+}
