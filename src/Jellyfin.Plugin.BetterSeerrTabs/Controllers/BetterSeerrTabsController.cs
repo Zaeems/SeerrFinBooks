@@ -408,8 +408,19 @@ public class BetterSeerrTabsController : ControllerBase
     [Authorize]
     public ActionResult GetClientSettings()
     {
-        string? key = BetterSeerrTabsPlugin.Instance.Configuration.TmdbApiKey?.Trim();
-        return Ok(new { tmdbApiKey = key ?? string.Empty });
+        PluginConfiguration config = BetterSeerrTabsPlugin.Instance.Configuration;
+        string? key = config.TmdbApiKey?.Trim();
+        string? browseUrl = config.ExternalJellyseerrUrl?.Trim();
+        if (string.IsNullOrEmpty(browseUrl))
+        {
+            browseUrl = config.JellyseerrUrl?.Trim();
+        }
+
+        return Ok(new
+        {
+            tmdbApiKey = key ?? string.Empty,
+            jellyseerrBrowseUrl = browseUrl ?? string.Empty
+        });
     }
 
     [HttpGet("details/{mediaType}/{mediaId}")]

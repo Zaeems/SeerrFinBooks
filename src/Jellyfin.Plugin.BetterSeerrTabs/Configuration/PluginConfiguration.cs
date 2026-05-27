@@ -6,6 +6,8 @@ public class PluginConfiguration : BasePluginConfiguration
 {
     public string? JellyseerrUrl { get; set; } = string.Empty;
 
+    public string? ExternalJellyseerrUrl { get; set; } = string.Empty;
+
     public string? JellyseerrApiKey { get; set; } = string.Empty;
 
     public string? JellyseerrPreferredLanguages { get; set; } = "en";

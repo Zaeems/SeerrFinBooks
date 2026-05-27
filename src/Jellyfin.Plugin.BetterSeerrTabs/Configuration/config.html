@@ -531,6 +531,15 @@
                         </div>
                         <div class="bst-input-group">
                             <div class="bst-field-main">
+                                <label class="bst-label bst-label--side" for="externalJellyseerrUrl">External Jellyseerr URL</label>
+                                <div class="bst-input-stack">
+                                    <input id="externalJellyseerrUrl" name="externalJellyseerrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:5055" />
+                                    <div class="bst-field-desc">The URL you usually use to access Jellyseerr (defaults to Jellyseerr URL above)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-group">
+                            <div class="bst-field-main">
                                 <label class="bst-label bst-label--side" for="jellyseerrApiKey">Jellyseerr API Key</label>
                                 <div class="bst-input-stack">
                                     <input id="jellyseerrApiKey" name="jellyseerrApiKey" type="password" class="bst-input" />
@@ -920,6 +929,7 @@
             ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                 loadDisplayCustomizationsFromConfig(config);
                 document.querySelector('#jellyseerrUrl').value = config.JellyseerrUrl || '';
+                document.querySelector('#externalJellyseerrUrl').value = config.ExternalJellyseerrUrl || '';
                 document.querySelector('#jellyseerrApiKey').value = config.JellyseerrApiKey || '';
                 document.querySelector('#jellyseerrPreferredLanguages').value = config.JellyseerrPreferredLanguages || 'en';
                 document.querySelector('#watchRegion').value = config.WatchRegion || 'US';
@@ -941,6 +951,7 @@
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                     config.DisplayCustomizationsJson = JSON.stringify(buildDisplayCustomizationsPayload());
                     config.JellyseerrUrl = document.querySelector('#jellyseerrUrl').value;
+                    config.ExternalJellyseerrUrl = document.querySelector('#externalJellyseerrUrl').value;
                     config.JellyseerrApiKey = document.querySelector('#jellyseerrApiKey').value;
                     config.JellyseerrPreferredLanguages = document.querySelector('#jellyseerrPreferredLanguages').value;
                     config.WatchRegion = document.querySelector('#watchRegion').value || 'US';
