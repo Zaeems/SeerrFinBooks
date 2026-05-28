@@ -57,7 +57,8 @@ public sealed class ServarrProgressService
                     ["percent"] = progress.Percent,
                     ["downloadedBytes"] = progress.DownloadedBytes,
                     ["totalBytes"] = progress.TotalBytes,
-                    ["isActive"] = progress.IsActive
+                    ["isActive"] = progress.IsActive,
+                    ["openUrl"] = progress.OpenUrl
                 };
             }
         }
@@ -145,7 +146,7 @@ public sealed class ServarrProgressService
                 }
             }
 
-            return new RadarrSnapshot(moviesByTmdbId, queueByMovieId, queueByTmdbId);
+            return new RadarrSnapshot(NormalizeServarrBaseUrl(config.RadarrUrl!), moviesByTmdbId, queueByMovieId, queueByTmdbId);
         }
         catch (Exception ex)
         {
@@ -238,7 +239,7 @@ public sealed class ServarrProgressService
                 }
             }
 
-            return new SonarrSnapshot(seriesByTmdbId, episodesBySeriesId, queueBySeriesId);
+            return new SonarrSnapshot(NormalizeServarrBaseUrl(config.SonarrUrl!), seriesByTmdbId, episodesBySeriesId, queueBySeriesId);
         }
         catch (Exception ex)
         {
@@ -263,7 +264,7 @@ public sealed class ServarrProgressService
 
         if (queueItems.Count > 0)
         {
-            return BuildQueueProgress(queueItems);
+            return BuildQueueProgress(queueItems, snapshot.BaseUrl, movie, isMovie: true);
         }
 
         if (movie == null)
@@ -275,7 +276,8 @@ public sealed class ServarrProgressService
             hasFile: movie.Value<bool?>("hasFile") ?? false,
             monitored: movie.Value<bool?>("monitored") ?? false,
             isUnreleased: IsUnreleasedMedia(movie.Value<string>("status")),
-            sizeOnDisk: movie.Value<long?>("sizeOnDisk") ?? 0);
+            sizeOnDisk: movie.Value<long?>("sizeOnDisk") ?? 0,
+            openUrl: BuildServarrOpenUrl(snapshot.BaseUrl, GetTitleSlug(movie), isMovie: true));
     }
 
     private static ServarrProgressInfo? BuildSeriesProgress(ServarrRequestContext context, SonarrSnapshot? snapshot)
@@ -297,7 +299,7 @@ public sealed class ServarrProgressService
 
         if (queueItems.Count > 0)
         {
-            return BuildQueueProgress(queueItems);
+            return BuildQueueProgress(queueItems, snapshot.BaseUrl, series, isMovie: false);
         }
 
         List<JObject> episodes = seriesId.HasValue && snapshot.EpisodesBySeriesId.TryGetValue(seriesId.Value, out List<JObject>? eps)
@@ -309,7 +311,7 @@ public sealed class ServarrProgressService
             bool monitored = series.Value<bool?>("monitored") ?? false;
             long sizeOnDisk = series.Value<long?>("sizeOnDisk") ?? 0;
             bool hasFile = sizeOnDisk > 0;
-            return BuildLibraryProgress(hasFile, monitored, isUnreleased: false, sizeOnDisk);
+            return BuildLibraryProgress(hasFile, monitored, isUnreleased: false, sizeOnDisk, BuildServarrOpenUrl(snapshot.BaseUrl, GetTitleSlug(series), isMovie: false));
         }
 
         bool anyFile = episodes.Any(e => e.Value<bool?>("hasFile") == true);
@@ -320,36 +322,41 @@ public sealed class ServarrProgressService
             IsUnreleasedMedia(e.Value<string>("airDateUtc") ?? e.Value<string>("airDate")));
         long totalSize = episodes.Where(e => e.Value<bool?>("hasFile") == true)
             .Sum(e => e.Value<long?>("sizeOnDisk") ?? 0);
+        string? seriesOpenUrl = BuildServarrOpenUrl(snapshot.BaseUrl, GetTitleSlug(series), isMovie: false);
 
         if (allUnreleased && !anyFile)
         {
-            return BuildLibraryProgress(false, anyMonitored, true, 0);
+            return BuildLibraryProgress(false, anyMonitored, true, 0, seriesOpenUrl);
         }
 
         if (allHaveFiles && allMonitored)
         {
-            return BuildLibraryProgress(true, true, false, totalSize);
+            return BuildLibraryProgress(true, true, false, totalSize, seriesOpenUrl);
         }
 
         if (allHaveFiles)
         {
-            return BuildLibraryProgress(true, false, false, totalSize);
+            return BuildLibraryProgress(true, false, false, totalSize, seriesOpenUrl);
         }
 
         if (!anyFile && anyMonitored)
         {
-            return BuildLibraryProgress(false, true, false, 0);
+            return BuildLibraryProgress(false, true, false, 0, seriesOpenUrl);
         }
 
-        return BuildLibraryProgress(false, false, false, 0);
+        return BuildLibraryProgress(false, false, false, 0, seriesOpenUrl);
     }
 
-    private static ServarrProgressInfo BuildQueueProgress(IReadOnlyCollection<JObject> queueItems)
+    private static ServarrProgressInfo BuildQueueProgress(IReadOnlyCollection<JObject> queueItems, string baseUrl, JObject? media, bool isMovie)
     {
         double totalSize = queueItems.Sum(item => item.Value<double?>("size") ?? 0);
         double sizeLeft = queueItems.Sum(item => item.Value<double?>("sizeleft") ?? 0);
         double downloaded = Math.Max(0, totalSize - sizeLeft);
         int percent = totalSize > 0 ? (int)Math.Round(downloaded / totalSize * 100) : 0;
+        string? titleSlug = GetTitleSlug(media)
+            ?? queueItems
+                .Select(item => GetTitleSlug(isMovie ? item["movie"] as JObject : item["series"] as JObject))
+                .FirstOrDefault(slug => !string.IsNullOrWhiteSpace(slug));
 
         return new ServarrProgressInfo
         {
@@ -358,11 +365,12 @@ public sealed class ServarrProgressService
             Percent = percent,
             DownloadedBytes = (long)downloaded,
             TotalBytes = (long)totalSize,
-            IsActive = true
+            IsActive = true,
+            OpenUrl = BuildServarrOpenUrl(baseUrl, titleSlug, isMovie)
         };
     }
 
-    private static ServarrProgressInfo BuildLibraryProgress(bool hasFile, bool monitored, bool isUnreleased, long sizeOnDisk)
+    private static ServarrProgressInfo BuildLibraryProgress(bool hasFile, bool monitored, bool isUnreleased, long sizeOnDisk, string? openUrl = null)
     {
         if (isUnreleased)
         {
@@ -373,7 +381,8 @@ public sealed class ServarrProgressService
                 Percent = 0,
                 DownloadedBytes = 0,
                 TotalBytes = 0,
-                IsActive = false
+                IsActive = false,
+                OpenUrl = openUrl
             };
         }
 
@@ -386,7 +395,8 @@ public sealed class ServarrProgressService
                 Percent = 100,
                 DownloadedBytes = sizeOnDisk,
                 TotalBytes = sizeOnDisk,
-                IsActive = true
+                IsActive = true,
+                OpenUrl = openUrl
             };
         }
 
@@ -399,7 +409,8 @@ public sealed class ServarrProgressService
                 Percent = 100,
                 DownloadedBytes = sizeOnDisk,
                 TotalBytes = sizeOnDisk,
-                IsActive = true
+                IsActive = true,
+                OpenUrl = openUrl
             };
         }
 
@@ -412,7 +423,8 @@ public sealed class ServarrProgressService
                 Percent = 0,
                 DownloadedBytes = 0,
                 TotalBytes = 0,
-                IsActive = false
+                IsActive = false,
+                OpenUrl = openUrl
             };
         }
 
@@ -423,9 +435,19 @@ public sealed class ServarrProgressService
             Percent = 0,
             DownloadedBytes = 0,
             TotalBytes = 0,
-            IsActive = false
+            IsActive = false,
+            OpenUrl = openUrl
         };
     }
+
+    private static string NormalizeServarrBaseUrl(string baseUrl) => baseUrl.Trim().TrimEnd('/');
+
+    private static string? GetTitleSlug(JObject? media) => media?.Value<string>("titleSlug");
+
+    private static string? BuildServarrOpenUrl(string baseUrl, string? titleSlug, bool isMovie) =>
+        !string.IsNullOrWhiteSpace(titleSlug)
+            ? $"{baseUrl}/{(isMovie ? "movie" : "series")}/{titleSlug.Trim()}"
+            : null;
 
     private static bool IsUnreleasedMedia(string? value)
     {
@@ -565,11 +587,13 @@ public sealed class ServarrProgressService
         HashSet<int> SeasonNumbers);
 
     private sealed record RadarrSnapshot(
+        string BaseUrl,
         Dictionary<int, JObject> MoviesByTmdbId,
         Dictionary<int, List<JObject>> QueueByMovieId,
         Dictionary<int, List<JObject>> QueueByTmdbId);
 
     private sealed record SonarrSnapshot(
+        string BaseUrl,
         Dictionary<int, JObject> SeriesByTmdbId,
         Dictionary<int, List<JObject>> EpisodesBySeriesId,
         Dictionary<int, List<JObject>> QueueBySeriesId);
@@ -587,5 +611,7 @@ public sealed class ServarrProgressService
         public long TotalBytes { get; set; }
 
         public bool IsActive { get; set; }
+
+        public string? OpenUrl { get; set; }
     }
 }

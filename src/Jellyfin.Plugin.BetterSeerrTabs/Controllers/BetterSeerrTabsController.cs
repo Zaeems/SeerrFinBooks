@@ -420,9 +420,16 @@ public class BetterSeerrTabsController : ControllerBase
         return Ok(new
         {
             tmdbApiKey = key ?? string.Empty,
-            jellyseerrBrowseUrl = browseUrl ?? string.Empty
+            jellyseerrBrowseUrl = browseUrl ?? string.Empty,
+            radarrUrl = IsServarrBrowseUrlConfigured(config.RadarrUrl, config.RadarrApiKey),
+            sonarrUrl = IsServarrBrowseUrlConfigured(config.SonarrUrl, config.SonarrApiKey)
         });
     }
+
+    private static string IsServarrBrowseUrlConfigured(string? url, string? apiKey) =>
+        !string.IsNullOrWhiteSpace(url) && !string.IsNullOrWhiteSpace(apiKey)
+            ? url.Trim().TrimEnd('/')
+            : string.Empty;
 
     [HttpGet("details/{mediaType}/{mediaId}")]
     [Authorize]
