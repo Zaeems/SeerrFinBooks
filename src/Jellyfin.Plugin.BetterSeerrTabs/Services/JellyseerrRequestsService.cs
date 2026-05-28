@@ -15,12 +15,14 @@ public class JellyseerrRequestsService
     private readonly ILogger<JellyseerrRequestsService> _logger;
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
+    private readonly ServarrProgressService _servarrProgressService;
 
-    public JellyseerrRequestsService(ILogger<JellyseerrRequestsService> logger, ILibraryManager libraryManager, IUserManager userManager)
+    public JellyseerrRequestsService(ILogger<JellyseerrRequestsService> logger, ILibraryManager libraryManager, IUserManager userManager, ServarrProgressService servarrProgressService)
     {
         _logger = logger;
         _libraryManager = libraryManager;
         _userManager = userManager;
+        _servarrProgressService = servarrProgressService;
     }
 
     public async Task<(int StatusCode, string Body)> GetRequestsAsync(
@@ -79,6 +81,13 @@ public class JellyseerrRequestsService
             {
                 JObject? details = await GetMediaDetailsAsync(client, req, detailCache, cancellationToken).ConfigureAwait(false);
                 mappedRequests.Add(MapRequest(req, details, user, libraryItemCache));
+            }
+
+            await _servarrProgressService.EnrichRequestsAsync(mappedRequests, cancellationToken).ConfigureAwait(false);
+
+            foreach (JObject mapped in mappedRequests.OfType<JObject>())
+            {
+                mapped.Remove("externalServiceId");
             }
 
             return (200, BuildResponse(data, mappedRequests).ToString());
@@ -217,12 +226,16 @@ public class JellyseerrRequestsService
         string? backdropPath = details?.Value<string>("backdropPath");
         string? avatar = requestedBy?.Value<string>("avatar");
         int? tmdbId = media?.Value<int?>("tmdbId") ?? details?.Value<int?>("id");
+        int? externalServiceId = is4k
+            ? media?.Value<int?>("externalServiceId4k") ?? media?.Value<int?>("externalServiceId")
+            : media?.Value<int?>("externalServiceId");
 
         JObject mapped = new()
         {
             ["id"] = req["id"],
             ["tmdbId"] = tmdbId,
             ["type"] = type,
+            ["externalServiceId"] = externalServiceId,
             ["posterPath"] = posterPath,
             ["backdropPath"] = backdropPath,
             ["title"] = details?.Value<string>("title")

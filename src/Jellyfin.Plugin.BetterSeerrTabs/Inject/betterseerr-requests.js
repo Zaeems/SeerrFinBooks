@@ -276,7 +276,55 @@
             : false;
     }
 
-    function renderContentBlock(item) {
+    function formatBytes(bytes) {
+        const value = Number(bytes);
+        if (!value || value <= 0) {
+            return '0.0 GB';
+        }
+
+        return (value / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+    }
+
+    function getServarrProgress(item) {
+        const progress = item.servarrProgress;
+        if (!progress || !progress.statusKey) {
+            return null;
+        }
+
+        return progress;
+    }
+
+    function renderProgressBlock(item) {
+        const progress = getServarrProgress(item);
+        if (!progress) {
+            return '';
+        }
+
+        const percent = Math.max(0, Math.min(100, Number(progress.percent) || 0));
+        const statusKey = escapeHtml(progress.statusKey);
+        const isTransfer = progress.isActive === true && (
+            progress.statusKey === 'queued' || progress.statusKey.indexOf('downloaded-') === 0
+        );
+
+        const percentText = isTransfer ? (percent + '%') : '0%';
+        const detailText = isTransfer
+            ? formatBytes(progress.downloadedBytes) + '/' + formatBytes(progress.totalBytes)
+            : (progress.statusLabel || '');
+
+        return (
+            '<div class="betterseerr-request-progress" data-status="' + statusKey + '">' +
+                '<div class="betterseerr-request-progress-bar" aria-hidden="true">' +
+                    '<div class="betterseerr-request-progress-fill" style="width:' + percent + '%"></div>' +
+                '</div>' +
+                '<div class="betterseerr-request-progress-meta">' +
+                    '<span class="betterseerr-request-progress-percent">' + escapeHtml(percentText) + '</span>' +
+                    '<span class="betterseerr-request-progress-detail">' + escapeHtml(detailText) + '</span>' +
+                '</div>' +
+            '</div>'
+        );
+    }
+
+    function renderContentBlock(item, isLandscape) {
         const statusLabel = item.mediaStatusLabel || 'Unknown';
         const safeTitle = escapeHtml(item.title || 'Unknown');
         const timeAgo = item.createdAt ? escapeHtml(formatRelativeDate(item.createdAt)) : '';
@@ -315,6 +363,14 @@
             html += '<div class="betterseerr-request-meta">Requested seasons: <span class="betterseerr-request-meta-light">' + escapeHtml(seasonNumbers.join(', ')) + '</span></div>';
         }
 
+        const progress = getServarrProgress(item);
+        if (progress) {
+            if (!isLandscape) {
+                html += '<div class="betterseerr-request-progress-spacer"></div>';
+            }
+            html += renderProgressBlock(item);
+        }
+
         html += '</div>';
         return html;
     }
@@ -332,7 +388,7 @@
             '<article class="betterseerr-request-box ' + layoutClass + '" data-request-id="' + escapeHtml(String(item.id || '')) + '" hidden>' +
                 '<div class="betterseerr-request-box-inner">' +
                     '<div class="betterseerr-request-card-slot">' + discoverCard + renderCardActions(item) + '</div>' +
-                    renderContentBlock(item) +
+                    renderContentBlock(item, isLandscape) +
                 '</div>' +
             '</article>'
         );

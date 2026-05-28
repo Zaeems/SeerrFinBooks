@@ -23,6 +23,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<JellyseerrDiscoveryService>();
         serviceCollection.AddSingleton<JellyseerrRequestService>();
         serviceCollection.AddSingleton<JellyseerrRequestsService>();
+        serviceCollection.AddSingleton<ServarrProgressService>();
         serviceCollection.AddSingleton<JellyseerrProxyService>();
     }
 }

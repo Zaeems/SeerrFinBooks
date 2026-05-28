@@ -26,7 +26,10 @@ public class BetterSeerrTabsPlugin : BasePlugin<PluginConfiguration>, IHasPlugin
         yield return new PluginPageInfo
         {
             Name = Name,
-            EmbeddedResourcePath = $"{prefix}.Configuration.config.html"
+            EmbeddedResourcePath = $"{prefix}.Configuration.config.html",
+            EnableInMainMenu = true,
+            DisplayName = "BetterSeerrTabs",
+            MenuIcon = "preview",
         };
     }
 

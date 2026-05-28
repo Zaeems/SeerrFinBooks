@@ -10,6 +10,14 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public string? JellyseerrApiKey { get; set; } = string.Empty;
 
+    public string? RadarrUrl { get; set; } = string.Empty;
+
+    public string? RadarrApiKey { get; set; } = string.Empty;
+
+    public string? SonarrUrl { get; set; } = string.Empty;
+
+    public string? SonarrApiKey { get; set; } = string.Empty;
+
     public string? JellyseerrPreferredLanguages { get; set; } = "en";
 
     public string? TmdbApiKey { get; set; } = string.Empty;

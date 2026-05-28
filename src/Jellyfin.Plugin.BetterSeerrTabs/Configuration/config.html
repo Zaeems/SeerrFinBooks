@@ -580,6 +580,52 @@
                 </div>
 
                 <div class="bst-section-container">
+                    <div class="bst-section-title">Radarr / Sonarr — Fill if you want download progress on request cards</div>
+                    <div class="bst-card">
+                        <div class="bst-input-row" style="margin-bottom: 1.25em;">
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="radarrUrl">Radarr URL</label>
+                                    <div class="bst-input-stack">
+                                        <input id="radarrUrl" name="radarrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:7878" />
+                                        <div class="bst-field-desc">URL used by the server to reach Radarr (or you use to access it)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="radarrApiKey">Radarr API Key</label>
+                                    <div class="bst-input-stack">
+                                        <input id="radarrApiKey" name="radarrApiKey" type="password" class="bst-input" autocomplete="off" />
+                                        <div class="bst-field-desc">Key for Radarr which you can get from Radarr → Settings → General → Security → API Key</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="sonarrUrl">Sonarr URL</label>
+                                    <div class="bst-input-stack">
+                                        <input id="sonarrUrl" name="sonarrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:8989" />
+                                        <div class="bst-field-desc">URL used by the server to reach Sonarr (or you use to access it)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="sonarrApiKey">Sonarr API Key</label>
+                                    <div class="bst-input-stack">
+                                        <input id="sonarrApiKey" name="sonarrApiKey" type="password" class="bst-input" autocomplete="off" />
+                                        <div class="bst-field-desc">Key for Sonarr which you can get from Sonarr → Settings → General → Security → API Key</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bst-section-container">
                     <div class="bst-section-title">Display settings</div>
                     <div class="bst-card">
                         <div class="bst-toggle-row">
@@ -943,6 +989,10 @@
                 document.querySelector('#jellyseerrUrl').value = config.JellyseerrUrl || '';
                 document.querySelector('#externalJellyseerrUrl').value = config.ExternalJellyseerrUrl || '';
                 document.querySelector('#jellyseerrApiKey').value = config.JellyseerrApiKey || '';
+                document.querySelector('#radarrUrl').value = config.RadarrUrl || '';
+                document.querySelector('#radarrApiKey').value = config.RadarrApiKey || '';
+                document.querySelector('#sonarrUrl').value = config.SonarrUrl || '';
+                document.querySelector('#sonarrApiKey').value = config.SonarrApiKey || '';
                 document.querySelector('#jellyseerrPreferredLanguages').value = config.JellyseerrPreferredLanguages || 'en';
                 document.querySelector('#watchRegion').value = config.WatchRegion || 'US';
                 document.querySelector('#rowItemLimit').value = config.RowItemLimit || 20;
@@ -966,6 +1016,10 @@
                     config.JellyseerrUrl = document.querySelector('#jellyseerrUrl').value;
                     config.ExternalJellyseerrUrl = document.querySelector('#externalJellyseerrUrl').value;
                     config.JellyseerrApiKey = document.querySelector('#jellyseerrApiKey').value;
+                    config.RadarrUrl = document.querySelector('#radarrUrl').value.trim();
+                    config.RadarrApiKey = document.querySelector('#radarrApiKey').value.trim();
+                    config.SonarrUrl = document.querySelector('#sonarrUrl').value.trim();
+                    config.SonarrApiKey = document.querySelector('#sonarrApiKey').value.trim();
                     config.JellyseerrPreferredLanguages = document.querySelector('#jellyseerrPreferredLanguages').value;
                     config.WatchRegion = document.querySelector('#watchRegion').value || 'US';
                     config.RowItemLimit = parseInt(document.querySelector('#rowItemLimit').value, 10) || 20;

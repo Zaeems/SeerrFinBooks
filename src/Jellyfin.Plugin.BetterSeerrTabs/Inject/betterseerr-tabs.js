@@ -1467,3 +1467,17 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
         }
     });
 }
+
+// On config page, jf doesn't allow custom menu icons so this is a small patch for that
+(function () {
+    function patch() {
+        var icon = document.querySelector('a[href*="name=BetterSeerrTabs"] .MuiListItemIcon-root');
+        if (!icon || icon.dataset.bstMenuIcon) return;
+
+        icon.dataset.bstMenuIcon = '1';
+        icon.innerHTML = '<span class="material-icons notranslate MuiIcon-root MuiIcon-fontSizeMedium" aria-hidden="true">preview</span>'; // eventually add logo svg
+    }
+
+    new MutationObserver(patch).observe(document.body, { childList: true, subtree: true });
+    patch();
+})();
