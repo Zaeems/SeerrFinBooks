@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs",
     "versions": [
       {
+        "version": "1.3.5.0",
+        "changelog": "Added Radarr/Sonarr action buttons to open Radarr/Sonarr urls directly from requests",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.3.5.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
+        "checksum": "DB4EE755283DB8B2BB729ECA61415147",
+        "timestamp": "2026-05-28T20:43:32.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.3.4.0",
         "changelog": "Added progress tracking using Radarr/Sonarr to request cards, and config settings to enter Radarr/Sonarr details. Also added BST to main menu (with a cool icon)",
         "targetAbi": "10.11.0.0",
