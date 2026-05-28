@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs",
     "versions": [
       {
+        "version": "1.3.4.0",
+        "changelog": "Added progress tracking using Radarr/Sonarr to request cards, and config settings to enter Radarr/Sonarr details. Also added BST to main menu (with a cool icon)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/BetterSeerrTabs/releases/download/1.3.4.0/Jellyfin.Plugin.BetterSeerrTabs_10.11.0.zip",
+        "checksum": "5846BFFBED78578449B5B19D73CA9D36",
+        "timestamp": "2026-05-28T20:06:08.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.3.3.1",
         "changelog": "Eleganfin theme fixes",
         "targetAbi": "10.11.0.0",
