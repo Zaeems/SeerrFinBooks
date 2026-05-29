@@ -8,10 +8,10 @@
 </div>
 
 # BetterSeerrTabs
-![GitHub License](https://img.shields.io/github/license/varunaditya-plus/BetterSeerrTabs?style=for-the-badge)
-![GitHub Release](https://img.shields.io/github/v/release/varunaditya-plus/BetterSeerrTabs?style=for-the-badge)
-[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/varunaditya-plus/BetterSeerrTabs/total?style=for-the-badge)](https://github.com/varunaditya-plus/BetterSeerrTabs/releases/latest)
-![Please star this repo](https://img.shields.io/badge/%E2%98%85%20Star-e3b341?style=for-the-badge)
+![GitHub License](https://www.shieldcn.dev/github/license/varunaditya-plus/BetterSeerrTabs.svg?variant=outline&size=sm)
+[![GitHub Downloads (all assets, all releases)](https://shieldcn.dev/github/downloads/varunaditya-plus/BetterSeerrTabs.svg?variant=outline&size=sm)](https://github.com/varunaditya-plus/BetterSeerrTabs/releases/latest)
+[![GitHub Release](https://shieldcn.dev/github/release/varunaditya-plus/BetterSeerrTabs.svg?size=sm)](https://github.com/varunaditya-plus/BetterSeerrTabs/releases/latest)
+![Please star this repo](https://shieldcn.dev/badge/★%20please%20star-22c55e.svg?theme=amber&color=eab308&size=sm&variant=outline)
 
 The best way to discover and request Movies and TV Shows by using Seerr directly in Jellyfin. This plugin lets you add two top bar tabs for Movies and TV discovery, with request modals powered by your Jellyseerr instance. The categories are gotten using TMDB.
 
