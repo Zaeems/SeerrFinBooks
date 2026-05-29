@@ -58,7 +58,7 @@ After installation, now configure the extension so it will work with your Seerr 
 Please open pull requests if you have any suggestions or features you want to be implemented in this plugin. This is my first C# project, and is inspired heavily by [Home Screen Sections](https://github.com/IAmParadox27/jellyfin-plugin-home-sections). For suggestions, feature requests, or bug reports, open an issue. Please include your Jellyfin version and a screenshot if relevant.
 
 ## License
-BetterSeerrTabs is licensed under the [Undecided License](https://github.com/).
+BetterSeerrTabs is licensed under the [MIT License](https://github.com/varunaditya-plus/BetterSeerrTabs/tree/main?tab=MIT-1-ov-file#readme).
 
 ## Credits
 - [Lato](https://fonts.google.com/specimen/Lato) by Łukasz Dziedzic, served via Google Fonts.
