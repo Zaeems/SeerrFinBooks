@@ -65,21 +65,32 @@ public class ImageCacheService
             return (null, null);
         }
 
-        if (cachedInfo.ExpiresAt < DateTime.UtcNow || !File.Exists(cachedInfo.FilePath))
+        if (cachedInfo.ExpiresAt > DateTime.UtcNow && File.Exists(cachedInfo.FilePath))
         {
-            _imageCache.TryRemove(cacheKey, out _);
-            return (null, null);
+            try
+            {
+                return (File.ReadAllBytes(cachedInfo.FilePath), cachedInfo.ContentType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading cached image {CacheKey}", cacheKey);
+            }
         }
 
-        try
+        if (!string.IsNullOrEmpty(cachedInfo.SourceUrl))
         {
-            return (File.ReadAllBytes(cachedInfo.FilePath), cachedInfo.ContentType);
+            int cacheTimeout = BetterSeerrTabsPlugin.Instance.Configuration.CacheTimeoutSeconds;
+            string? refreshedKey = GetOrCacheImage(cachedInfo.SourceUrl, cacheTimeout).GetAwaiter().GetResult();
+            if (refreshedKey == cacheKey
+                && _imageCache.TryGetValue(cacheKey, out cachedInfo)
+                && File.Exists(cachedInfo.FilePath))
+            {
+                return (File.ReadAllBytes(cachedInfo.FilePath), cachedInfo.ContentType);
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error reading cached image {CacheKey}", cacheKey);
-            return (null, null);
-        }
+
+        _imageCache.TryRemove(cacheKey, out _);
+        return (null, null);
     }
 
     private bool IsValidCacheKey(string cacheKey)

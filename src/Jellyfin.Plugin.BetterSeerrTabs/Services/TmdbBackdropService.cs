@@ -22,9 +22,25 @@ public class TmdbBackdropService
     public async Task<CachedBackdropDto?> GetCachedBackdropAsync(string mediaType, int tmdbId, CancellationToken cancellationToken = default)
     {
         string cacheKey = $"{mediaType}:{tmdbId}";
-        if (_cache.TryGetValue(cacheKey, out CachedBackdropDto? cached))
+        if (_cache.TryGetValue(cacheKey, out CachedBackdropDto? cached) && !string.IsNullOrEmpty(cached.TmdbBackdropPath))
         {
-            return cached;
+            string cachedSourceUrl = "https://image.tmdb.org/t/p/w780" + cached.TmdbBackdropPath;
+            string refreshedUrl = ImageCacheHelper.GetCachedImageUrl(_imageCacheService, cachedSourceUrl, _logger);
+            if (!string.IsNullOrEmpty(refreshedUrl))
+            {
+                return new CachedBackdropDto
+                {
+                    BackdropUrl = refreshedUrl,
+                    TmdbBackdropPath = cached.TmdbBackdropPath,
+                    HasEnglishBackdrop = cached.HasEnglishBackdrop
+                };
+            }
+
+            _cache.TryRemove(cacheKey, out _);
+        }
+        else if (cached != null)
+        {
+            _cache.TryRemove(cacheKey, out _);
         }
 
         PluginConfiguration config = BetterSeerrTabsPlugin.Instance.Configuration;
