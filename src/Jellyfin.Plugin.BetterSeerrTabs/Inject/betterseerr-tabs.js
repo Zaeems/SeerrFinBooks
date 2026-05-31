@@ -1319,7 +1319,18 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     return;
                 }
 
-                itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(result.items, true));
+                const existingIds = new Set(); // deduplicate cards using tmdb id by using a set
+                itemsContainer.querySelectorAll('.betterseerr-discover-card[data-tmdb-id]').forEach(function (card) {
+                    existingIds.add(card.getAttribute('data-tmdb-id'));
+                });
+                const newItems = result.items.filter(function (item) {
+                    const id = String(self.getProviderId(item, 'Tmdb') ||
+                        self.getProviderId(item, 'Jellyseerr') ||
+                        self.getField(item, 'id', 'Id') || '');
+                    return id && !existingIds.has(id) && existingIds.add(id);
+                });
+
+                itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(newItems, true));
                 if (self.shouldUseBackdropThumbnails()) {
                     self.hydrateDiscoverBackdropCards(itemsContainer);
                 } else {

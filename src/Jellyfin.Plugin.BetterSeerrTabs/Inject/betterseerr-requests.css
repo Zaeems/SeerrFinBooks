@@ -258,6 +258,14 @@
     background: #03a9f4;
 }
 
+.betterseerr-request-progress[data-status="failed"] .betterseerr-request-progress-bar {
+    background: rgba(200, 34, 34, 0.25);
+}
+
+.betterseerr-request-progress[data-status="failed"] .betterseerr-request-progress-fill {
+    background: #c82222;
+}
+
 /* Landscape display: discover backdrop card on top, details below */
 .betterseerr-request-box--landscape .betterseerr-request-box-inner {
     display: flex;

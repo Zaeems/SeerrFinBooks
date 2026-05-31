@@ -87,6 +87,25 @@ public class JellyseerrRequestsService
 
             foreach (JObject mapped in mappedRequests.OfType<JObject>())
             {
+                string? mediaLabel = mapped.Value<string>("mediaStatusLabel");
+                string? servarrStatusKey = (mapped["servarrProgress"] as JObject)?.Value<string>("statusKey");
+
+                if (string.Equals(mediaLabel, "Failed", StringComparison.OrdinalIgnoreCase))
+                {
+                    mapped["servarrProgress"] = new JObject
+                    {
+                        ["statusKey"] = "failed",
+                        ["statusLabel"] = "Failed to find content",
+                        ["percent"] = 100,
+                        ["isActive"] = false
+                    };
+                }
+                else if (string.Equals(servarrStatusKey, "missing-monitored", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Unsure state (don't show a bar). Maybe show a gray bar?
+                    mapped.Remove("servarrProgress");
+                }
+
                 mapped.Remove("externalServiceId");
             }
 
@@ -374,24 +393,32 @@ public class JellyseerrRequestsService
             ? year
             : null;
 
-    private static string GetMediaStatusLabel(int? requestStatus, int? mediaStatus) => mediaStatus switch
+    private static string GetMediaStatusLabel(int? requestStatus, int? mediaStatus)
     {
-        7 => "Blocklisted",
-        6 => "Deleted",
-        5 => "Available",
-        4 => "Partially Available",
-        3 => "Processing",
-        2 => "Pending",
-        _ => requestStatus switch
+        if (requestStatus == 4 && mediaStatus is not (4 or 5))
         {
-            5 => "Completed",
-            4 => "Failed",
-            3 => "Declined",
-            2 => "Approved",
-            1 => "Pending Approval",
-            _ => "Unknown"
+            return "Failed";
         }
-    };
+
+        return mediaStatus switch
+        {
+            7 => "Blocklisted",
+            6 => "Deleted",
+            5 => "Available",
+            4 => "Partially Available",
+            3 => "Processing",
+            2 => "Pending",
+            _ => requestStatus switch
+            {
+                5 => "Completed",
+                4 => "Failed",
+                3 => "Declined",
+                2 => "Approved",
+                1 => "Pending Approval",
+                _ => "Unknown"
+            }
+        };
+    }
 
     private static HttpClient CreateClient(PluginConfiguration config)
     {

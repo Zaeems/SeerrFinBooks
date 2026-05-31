@@ -367,12 +367,24 @@
     }
 
     function getServarrProgress(item) {
-        const progress = item.servarrProgress;
-        if (!progress || !progress.statusKey) {
-            return null;
+        const raw = item.servarrProgress || item.ServarrProgress;
+        const statusKey = raw && (raw.statusKey || raw.StatusKey);
+        const mediaFailed = (item.mediaStatusLabel || '').toLowerCase() === 'failed';
+
+        if (!raw || !statusKey) {
+            return mediaFailed
+                ? { statusKey: 'failed', statusLabel: 'Failed to find content', percent: 100, isActive: false }
+                : null;
         }
 
-        return progress;
+        return {
+            statusKey: statusKey,
+            statusLabel: raw.statusLabel || raw.StatusLabel || '',
+            percent: raw.percent ?? raw.Percent ?? 0,
+            downloadedBytes: raw.downloadedBytes ?? raw.DownloadedBytes ?? 0,
+            totalBytes: raw.totalBytes ?? raw.TotalBytes ?? 0,
+            isActive: raw.isActive ?? raw.IsActive ?? false
+        };
     }
 
     function renderProgressBlock(item) {
@@ -381,16 +393,19 @@
             return '';
         }
 
-        const percent = Math.max(0, Math.min(100, Number(progress.percent) || 0));
-        const statusKey = escapeHtml(progress.statusKey);
-        const isTransfer = progress.isActive === true && (
+        const isFailed = progress.statusKey === 'failed' || (item.mediaStatusLabel || '').toLowerCase() === 'failed';
+        const percent = isFailed ? 100 : Math.max(0, Math.min(100, Number(progress.percent) || 0));
+        const statusKey = isFailed ? 'failed' : escapeHtml(progress.statusKey);
+        const isTransfer = !isFailed && progress.isActive === true && (
             progress.statusKey === 'queued' || progress.statusKey.indexOf('downloaded-') === 0
         );
 
-        const percentText = isTransfer ? (percent + '%') : '0%';
-        const detailText = isTransfer
-            ? formatBytes(progress.downloadedBytes) + '/' + formatBytes(progress.totalBytes)
-            : (progress.statusLabel || '');
+        const percentText = isFailed ? 'Failed' : (isTransfer ? (percent + '%') : '0%');
+        const detailText = isFailed
+            ? 'Failed to find content'
+            : (isTransfer
+                ? formatBytes(progress.downloadedBytes) + '/' + formatBytes(progress.totalBytes)
+                : (progress.statusLabel || ''));
 
         return (
             '<div class="betterseerr-request-progress" data-status="' + statusKey + '">' +
