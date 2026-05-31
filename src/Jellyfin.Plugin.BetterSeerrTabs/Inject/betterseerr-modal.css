@@ -487,6 +487,16 @@
     color: var(--bst-type-primary);
 }
 
+.bst-sidebar-lines {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bst-quality-value {
+    font-weight: 600;
+}
+
 .bst-sidebar-lines .bst-label {
     font-weight: 500;
     color: var(--bst-type-primary);
@@ -499,8 +509,6 @@
 .bst-external-links {
     display: flex;
     gap: 0.75rem;
-    margin-top: 1rem;
-    padding-top: 0.25rem;
 }
 
 .bst-external-link {

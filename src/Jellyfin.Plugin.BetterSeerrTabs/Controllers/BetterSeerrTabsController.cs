@@ -22,6 +22,7 @@ public class BetterSeerrTabsController : ControllerBase
     private readonly JellyseerrProxyService _proxyService;
     private readonly ImageCacheService _imageCacheService;
     private readonly TmdbBackdropService _tmdbBackdropService;
+    private readonly JustWatchQualitiesService _justWatchQualitiesService;
 
     public BetterSeerrTabsController(
         JellyseerrDiscoveryService discoveryService,
@@ -29,7 +30,8 @@ public class BetterSeerrTabsController : ControllerBase
         JellyseerrRequestsService requestsService,
         JellyseerrProxyService proxyService,
         ImageCacheService imageCacheService,
-        TmdbBackdropService tmdbBackdropService)
+        TmdbBackdropService tmdbBackdropService,
+        JustWatchQualitiesService justWatchQualitiesService)
     {
         _discoveryService = discoveryService;
         _requestService = requestService;
@@ -37,6 +39,7 @@ public class BetterSeerrTabsController : ControllerBase
         _proxyService = proxyService;
         _imageCacheService = imageCacheService;
         _tmdbBackdropService = tmdbBackdropService;
+        _justWatchQualitiesService = justWatchQualitiesService;
     }
 
     private Guid GetUserId()
@@ -440,6 +443,40 @@ public class BetterSeerrTabsController : ControllerBase
     {
         JObject? details = _discoveryService.GetMediaDetails(GetUsername(userManager) ?? string.Empty, mediaType, mediaId);
         return details == null ? NotFound() : Content(details.ToString(), "application/json");
+    }
+
+    [HttpGet("justwatch/qualities/{mediaType}/{tmdbId}")]
+    [Authorize]
+    public async Task<ActionResult<JustWatchQualitiesDto>> GetJustWatchQualities(
+        string mediaType,
+        int tmdbId,
+        CancellationToken cancellationToken)
+    {
+        if (tmdbId <= 0)
+        {
+            return BadRequest();
+        }
+
+        if (!string.Equals(mediaType, "movie", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(mediaType, "tv", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest();
+        }
+
+        JustWatchQualitiesDto? qualities = await _justWatchQualitiesService
+            .GetQualitiesAsync(mediaType, tmdbId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (qualities == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(new
+        {
+            highestReleasedQuality = qualities.HighestReleasedQuality,
+            mostCommonQuality = qualities.MostCommonQuality
+        });
     }
 
     [HttpGet("request-options/{mediaType}")]

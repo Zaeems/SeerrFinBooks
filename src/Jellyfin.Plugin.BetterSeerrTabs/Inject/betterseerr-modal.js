@@ -237,6 +237,51 @@
         return tmdbDetails;
     }
 
+    function fetchJustWatchQualities(mediaId, mediaType) {
+        return ApiClient.ajax({
+            url: ApiClient.getUrl('BetterSeerrTabs/justwatch/qualities/' + mediaType + '/' + mediaId),
+            type: 'GET',
+            dataType: 'json'
+        }).catch(function (err) {
+            if (err && err.status === 404) {
+                return null;
+            }
+            console.warn('BetterSeerrTabs: JustWatch qualities fetch failed', err);
+            return null;
+        });
+    }
+
+    function buildJustWatchQualityLines(mediaId, mediaType) {
+        const qualityLines = document.createElement('div');
+        qualityLines.className = 'bst-sidebar-lines bst-sidebar-lines--qualities';
+        qualityLines.hidden = true;
+
+        const highestLine = document.createElement('div');
+        highestLine.innerHTML = '<span class="bst-label">Highest released quality:</span> <span class="bst-quality-value">…</span>';
+        qualityLines.appendChild(highestLine);
+
+        const commonLine = document.createElement('div');
+        commonLine.innerHTML = '<span class="bst-label">Most common quality:</span> <span class="bst-quality-value">…</span>';
+        qualityLines.appendChild(commonLine);
+
+        fetchJustWatchQualities(mediaId, mediaType).then(function (result) {
+            if (!result) {
+                qualityLines.remove();
+                return;
+            }
+
+            const highestValue = highestLine.querySelector('.bst-quality-value');
+            const commonValue = commonLine.querySelector('.bst-quality-value');
+            highestValue.textContent =
+                result.highestReleasedQuality || result.HighestReleasedQuality || 'Unknown';
+            commonValue.textContent =
+                result.mostCommonQuality || result.MostCommonQuality || 'Unknown';
+            qualityLines.hidden = false;
+        });
+
+        return qualityLines;
+    }
+
     function fetchJellyseerrDetails(mediaId, mediaType) {
         return ApiClient.ajax({
             url: ApiClient.getUrl('BetterSeerrTabs/details/' + mediaType + '/' + mediaId),
@@ -876,6 +921,7 @@
 
         const sidebar = document.createElement('div');
         sidebar.className = 'bst-sidebar';
+        const qualityLines = buildJustWatchQualityLines(tmdbId, mediaType);
         const lines = document.createElement('div');
         lines.className = 'bst-sidebar-lines';
 
@@ -933,6 +979,7 @@
             a.style.animationDelay = '120ms';
             links.appendChild(a);
         }
+        sidebar.appendChild(qualityLines);
         sidebar.appendChild(lines);
         if (links.childElementCount) {
             sidebar.appendChild(links);
