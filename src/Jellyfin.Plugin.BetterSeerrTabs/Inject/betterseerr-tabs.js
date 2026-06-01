@@ -530,7 +530,15 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 posterUrl = window.ApiClient.getUrl(posterUrl);
             }
 
-            return posterUrl || null;
+            if (posterUrl) {
+                return posterUrl;
+            }
+
+            if (posterPath) {
+                return this.buildTmdbImageUrl(posterPath, null, 'w600_and_h900_bestv2');
+            }
+
+            return null;
         },
 
         shouldUseBackdropThumbnails: function () {

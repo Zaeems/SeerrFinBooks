@@ -576,13 +576,28 @@ public class BetterSeerrTabsController : ControllerBase
         };
     }
 
+    [HttpGet("letterboxd/sync/progress")]
+    [Authorize]
+    public ActionResult<LetterboxdSyncProgressDto> GetLetterboxdSyncProgress()
+    {
+        Guid userId = GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return Forbid();
+        }
+
+        Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        return Ok(_letterboxdWatchlistService.GetSyncProgress(userId));
+    }
+
     [HttpPost("letterboxd/sync")]
     [Authorize]
     public async Task<ActionResult> SyncLetterboxdWatchlist(
         [FromQuery] string letterboxdUsername,
         CancellationToken cancellationToken)
     {
-        if (GetUserId() == Guid.Empty)
+        Guid userId = GetUserId();
+        if (userId == Guid.Empty)
         {
             return Forbid();
         }
@@ -595,7 +610,7 @@ public class BetterSeerrTabsController : ControllerBase
         try
         {
             (List<BaseItemDto> items, int totalCount, int resolvedCount, int unresolvedCount) = await _letterboxdWatchlistService
-                .SyncAsync(letterboxdUsername, cancellationToken)
+                .SyncAsync(userId, letterboxdUsername, cancellationToken)
                 .ConfigureAwait(false);
             Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
             return Ok(new

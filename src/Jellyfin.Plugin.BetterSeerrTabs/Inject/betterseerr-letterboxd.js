@@ -16,6 +16,8 @@
         selectedIds: new Set(),
         requestedIds: new Set(),
         syncing: false,
+        syncProgressPercent: 0,
+        syncProgressPollTimer: null,
         requesting: false,
         requestProgress: { done: 0, total: 0 },
         bulkRoot: null
@@ -68,6 +70,60 @@
         }
 
         return date.toLocaleString();
+    }
+
+    function getSyncButtonLabel() {
+        if (state.syncing) {
+            return state.syncProgressPercent + '%';
+        }
+
+        return state.items.length > 0 ? 'Refresh watchlist' : 'Get watchlist';
+    }
+
+    function updateSyncButton(container) {
+        const button = container.querySelector('[data-sync-submit]');
+        if (button) {
+            button.textContent = getSyncButtonLabel();
+        }
+    }
+
+    function stopSyncProgressPolling() {
+        if (state.syncProgressPollTimer) {
+            clearInterval(state.syncProgressPollTimer);
+            state.syncProgressPollTimer = null;
+        }
+    }
+
+    function pollSyncProgress(container) {
+        ApiClient.ajax({
+            url: ApiClient.getUrl('BetterSeerrTabs/letterboxd/sync/progress'),
+            type: 'GET',
+            dataType: 'json'
+        }).then(function (result) {
+            const raw = result?.percent ?? result?.Percent ?? 0;
+            const percent = typeof raw === 'number' ? raw : parseInt(raw, 10);
+            if (Number.isNaN(percent)) {
+                return;
+            }
+
+            const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+            if (clamped !== state.syncProgressPercent) {
+                state.syncProgressPercent = clamped;
+                updateSyncButton(container);
+            }
+        }).catch(function () {
+            // Ignore polling errors while sync is in flight.
+        });
+    }
+
+    function startSyncProgressPolling(container) {
+        stopSyncProgressPolling();
+        state.syncProgressPercent = 0;
+        updateSyncButton(container);
+        pollSyncProgress(container);
+        state.syncProgressPollTimer = setInterval(function () {
+            pollSyncProgress(container);
+        }, 400);
     }
 
     function syncWatchlist(username) {
@@ -134,13 +190,13 @@
                                 'placeholder="your-letterboxd-username" value="' + escapeHtml(state.username) + '" ' +
                                 (state.syncing || state.requesting ? 'disabled' : '') + ' />' +
                         '</div>' +
-                        '<button type="submit" ' +
+                        '<button type="submit" data-sync-submit ' +
                             (state.syncing || state.requesting ? 'disabled' : '') + '>' +
-                            (state.syncing ? 'Syncing…' : (hasWatchlist ? 'Sync again' : 'Sync watchlist')) +
+                            escapeHtml(getSyncButtonLabel()) +
                         '</button>' +
                     '</form>' +
                 '</div>' +
-                '<div class="betterseerr-letterboxd-help">Public Letterboxd watchlists only. Enter your username, sync, select movies, then request them in bulk.</div>';
+                '<div class="betterseerr-letterboxd-help">Public Letterboxd watchlists only. Enter your username, get watchlist, select movies, then request them in bulk.</div>';
 
         if (lastError) {
             html += '<div class="betterseerr-letterboxd-error">' + escapeHtml(lastError) + '</div>';
@@ -152,7 +208,7 @@
             html +=
                 '<div class="betterseerr-letterboxd-meta">' +
                     '<span>Last synced: <strong>' + escapeHtml(formatDate(lastSynced)) + '</strong></span>' +
-                    '<span>Resolved: <strong>' + escapeHtml(String(resolvedCount)) + '</strong></span>' +
+                    '<span>Gotten: <strong>' + escapeHtml(String(resolvedCount)) + '</strong></span>' +
                     (unresolvedCount ? '<span>Unresolved: <strong>' + escapeHtml(String(unresolvedCount)) + '</strong></span>' : '') +
                 '</div>';
         }
@@ -283,7 +339,7 @@
                         window.betterSeerrModal.open(String(tmdbId), 'movie');
                     }
                 });
-                slot.appendChild(actions);
+                posterArea.appendChild(actions);
 
                 if (state.requestedIds.has(tmdbId)) {
                     const badge = document.createElement('span');
@@ -379,8 +435,10 @@
         }
 
         state.syncing = true;
+        state.syncProgressPercent = 0;
         state.syncMeta = Object.assign({}, state.syncMeta || {}, { lastError: null });
         renderPanel(container);
+        startSyncProgressPolling(container);
 
         syncWatchlist(username)
             .then(function () {
@@ -393,7 +451,9 @@
                 Dashboard.alert(message);
             })
             .finally(function () {
+                stopSyncProgressPolling();
                 state.syncing = false;
+                state.syncProgressPercent = 0;
                 renderPanel(container);
             });
     }

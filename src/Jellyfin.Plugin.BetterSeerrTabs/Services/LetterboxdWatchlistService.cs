@@ -1,8 +1,10 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.BetterSeerrTabs.Configuration;
+using Jellyfin.Plugin.BetterSeerrTabs.Model;
 using MediaBrowser.Model.Dto;
 using Newtonsoft.Json.Linq;
 
@@ -21,6 +23,7 @@ public class LetterboxdWatchlistService
     private static readonly Regex TmdbIdRegex = new(@"data-tmdb-id=""(\d+)""", RegexOptions.Compiled);
 
     private readonly HttpClient _httpClient;
+    private readonly ConcurrentDictionary<Guid, LetterboxdSyncProgressDto> _syncProgress = new();
 
     public LetterboxdWatchlistService(IHttpClientFactory httpClientFactory)
     {
@@ -28,7 +31,17 @@ public class LetterboxdWatchlistService
         _httpClient.Timeout = TimeSpan.FromSeconds(60);
     }
 
-    public async Task<(List<BaseItemDto> Items, int TotalCount, int ResolvedCount, int UnresolvedCount)> SyncAsync(string username, CancellationToken cancellationToken = default)
+    public LetterboxdSyncProgressDto GetSyncProgress(Guid userId)
+    {
+        if (_syncProgress.TryGetValue(userId, out LetterboxdSyncProgressDto? progress))
+        {
+            return progress;
+        }
+
+        return new LetterboxdSyncProgressDto { Percent = 0, Phase = string.Empty, IsActive = false };
+    }
+
+    public async Task<(List<BaseItemDto> Items, int TotalCount, int ResolvedCount, int UnresolvedCount)> SyncAsync(Guid userId, string username, CancellationToken cancellationToken = default)
     {
         username = username.Trim();
         if (string.IsNullOrWhiteSpace(username) || username.Contains('/') || username.Contains('\\'))
@@ -42,77 +55,142 @@ public class LetterboxdWatchlistService
             throw new InvalidOperationException("TMDB API key is required to sync Letterboxd watchlists.");
         }
 
-        // Scrape public watchlist pages
-        string firstUrl = $"https://letterboxd.com/{Uri.EscapeDataString(username)}/watchlist/";
-        string html = await FetchLetterboxdAsync(firstUrl, cancellationToken).ConfigureAwait(false);
+        SetSyncProgress(userId, 0, "pages");
 
-        // Last paginate-page number is the total page count.
-        List<int> pageNumbers = PageNumberRegex.Matches(html)
-            .Select(match => int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture))
-            .ToList();
-        int totalPages = pageNumbers.Count == 0 ? 1 : pageNumbers[^1];
-
-        List<(string Slug, string Title, int Year)> movies = new();
-        for (int page = 1; page <= totalPages; page++)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            // Scrape public watchlist pages
+            string firstUrl = $"https://letterboxd.com/{Uri.EscapeDataString(username)}/watchlist/";
+            string html = await FetchLetterboxdAsync(firstUrl, cancellationToken).ConfigureAwait(false);
 
-            // Page 1 html already loaded. fetch remaining pages separately.
-            string pageHtml = page == 1
-                ? html
-                : await FetchLetterboxdAsync(
-                    $"https://letterboxd.com/{Uri.EscapeDataString(username)}/watchlist/page/{page}/",
-                    cancellationToken).ConfigureAwait(false);
+            // Last paginate-page number is the total page count.
+            List<int> pageNumbers = PageNumberRegex.Matches(html)
+                .Select(match => int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture))
+                .ToList();
+            int totalPages = pageNumbers.Count == 0 ? 1 : pageNumbers[^1];
 
-            foreach ((string slug, string title, int year) in MoviesFromPage(pageHtml))
+            List<(string Slug, string Title, int Year)> movies = new();
+            for (int page = 1; page <= totalPages; page++)
             {
-                if (!movies.Contains((slug, title, year)))
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Page 1 html already loaded. fetch remaining pages separately.
+                string pageHtml = page == 1
+                    ? html
+                    : await FetchLetterboxdAsync(
+                        $"https://letterboxd.com/{Uri.EscapeDataString(username)}/watchlist/page/{page}/",
+                        cancellationToken).ConfigureAwait(false);
+
+                foreach ((string slug, string title, int year) in MoviesFromPage(pageHtml))
                 {
-                    movies.Add((slug, title, year));
+                    if (!movies.Contains((slug, title, year)))
+                    {
+                        movies.Add((slug, title, year));
+                    }
                 }
+
+                SetSyncProgress(userId, PageProgressPercent(page, totalPages), "pages");
             }
+
+            List<BaseItemDto> items = new();
+            HashSet<int> seenTmdbIds = new();
+            int unresolvedCount = 0;
+            int totalMovies = movies.Count;
+            int resolvedIndex = 0;
+
+            SetSyncProgress(userId, 50, "tmdb");
+
+            foreach ((string slug, string title, int year) in movies)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Search tmdb by title/year first, then get data-tmdb-id from the movie page.
+                TmdbMovieRefs? movie = await SearchTmdbMovieAsync(title, year, apiKey, cancellationToken).ConfigureAwait(false);
+                if (movie == null)
+                {
+                    int? tmdbId = await TmdbIdFromLetterboxdAsync(slug, cancellationToken).ConfigureAwait(false);
+                    if (tmdbId != null)
+                    {
+                        movie = await GetTmdbMovieDetailsAsync(tmdbId.Value, apiKey, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                if (movie == null)
+                {
+                    unresolvedCount++;
+                }
+                else if (seenTmdbIds.Add(movie.Id))
+                {
+                    Dictionary<string, string> providerIds = new()
+                    {
+                        { "Tmdb", movie.Id.ToString(CultureInfo.InvariantCulture) }
+                    };
+
+                    if (!string.IsNullOrEmpty(movie.PosterPath))
+                    {
+                        providerIds["TmdbPosterPath"] = movie.PosterPath;
+                    }
+
+                    if (!string.IsNullOrEmpty(movie.BackdropPath))
+                    {
+                        providerIds["TmdbBackdropPath"] = movie.BackdropPath;
+                    }
+
+                    items.Add(new BaseItemDto
+                    {
+                        Name = title,
+                        SourceType = "movie",
+                        PremiereDate = new DateTime(year, 1, 1),
+                        ProviderIds = providerIds
+                    });
+                }
+
+                resolvedIndex++;
+                SetSyncProgress(userId, TmdbProgressPercent(resolvedIndex, totalMovies), "tmdb");
+            }
+
+            SetSyncProgress(userId, 100, "tmdb");
+            return (items, movies.Count, items.Count, unresolvedCount);
+        }
+        finally
+        {
+            ClearSyncProgress(userId);
+        }
+    }
+
+    private static int PageProgressPercent(int page, int totalPages)
+    {
+        if (totalPages <= 0)
+        {
+            return 0;
         }
 
-        List<BaseItemDto> items = new();
-        HashSet<int> seenTmdbIds = new();
-        int unresolvedCount = 0;
+        return (int)Math.Round(page * 50.0 / totalPages);
+    }
 
-        foreach ((string slug, string title, int year) in movies)
+    private static int TmdbProgressPercent(int resolvedIndex, int totalMovies)
+    {
+        if (totalMovies <= 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Search tmdb by title/year first, then get data-tmdb-id from the movie page.
-            int? tmdbId = await SearchTmdbIdAsync(title, year, apiKey, cancellationToken).ConfigureAwait(false);
-            if (tmdbId == null)
-            {
-                tmdbId = await TmdbIdFromLetterboxdAsync(slug, cancellationToken).ConfigureAwait(false);
-            }
-
-            if (tmdbId == null)
-            {
-                unresolvedCount++;
-                continue;
-            }
-
-            // Same tmdb id can appear twice when letterboxd slugs differ slightly.
-            if (!seenTmdbIds.Add(tmdbId.Value))
-            {
-                continue;
-            }
-
-            items.Add(new BaseItemDto
-            {
-                Name = title,
-                SourceType = "movie",
-                PremiereDate = new DateTime(year, 1, 1),
-                ProviderIds = new Dictionary<string, string>
-                {
-                    { "Tmdb", tmdbId.Value.ToString(CultureInfo.InvariantCulture) }
-                }
-            });
+            return 100;
         }
 
-        return (items, movies.Count, items.Count, unresolvedCount);
+        return 50 + (int)Math.Round(resolvedIndex * 50.0 / totalMovies);
+    }
+
+    private void SetSyncProgress(Guid userId, int percent, string phase)
+    {
+        _syncProgress[userId] = new LetterboxdSyncProgressDto
+        {
+            Percent = Math.Clamp(percent, 0, 100),
+            Phase = phase,
+            IsActive = true
+        };
+    }
+
+    private void ClearSyncProgress(Guid userId)
+    {
+        _syncProgress.TryRemove(userId, out _);
     }
 
     // Parse data-item-slug and "Title (Year)" from watchlist card markup.
@@ -165,7 +243,9 @@ public class LetterboxdWatchlistService
         return request;
     }
 
-    private async Task<int?> SearchTmdbIdAsync(string title, int year, string apiKey, CancellationToken cancellationToken)
+    private sealed record TmdbMovieRefs(int Id, string? PosterPath, string? BackdropPath);
+
+    private async Task<TmdbMovieRefs?> SearchTmdbMovieAsync(string title, int year, string apiKey, CancellationToken cancellationToken)
     {
         string url = $"https://api.themoviedb.org/3/search/movie?query={Uri.EscapeDataString(title)}&year={year.ToString(CultureInfo.InvariantCulture)}";
         using HttpRequestMessage request = CreateTmdbRequest(url, apiKey);
@@ -187,10 +267,47 @@ public class LetterboxdWatchlistService
                 continue;
             }
 
-            return movie.Value<int?>("id");
+            return new TmdbMovieRefs(
+                movie.Value<int>("id"),
+                NormalizeTmdbImagePath(movie.Value<string>("poster_path")),
+                NormalizeTmdbImagePath(movie.Value<string>("backdrop_path")));
         }
 
         return null;
+    }
+
+    private async Task<TmdbMovieRefs?> GetTmdbMovieDetailsAsync(int tmdbId, string apiKey, CancellationToken cancellationToken)
+    {
+        string url = "https://api.themoviedb.org/3/movie/" + tmdbId.ToString(CultureInfo.InvariantCulture);
+        using HttpRequestMessage request = CreateTmdbRequest(url, apiKey);
+        using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        JObject movie = JObject.Parse(json);
+        int? id = movie.Value<int?>("id");
+        if (id == null)
+        {
+            return null;
+        }
+
+        return new TmdbMovieRefs(
+            id.Value,
+            NormalizeTmdbImagePath(movie.Value<string>("poster_path")),
+            NormalizeTmdbImagePath(movie.Value<string>("backdrop_path")));
+    }
+
+    private static string? NormalizeTmdbImagePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        return path.StartsWith('/') ? path : "/" + path;
     }
 
     // Fallback if no tmdb id found from search: read data-tmdb-id from Letterboxd film page 
