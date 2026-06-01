@@ -921,7 +921,9 @@
 
         const sidebar = document.createElement('div');
         sidebar.className = 'bst-sidebar';
-        const qualityLines = buildJustWatchQualityLines(tmdbId, mediaType);
+        const settings = window.betterSeerrTabsPlugin && window.betterSeerrTabsPlugin._displaySettings;
+        const showQualityRecommendations = !settings || settings.QualityRecommendations !== false;
+        const qualityLines = showQualityRecommendations ? buildJustWatchQualityLines(tmdbId, mediaType) : null;
         const lines = document.createElement('div');
         lines.className = 'bst-sidebar-lines';
 
@@ -979,7 +981,9 @@
             a.style.animationDelay = '120ms';
             links.appendChild(a);
         }
-        sidebar.appendChild(qualityLines);
+        if (qualityLines) {
+            sidebar.appendChild(qualityLines);
+        }
         sidebar.appendChild(lines);
         if (links.childElementCount) {
             sidebar.appendChild(links);

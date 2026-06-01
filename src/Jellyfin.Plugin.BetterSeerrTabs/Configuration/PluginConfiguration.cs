@@ -44,5 +44,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public bool ElegantFinFixes { get; set; }
 
+    public bool QualityRecommendations { get; set; } = true;
+
     public string DisplayCustomizationsJson { get; set; } = string.Empty;
 }

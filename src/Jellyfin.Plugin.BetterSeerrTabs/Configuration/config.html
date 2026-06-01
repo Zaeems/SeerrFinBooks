@@ -682,6 +682,18 @@
                         </div>
                         <div class="bst-toggle-row">
                             <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="qualityRecommendations">Quality recommendations</label>
+                                <div class="bst-field-desc">Show quality recommendations in the request modal to help you choose a quality profile. (uses JustWatch for qualities)</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle">
+                                    <input id="qualityRecommendations" name="qualityRecommendations" type="checkbox" checked />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
                                 <label class="bst-toggle-label" for="elegantFinFixes">ElegantFin fixes</label>
                                 <div class="bst-field-desc">Some fixes to correct card sizing and spacing if you use the ElegantFin theme.</div>
                             </div>
@@ -1002,6 +1014,7 @@
                 document.querySelector('#genreUseBackdrops').checked = config.GenreUseBackdrops !== false;
                 document.querySelector('#discoverUsePosters').checked = config.DiscoverUsePosters !== false;
                 document.querySelector('#elegantFinFixes').checked = config.ElegantFinFixes === true;
+                document.querySelector('#qualityRecommendations').checked = config.QualityRecommendations !== false;
                 Dashboard.hideLoadingMsg();
             }).catch(function () {
                 displayCustomizations = createDefaultDisplayCustomizations();
@@ -1029,6 +1042,7 @@
                     config.GenreUseBackdrops = document.querySelector('#genreUseBackdrops').checked;
                     config.DiscoverUsePosters = document.querySelector('#discoverUsePosters').checked;
                     config.ElegantFinFixes = document.querySelector('#elegantFinFixes').checked;
+                    config.QualityRecommendations = document.querySelector('#qualityRecommendations').checked;
                     return ApiClient.updatePluginConfiguration(pluginId, config);
                 }).then(function (result) {
                     Dashboard.processPluginConfigurationUpdateResult(result);

@@ -412,6 +412,12 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                         'elegantFinFixes',
                         false
                     ),
+                    QualityRecommendations: self.readConfigBool(
+                        data,
+                        'QualityRecommendations',
+                        'qualityRecommendations',
+                        true
+                    ),
                     DisplayCustomizations: self.parseDisplayCustomizations(data)
                 };
                 self.syncElegantFinFixes();
@@ -423,6 +429,7 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                     GenreUseBackdrops: true,
                     DiscoverUsePosters: true,
                     ElegantFinFixes: false,
+                    QualityRecommendations: true,
                     DisplayCustomizations: self.parseDisplayCustomizations(null)
                 };
                 self.syncElegantFinFixes();
