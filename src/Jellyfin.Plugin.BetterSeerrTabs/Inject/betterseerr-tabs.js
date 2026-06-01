@@ -137,6 +137,9 @@ if (typeof window.betterSeerrTabsPlugin === 'undefined') {
                 if (typeof window.__betterSeerrRequestsEnsureMounted === 'function') {
                     window.__betterSeerrRequestsEnsureMounted();
                 }
+                if (typeof window.__betterSeerrLetterboxdEnsureMounted === 'function') {
+                    window.__betterSeerrLetterboxdEnsureMounted();
+                }
             }, 0);
         },
 

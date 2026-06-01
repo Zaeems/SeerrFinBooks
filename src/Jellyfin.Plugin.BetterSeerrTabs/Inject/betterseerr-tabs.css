@@ -151,6 +151,11 @@
     width: var(--betterseerr-discover-portrait-width);
 }
 
+.betterseerr-grid-view .betterseerr-discover-card--backdrop.betterseerr-discover-card--grid {
+    width: 100%;
+    max-width: var(--betterseerr-discover-backdrop-width);
+}
+
 .betterseerr-discover-card--backdrop .betterseerr-discover-backdrop-scalable {
     position: relative;
     overflow: hidden;

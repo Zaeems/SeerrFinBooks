@@ -31,6 +31,8 @@
         <EmbeddedResource Include="Inject\betterseerr-modal.css" />
         <EmbeddedResource Include="Inject\betterseerr-requests.js" />
         <EmbeddedResource Include="Inject\betterseerr-requests.css" />
+        <EmbeddedResource Include="Inject\betterseerr-letterboxd.js" />
+        <EmbeddedResource Include="Inject\betterseerr-letterboxd.css" />
     </ItemGroup>
 
     <ItemGroup>

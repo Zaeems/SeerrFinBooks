@@ -23,6 +23,8 @@ public class BetterSeerrTabsController : ControllerBase
     private readonly ImageCacheService _imageCacheService;
     private readonly TmdbBackdropService _tmdbBackdropService;
     private readonly JustWatchQualitiesService _justWatchQualitiesService;
+    private readonly LetterboxdWatchlistService _letterboxdWatchlistService;
+    private readonly LetterboxdBulkRequestService _letterboxdBulkRequestService;
 
     public BetterSeerrTabsController(
         JellyseerrDiscoveryService discoveryService,
@@ -31,7 +33,9 @@ public class BetterSeerrTabsController : ControllerBase
         JellyseerrProxyService proxyService,
         ImageCacheService imageCacheService,
         TmdbBackdropService tmdbBackdropService,
-        JustWatchQualitiesService justWatchQualitiesService)
+        JustWatchQualitiesService justWatchQualitiesService,
+        LetterboxdWatchlistService letterboxdWatchlistService,
+        LetterboxdBulkRequestService letterboxdBulkRequestService)
     {
         _discoveryService = discoveryService;
         _requestService = requestService;
@@ -40,6 +44,8 @@ public class BetterSeerrTabsController : ControllerBase
         _imageCacheService = imageCacheService;
         _tmdbBackdropService = tmdbBackdropService;
         _justWatchQualitiesService = justWatchQualitiesService;
+        _letterboxdWatchlistService = letterboxdWatchlistService;
+        _letterboxdBulkRequestService = letterboxdBulkRequestService;
     }
 
     private Guid GetUserId()
@@ -101,6 +107,14 @@ public class BetterSeerrTabsController : ControllerBase
     [HttpGet("betterseerr-requests.css")]
     [Produces("text/css")]
     public ActionResult GetRequestsStylesheet() => ServeEmbedded("Inject.betterseerr-requests.css", "text/css");
+
+    [HttpGet("betterseerr-letterboxd.js")]
+    [Produces("application/javascript")]
+    public ActionResult GetLetterboxdScript() => ServeEmbedded("Inject.betterseerr-letterboxd.js", "application/javascript");
+
+    [HttpGet("betterseerr-letterboxd.css")]
+    [Produces("text/css")]
+    public ActionResult GetLetterboxdStylesheet() => ServeEmbedded("Inject.betterseerr-letterboxd.css", "text/css");
 
     [HttpGet("jellyseerr/{*path}")]
     [Authorize]
@@ -560,6 +574,79 @@ public class BetterSeerrTabsController : ControllerBase
             Content = body,
             ContentType = contentType
         };
+    }
+
+    [HttpPost("letterboxd/sync")]
+    [Authorize]
+    public async Task<ActionResult> SyncLetterboxdWatchlist(
+        [FromQuery] string letterboxdUsername,
+        CancellationToken cancellationToken)
+    {
+        if (GetUserId() == Guid.Empty)
+        {
+            return Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(letterboxdUsername))
+        {
+            return BadRequest(new { message = "Letterboxd username is needed." });
+        }
+
+        try
+        {
+            (List<BaseItemDto> items, int totalCount, int resolvedCount, int unresolvedCount) = await _letterboxdWatchlistService
+                .SyncAsync(letterboxdUsername, cancellationToken)
+                .ConfigureAwait(false);
+            Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+            return Ok(new
+            {
+                letterboxdUsername = letterboxdUsername.Trim(),
+                totalCount,
+                resolvedCount,
+                unresolvedCount,
+                items
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("letterboxd/request")]
+    [Authorize]
+    public async Task<ActionResult<LetterboxdBulkRequestResultDto>> RequestLetterboxdItems(
+        [FromServices] IUserManager userManager,
+        [FromBody] LetterboxdBulkRequestPayload payload,
+        CancellationToken cancellationToken)
+    {
+        Guid userId = GetUserId();
+        string? username = GetUsername(userManager);
+        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(username))
+        {
+            return Forbid();
+        }
+
+        if (payload.TmdbIds == null || payload.TmdbIds.Count == 0)
+        {
+            return BadRequest(new { message = "Select at least one movie." });
+        }
+
+        try
+        {
+            LetterboxdBulkRequestResultDto result = await _letterboxdBulkRequestService
+                .SubmitBulkRequestAsync(username, payload, cancellationToken)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     private ActionResult ServeEmbedded(string resourceName, string contentType)
