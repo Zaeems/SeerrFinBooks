@@ -22,10 +22,15 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 ---
 
 ## Features
-- **Movie and TV tabs**: New pages for discovering content using Custom Tabs
+- **Movie and TV tabs**: New tabs for discovering movies and TV shows using Custom Tabs
 - **Discovery sections**: Carousels sorting movies/tv shows to be discovered by (eg. Trending, Popular, etc.)
-- **Genres, Movie Studios, TV Networks**: A bunch of genres, studio and network boxes which can be sorted by
-- **Grid screens**: Screens to view more content from any section/genre/studio/network
+- **Request from Seerr**: Easily request movies and TV shows directly in Jellyfin and select quality profiles and specific seasons (for shows)
+- **Quality recommendations**: Get the highest released and most common streaming quality when requesting to get the right quality for your request
+- **Requests tab**: Track your Seerr requests with, and open each request open requested content in Seerr, Radarr or Sonarr
+- **Radarr/Sonarr download progress**: See live download progress of requests to see how far along each request is
+- **Letterboxd watchlist sync**: Sync your Letterboxd watchlist into Jellyfin and request all movies from your watchlist at once
+- **Bulk request from Letterboxd**: Select and request multiple movies from your Letterboxd watchlist at once
+- **Display customizations**: Customize logos, backdrops, poster style, and colors for all carousels/cards
 
 
 ## Installation
@@ -64,4 +69,6 @@ BetterSeerrTabs is licensed under the [MIT License](https://github.com/varunadit
 - [Lato](https://fonts.google.com/specimen/Lato) by Łukasz Dziedzic, served via Google Fonts.
 - Movie and TV metadata, images, and the TMDB logo from [The Movie Database (TMDB)](https://www.themoviedb.org/).
 - Discover and request flows powered by the [Seerr](https://github.com/seerr-team/seerr) API.
+- [Letterboxd](https://letterboxd.com/) for providing user watchlists for Letterboxd syncing
+- Streaming quality recommendations gotten from [JustWatch](https://www.justwatch.com/).
 - Uses [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) and depends on [Custom Tabs](https://github.com/IAmParadox27/jellyfin-plugin-custom-tabs) by IAmParadox27.
