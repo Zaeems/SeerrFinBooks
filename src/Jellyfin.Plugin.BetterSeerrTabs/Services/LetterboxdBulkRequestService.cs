@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Jellyfin.Plugin.BetterSeerrTabs.Model;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -17,6 +18,7 @@ public class LetterboxdBulkRequestService
     private readonly JellyseerrRequestService _requestService;
     private readonly JustWatchQualitiesService _qualitiesService;
     private readonly ILogger<LetterboxdBulkRequestService> _logger;
+    private readonly ConcurrentDictionary<Guid, LetterboxdRequestProgressDto> _requestProgress = new();
 
     public LetterboxdBulkRequestService(
         JellyseerrRequestService requestService,
@@ -28,7 +30,18 @@ public class LetterboxdBulkRequestService
         _logger = logger;
     }
 
+    public LetterboxdRequestProgressDto GetRequestProgress(Guid userId)
+    {
+        if (_requestProgress.TryGetValue(userId, out LetterboxdRequestProgressDto? progress))
+        {
+            return progress;
+        }
+
+        return new LetterboxdRequestProgressDto { Done = 0, Total = 0, Percent = 0, IsActive = false };
+    }
+
     public async Task<LetterboxdBulkRequestResultDto> SubmitBulkRequestAsync(
+        Guid userId,
         string username,
         LetterboxdBulkRequestPayload payload,
         CancellationToken cancellationToken = default)
@@ -39,10 +52,13 @@ public class LetterboxdBulkRequestService
             return result;
         }
 
+        List<int> tmdbIds = payload.TmdbIds.Distinct().ToList();
+        int total = tmdbIds.Count;
+
         JArray requestOptions = _requestService.GetRequestOptions(username, "movie");
         if (requestOptions.Count == 0)
         {
-            foreach (int tmdbId in payload.TmdbIds.Distinct())
+            foreach (int tmdbId in tmdbIds)
             {
                 result.Results.Add(new LetterboxdBulkRequestItemResult
                 {
@@ -63,96 +79,131 @@ public class LetterboxdBulkRequestService
             throw new ArgumentException("ServerId and ProfileId are required for single profile mode.");
         }
 
-        foreach (int tmdbId in payload.TmdbIds.Distinct())
+        SetRequestProgress(userId, 0, total, tmdbIds[0], result.Results);
+
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
+            foreach (int tmdbId in tmdbIds)
             {
-                (int? serverId, int? profileId, string? rootFolder, bool is4k, string? warning) =
-                    await ResolveRequestOptionAsync(
-                        qualityMode,
-                        tmdbId,
-                        payload,
-                        requestOptions,
-                        cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                // Publish the current movie before doing jw lookup and Seerr submit work.
+                SetRequestProgress(userId, result.Results.Count, total, tmdbId, result.Results);
 
-                if (serverId == null || profileId == null)
+                try
                 {
+                    (int? serverId, int? profileId, string? rootFolder, bool is4k, string? profileName, string? qualityLabel, string? warning) =
+                        await ResolveRequestOptionAsync(qualityMode, tmdbId, payload, requestOptions, cancellationToken).ConfigureAwait(false);
+
+                    if (serverId == null || profileId == null)
+                    {
+                        result.Results.Add(new LetterboxdBulkRequestItemResult
+                        {
+                            TmdbId = tmdbId,
+                            Status = "failed",
+                            ProfileName = profileName,
+                            QualityLabel = qualityLabel,
+                            Message = warning ?? "Could not resolve a quality profile."
+                        });
+                        result.Failed++;
+                    }
+                    else
+                    {
+                        DiscoverRequestPayload requestPayload = new()
+                        {
+                            MediaType = "movie",
+                            MediaId = tmdbId,
+                            ServerId = serverId,
+                            ProfileId = profileId,
+                            RootFolder = rootFolder,
+                            Is4k = is4k
+                        };
+
+                        (int statusCode, string body, _) = await _requestService
+                            .SubmitRequestAsync(username, requestPayload, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        // Seerr returns 409 when the title is already requested.
+                        if (IsAlreadyRequested(statusCode, body))
+                        {
+                            result.Results.Add(new LetterboxdBulkRequestItemResult
+                            {
+                                TmdbId = tmdbId,
+                                Status = "skipped",
+                                ProfileName = profileName,
+                                QualityLabel = qualityLabel,
+                                Message = warning ?? "Already requested."
+                            });
+                            result.Skipped++;
+                        }
+                        else if (statusCode >= 200 && statusCode < 300)
+                        {
+                            result.Results.Add(new LetterboxdBulkRequestItemResult
+                            {
+                                TmdbId = tmdbId,
+                                Status = "requested",
+                                ProfileName = profileName,
+                                QualityLabel = qualityLabel,
+                                Message = warning
+                            });
+                            result.Requested++;
+                        }
+                        else
+                        {
+                            result.Results.Add(new LetterboxdBulkRequestItemResult
+                            {
+                                TmdbId = tmdbId,
+                                Status = "failed",
+                                ProfileName = profileName,
+                                QualityLabel = qualityLabel,
+                                Message = ExtractErrorMessage(body) ?? $"Request failed with status {statusCode}."
+                            });
+                            result.Failed++;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Bulk request failed for TMDB movie {TmdbId}", tmdbId);
                     result.Results.Add(new LetterboxdBulkRequestItemResult
                     {
                         TmdbId = tmdbId,
                         Status = "failed",
-                        Message = warning ?? "Could not resolve a quality profile."
+                        Message = ex.Message
                     });
                     result.Failed++;
-                    continue;
                 }
 
-                DiscoverRequestPayload requestPayload = new()
-                {
-                    MediaType = "movie",
-                    MediaId = tmdbId,
-                    ServerId = serverId,
-                    ProfileId = profileId,
-                    RootFolder = rootFolder,
-                    Is4k = is4k
-                };
-
-                (int statusCode, string body, _) = await _requestService
-                    .SubmitRequestAsync(username, requestPayload, cancellationToken)
-                    .ConfigureAwait(false);
-
-                // Seerr returns 409 when the title is already requested.
-                if (IsAlreadyRequested(statusCode, body))
-                {
-                    result.Results.Add(new LetterboxdBulkRequestItemResult
-                    {
-                        TmdbId = tmdbId,
-                        Status = "skipped",
-                        Message = warning ?? "Already requested."
-                    });
-                    result.Skipped++;
-                    continue;
-                }
-
-                if (statusCode >= 200 && statusCode < 300)
-                {
-                    result.Results.Add(new LetterboxdBulkRequestItemResult
-                    {
-                        TmdbId = tmdbId,
-                        Status = "requested",
-                        Message = warning
-                    });
-                    result.Requested++;
-                    continue;
-                }
-
-                result.Results.Add(new LetterboxdBulkRequestItemResult
-                {
-                    TmdbId = tmdbId,
-                    Status = "failed",
-                    Message = ExtractErrorMessage(body) ?? $"Request failed with status {statusCode}."
-                });
-                result.Failed++;
+                // Read completed list so the modal can update one row at a time.
+                SetRequestProgress(userId, result.Results.Count, total, null, result.Results);
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Bulk request failed for TMDB movie {TmdbId}", tmdbId);
-                result.Results.Add(new LetterboxdBulkRequestItemResult
-                {
-                    TmdbId = tmdbId,
-                    Status = "failed",
-                    Message = ex.Message
-                });
-                result.Failed++;
-            }
+        }
+        finally
+        {
+            ClearRequestProgress(userId);
         }
 
         return result;
     }
 
-    private async Task<(int? ServerId, int? ProfileId, string? RootFolder, bool Is4k, string? Warning)> ResolveRequestOptionAsync(
+    private void SetRequestProgress(Guid userId, int done, int total, int? currentTmdbId, IReadOnlyList<LetterboxdBulkRequestItemResult> completed)
+    {
+        _requestProgress[userId] = new LetterboxdRequestProgressDto
+        {
+            Done = done,
+            Total = total,
+            Percent = total <= 0 ? 0 : (int)Math.Round(done * 100.0 / total),
+            CurrentTmdbId = currentTmdbId,
+            IsActive = true,
+            Completed = completed.ToList()
+        };
+    }
+
+    private void ClearRequestProgress(Guid userId)
+    {
+        _requestProgress.TryRemove(userId, out _);
+    }
+
+    private async Task<(int? ServerId, int? ProfileId, string? RootFolder, bool Is4k, string? ProfileName, string? QualityLabel, string? Warning)> ResolveRequestOptionAsync(
         string qualityMode,
         int tmdbId,
         LetterboxdBulkRequestPayload payload,
@@ -162,7 +213,8 @@ public class LetterboxdBulkRequestService
         // User picked one quality profile for every selected movie.
         if (qualityMode == "singleprofile")
         {
-            return (payload.ServerId, payload.ProfileId, payload.RootFolder, payload.Is4k, null);
+            string? profileName = GetProfileName(requestOptions, payload.ServerId, payload.ProfileId);
+            return (payload.ServerId, payload.ProfileId, payload.RootFolder, payload.Is4k, profileName, null, null);
         }
 
         // Per movie: ask jw which tier fits, then match to the quality profile.
@@ -179,12 +231,15 @@ public class LetterboxdBulkRequestService
 
         if (string.IsNullOrWhiteSpace(targetLabel))
         {
+            // jw can be empty for niche movies, so use the normal default profile.
             JObject? fallback = GetDefaultProfileOption(requestOptions, prefer4k: false);
             return (
                 fallback?.Value<int?>("serverId"),
                 fallback?.Value<int?>("profileId"),
                 fallback?.Value<string>("rootFolder"),
                 fallback?.Value<bool?>("is4k") ?? false,
+                fallback?.Value<string>("profileName"),
+                null,
                 "Quality recommendation unavailable; used default profile.");
         }
 
@@ -197,6 +252,8 @@ public class LetterboxdBulkRequestService
                 matched.Value<int?>("profileId"),
                 matched.Value<string>("rootFolder"),
                 matched.Value<bool?>("is4k") ?? false,
+                matched.Value<string>("profileName"),
+                targetLabel,
                 null);
         }
 
@@ -207,7 +264,15 @@ public class LetterboxdBulkRequestService
             defaultOption?.Value<int?>("profileId"),
             defaultOption?.Value<string>("rootFolder"),
             defaultOption?.Value<bool?>("is4k") ?? false,
+            defaultOption?.Value<string>("profileName"),
+            targetLabel,
             $"Could not match {targetLabel}; used default profile.");
+    }
+
+    private static string? GetProfileName(JArray options, int? serverId, int? profileId)
+    {
+        return options.OfType<JObject>().FirstOrDefault(option => option.Value<int?>("serverId") == serverId && option.Value<int?>("profileId") == profileId)
+            ?.Value<string>("profileName");
     }
 
     private static string NormalizeQualityMode(string? mode)

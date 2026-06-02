@@ -632,6 +632,42 @@ public class BetterSeerrTabsController : ControllerBase
         }
     }
 
+    [HttpGet("letterboxd/request/progress")]
+    [Authorize]
+    public ActionResult<LetterboxdRequestProgressDto> GetLetterboxdRequestProgress()
+    {
+        Guid userId = GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return Forbid();
+        }
+
+        Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        return Ok(_letterboxdBulkRequestService.GetRequestProgress(userId));
+    }
+
+    [HttpPost("letterboxd/request/check")]
+    [Authorize]
+    public ActionResult CheckLetterboxdRequestStatus(
+        [FromServices] IUserManager userManager,
+        [FromBody] LetterboxdBulkRequestPayload payload)
+    {
+        string? username = GetUsername(userManager);
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return Forbid();
+        }
+
+        if (payload.TmdbIds == null || payload.TmdbIds.Count == 0)
+        {
+            return BadRequest(new { message = "Select at least one movie." });
+        }
+
+        List<int> alreadyRequested = _discoveryService
+            .GetAlreadyRequestedMovieIds(username, payload.TmdbIds);
+        return Ok(new { tmdbIds = alreadyRequested });
+    }
+
     [HttpPost("letterboxd/request")]
     [Authorize]
     public async Task<ActionResult<LetterboxdBulkRequestResultDto>> RequestLetterboxdItems(
@@ -654,7 +690,7 @@ public class BetterSeerrTabsController : ControllerBase
         try
         {
             LetterboxdBulkRequestResultDto result = await _letterboxdBulkRequestService
-                .SubmitBulkRequestAsync(username, payload, cancellationToken)
+                .SubmitBulkRequestAsync(userId, username, payload, cancellationToken)
                 .ConfigureAwait(false);
             return Ok(result);
         }

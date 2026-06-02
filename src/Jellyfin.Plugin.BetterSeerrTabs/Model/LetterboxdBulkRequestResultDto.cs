@@ -17,5 +17,9 @@ public class LetterboxdBulkRequestItemResult
 
     public string Status { get; set; } = string.Empty;
 
+    public string? ProfileName { get; set; }
+
+    public string? QualityLabel { get; set; }
+
     public string? Message { get; set; }
 }

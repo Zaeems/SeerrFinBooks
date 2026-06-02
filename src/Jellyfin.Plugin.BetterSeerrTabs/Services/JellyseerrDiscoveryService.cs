@@ -286,6 +286,21 @@ public class JellyseerrDiscoveryService
         return FetchJellyseerrDetails(username, config, mediaType, mediaId);
     }
 
+    public List<int> GetAlreadyRequestedMovieIds(string username, IEnumerable<int> tmdbIds)
+    {
+        List<int> alreadyRequested = new();
+        foreach (int tmdbId in tmdbIds.Distinct())
+        {
+            JObject? details = GetMediaDetails(username, "movie", tmdbId);
+            if (details?.Value<JObject>("mediaInfo") != null)
+            {
+                alreadyRequested.Add(tmdbId);
+            }
+        }
+
+        return alreadyRequested;
+    }
+
     private JObject? FetchJellyseerrDetails(string username, PluginConfiguration config, string mediaType, int mediaId)
     {
         using HttpClient client = CreateClient(config);

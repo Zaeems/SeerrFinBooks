@@ -19,7 +19,8 @@
         syncProgressPercent: 0,
         syncProgressPollTimer: null,
         requesting: false,
-        requestProgress: { done: 0, total: 0 },
+        requestProgressAppliedCount: 0,
+        requestProgressPollTimer: null,
         bulkRoot: null
     };
 
@@ -144,6 +145,337 @@
         });
     }
 
+    function getItemTitle(tmdbId) {
+        for (let i = 0; i < state.items.length; i++) {
+            if (getTmdbId(state.items[i]) === tmdbId) {
+                return state.items[i].Name || state.items[i].name || '';
+            }
+        }
+
+        return '';
+    }
+
+    function stopRequestProgressPolling() {
+        if (state.requestProgressPollTimer) {
+            clearInterval(state.requestProgressPollTimer);
+            state.requestProgressPollTimer = null;
+        }
+    }
+
+    function setRequestingUi(container, requesting) {
+        state.requesting = requesting;
+
+        const input = container.querySelector('#betterseerr-letterboxd-username');
+        const syncBtn = container.querySelector('[data-sync-submit]');
+        if (input) {
+            input.disabled = requesting || state.syncing;
+        }
+        if (syncBtn) {
+            syncBtn.disabled = requesting || state.syncing;
+        }
+
+        container.querySelectorAll('[data-select-all], [data-select-none]').forEach(function (button) {
+            button.disabled = requesting;
+        });
+
+        const actionbar = container.querySelector('.betterseerr-letterboxd-actionbar');
+        if (actionbar) {
+            actionbar.classList.toggle('betterseerr-letterboxd-disabled', requesting);
+        }
+
+        updateSelectionUi(container);
+    }
+
+    function getBulkQualityLabel(item) {
+        const profileName = item.profileName || item.ProfileName || '';
+        const qualityLabel = item.qualityLabel || item.QualityLabel || '';
+        if (profileName && qualityLabel && profileName !== qualityLabel) {
+            return qualityLabel + ' · ' + profileName;
+        }
+
+        return profileName || qualityLabel || '';
+    }
+
+    function getBulkStatusLabel(status) {
+        if (status === 'requested') {
+            return 'Requested';
+        }
+        if (status === 'skipped') {
+            return 'Already requested';
+        }
+        if (status === 'failed') {
+            return 'Failed';
+        }
+
+        return 'Waiting';
+    }
+
+    function setBulkModalLocked(locked) {
+        const closeBtn = state.bulkRoot?.querySelector('.bst-quality-close');
+        const backdrop = state.bulkRoot?.querySelector('.bst-quality-backdrop');
+        if (closeBtn) {
+            closeBtn.disabled = locked;
+            closeBtn.style.opacity = locked ? '0.4' : '';
+            closeBtn.style.cursor = locked ? 'default' : '';
+        }
+        if (backdrop) {
+            backdrop.style.pointerEvents = locked ? 'none' : '';
+        }
+    }
+
+    function showBulkRequestProgressPanel(panel, payload) {
+        const tmdbIds = payload.TmdbIds || [];
+        panel.classList.add('bst-letterboxd-bulk-panel');
+        const header = panel.querySelector('.bst-quality-header h3');
+        if (header) {
+            header.textContent = 'Requesting movies';
+        }
+
+        setBulkModalLocked(true);
+
+        let subtitle = '';
+        if (payload.QualityMode === 'singleProfile' && payload.ProfileName) {
+            subtitle = 'Profile: ' + payload.ProfileName;
+        } else if (payload.QualityMode === 'highestAvailable') {
+            subtitle = 'Using highest released quality for each movie';
+        } else if (payload.QualityMode === 'mostCommon') {
+            subtitle = 'Using most common quality for each movie';
+        }
+
+        const list = panel.querySelector('.bst-quality-list');
+        if (!list) {
+            return;
+        }
+
+        // Build the request view once so polling can update rows without rerendering page.
+        list.innerHTML =
+            (subtitle ? '<div class="bst-letterboxd-bulk-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
+            '<div class="bst-letterboxd-bulk-progress">' +
+                '<div class="bst-letterboxd-bulk-progress-track">' +
+                    '<div class="bst-letterboxd-bulk-progress-fill" data-bulk-progress-fill style="width:0%"></div>' +
+                '</div>' +
+                '<span class="bst-letterboxd-bulk-progress-count" data-bulk-progress-count>0 of ' + tmdbIds.length + '</span>' +
+            '</div>' +
+            '<div class="bst-letterboxd-bulk-items" data-bulk-items>' +
+                tmdbIds.map(function (id) {
+                    return '<div class="bst-letterboxd-bulk-item" data-bulk-item data-tmdb-id="' + id + '">' +
+                        '<div class="bst-letterboxd-bulk-item-main">' +
+                            '<span class="bst-letterboxd-bulk-item-title">' + escapeHtml(getItemTitle(id) || 'Movie') + '</span>' +
+                            '<span class="bst-letterboxd-bulk-item-quality" data-bulk-quality></span>' +
+                        '</div>' +
+                        '<span class="bst-letterboxd-bulk-item-status" data-bulk-status>Waiting</span>' +
+                    '</div>';
+                }).join('') +
+            '</div>' +
+            '<button type="button" class="bst-quality-option bst-letterboxd-bulk-done" data-bulk-footer data-bulk-done hidden>Done</button>';
+
+        const doneBtn = list.querySelector('[data-bulk-done]');
+        if (doneBtn) {
+            doneBtn.addEventListener('click', closeBulkModal);
+        }
+    }
+
+    function updateBulkItemRow(panel, item) {
+        const tmdbId = parseInt(item.tmdbId || item.TmdbId, 10);
+        if (Number.isNaN(tmdbId)) {
+            return;
+        }
+
+        const row = panel.querySelector('[data-bulk-item][data-tmdb-id="' + tmdbId + '"]');
+        if (!row) {
+            return;
+        }
+
+        const status = (item.status || item.Status || '').toLowerCase();
+        row.classList.remove('is-active');
+        row.classList.remove('is-requested', 'is-skipped', 'is-failed', 'is-waiting');
+        row.classList.add('is-' + status);
+
+        const qualityEl = row.querySelector('[data-bulk-quality]');
+        if (qualityEl) {
+            qualityEl.textContent = getBulkQualityLabel(item);
+        }
+
+        const statusEl = row.querySelector('[data-bulk-status]');
+        if (statusEl) {
+            statusEl.textContent = getBulkStatusLabel(status);
+        }
+    }
+
+    function updateBulkRequestProgressModal(container, progress) {
+        const panel = state.bulkRoot?.querySelector('.bst-quality-panel');
+        if (!panel) {
+            return;
+        }
+
+        const done = progress?.done ?? progress?.Done ?? 0;
+        const total = progress?.total ?? progress?.Total ?? 0;
+        const percent = progress?.percent ?? progress?.Percent ?? 0;
+        const currentId = progress?.currentTmdbId ?? progress?.CurrentTmdbId ?? null;
+        const completed = progress?.completed || progress?.Completed || [];
+
+        const fill = panel.querySelector('[data-bulk-progress-fill]');
+        if (fill) {
+            fill.style.width = Math.max(0, Math.min(100, percent)) + '%';
+        }
+
+        const countEl = panel.querySelector('[data-bulk-progress-count]');
+        if (countEl) {
+            countEl.textContent = done + ' of ' + total;
+        }
+
+        panel.querySelectorAll('[data-bulk-item].is-active').forEach(function (row) {
+            row.classList.remove('is-active');
+            const statusEl = row.querySelector('[data-bulk-status]');
+            if (statusEl && statusEl.textContent === 'Requesting…') {
+                statusEl.textContent = 'Waiting';
+            }
+        });
+
+        // Only show newly completed results since the last poll.
+        for (let i = state.requestProgressAppliedCount; i < completed.length; i++) {
+            const item = completed[i];
+            updateBulkItemRow(panel, item);
+
+            const tmdbId = parseInt(item.tmdbId || item.TmdbId, 10);
+            const status = (item.status || item.Status || '').toLowerCase();
+            if (!Number.isNaN(tmdbId)) {
+                applyRequestResultToCard(container, tmdbId, status);
+            }
+        }
+
+        state.requestProgressAppliedCount = completed.length;
+        updateSelectionUi(container);
+
+        if (currentId && done < total) {
+            const row = panel.querySelector('[data-bulk-item][data-tmdb-id="' + currentId + '"]');
+            if (row && !row.classList.contains('is-requested') &&
+                !row.classList.contains('is-skipped') &&
+                !row.classList.contains('is-failed')) {
+                row.classList.add('is-active');
+                const statusEl = row.querySelector('[data-bulk-status]');
+                if (statusEl) {
+                    statusEl.textContent = 'Requesting…';
+                }
+            }
+        }
+    }
+
+    function showBulkRequestComplete(panel, requested, skipped, failed) {
+        const header = panel.querySelector('.bst-quality-header h3');
+        if (header) {
+            header.textContent = 'Requests complete';
+        }
+
+        setBulkModalLocked(false);
+
+        const fill = panel.querySelector('[data-bulk-progress-fill]');
+        if (fill) {
+            fill.style.width = '100%';
+        }
+
+        let subtitle = panel.querySelector('.bst-letterboxd-bulk-subtitle');
+        if (!subtitle) {
+            subtitle = document.createElement('div');
+            subtitle.className = 'bst-letterboxd-bulk-subtitle';
+            const list = panel.querySelector('.bst-quality-list');
+            if (list) {
+                list.insertBefore(subtitle, list.firstChild);
+            }
+        }
+
+        subtitle.textContent = 'Requested: ' + requested + ', skipped: ' + skipped + ', failed: ' + failed;
+
+        const footer = panel.querySelector('[data-bulk-footer]');
+        if (footer) {
+            footer.hidden = false;
+        }
+    }
+
+    function showBulkRequestError(panel, message) {
+        const header = panel.querySelector('.bst-quality-header h3');
+        if (header) {
+            header.textContent = 'Request failed';
+        }
+
+        setBulkModalLocked(false);
+
+        let subtitle = panel.querySelector('.bst-letterboxd-bulk-subtitle');
+        if (!subtitle) {
+            subtitle = document.createElement('div');
+            subtitle.className = 'bst-letterboxd-bulk-subtitle bst-letterboxd-bulk-subtitle--error';
+            const list = panel.querySelector('.bst-quality-list');
+            if (list) {
+                list.insertBefore(subtitle, list.firstChild);
+            }
+        }
+
+        subtitle.textContent = message;
+
+        const footer = panel.querySelector('[data-bulk-footer]');
+        if (footer) {
+            footer.hidden = false;
+        }
+    }
+
+    function applyRequestResultToCard(container, tmdbId, status) {
+        const card = container.querySelector('.betterseerr-discover-card[data-tmdb-id="' + tmdbId + '"]');
+        if (!card) {
+            return;
+        }
+
+        if (status === 'requested' || status === 'skipped') {
+            state.requestedIds.add(tmdbId);
+            state.selectedIds.delete(tmdbId);
+            card.classList.remove('is-selected');
+            card.setAttribute('aria-selected', 'false');
+        }
+    }
+
+    function applyCompletedResults(container, completed, fromIndex) {
+        const panel = state.bulkRoot?.querySelector('.bst-quality-panel');
+        for (let i = fromIndex; i < completed.length; i++) {
+            const item = completed[i];
+            const tmdbId = parseInt(item.tmdbId || item.TmdbId, 10);
+            const status = (item.status || item.Status || '').toLowerCase();
+            if (panel) {
+                updateBulkItemRow(panel, item);
+            }
+            if (!Number.isNaN(tmdbId)) {
+                applyRequestResultToCard(container, tmdbId, status);
+            }
+        }
+
+        state.requestProgressAppliedCount = completed.length;
+        updateSelectionUi(container);
+    }
+
+    function pollRequestProgress(container) {
+        ApiClient.ajax({
+            url: ApiClient.getUrl('BetterSeerrTabs/letterboxd/request/progress'),
+            type: 'GET',
+            dataType: 'json'
+        }).then(function (result) {
+            const isActive = result?.isActive ?? result?.IsActive ?? false;
+            if (!isActive) {
+                return;
+            }
+
+            updateBulkRequestProgressModal(container, result);
+        }).catch(function () {
+            // Ignore polling errors
+        });
+    }
+
+    function startRequestProgressPolling(container) {
+        stopRequestProgressPolling();
+        state.requestProgressAppliedCount = 0;
+        pollRequestProgress(container);
+        state.requestProgressPollTimer = setInterval(function () {
+            pollRequestProgress(container);
+        }, 400);
+    }
+
     function mapItemToDiscover(item) {
         const providerIds = item.ProviderIds || item.providerIds || {};
         const premiereDate = item.PremiereDate || item.premiereDate || null;
@@ -164,6 +496,26 @@
         return Number.isNaN(parsed) ? null : parsed;
     }
 
+    function updatePanelErrorBar(container, message) {
+        let errorEl = container.querySelector('.betterseerr-letterboxd-error');
+        if (message) {
+            if (!errorEl) {
+                errorEl = document.createElement('div');
+                errorEl.className = 'betterseerr-letterboxd-error';
+                const help = container.querySelector('.betterseerr-letterboxd-help');
+                if (help) {
+                    help.insertAdjacentElement('afterend', errorEl);
+                }
+            }
+            errorEl.textContent = message;
+            return;
+        }
+
+        if (errorEl) {
+            errorEl.remove();
+        }
+    }
+
     function renderPanel(container) {
         const syncMeta = state.syncMeta || {};
         const resolvedCount = syncMeta.resolvedCount || 0;
@@ -173,9 +525,6 @@
         const hasWatchlist = state.items.length > 0;
         const showToolbar = hasWatchlist && !state.syncing;
         const selectedCount = state.selectedIds.size;
-        const progressText = state.requesting
-            ? 'Requesting ' + state.requestProgress.done + ' of ' + state.requestProgress.total + '…'
-            : '';
 
         let html =
             '<div class="verticalSection betterseerr-letterboxd-panel padded-left padded-right">' +
@@ -231,7 +580,6 @@
             html +=
                 '<div class="betterseerr-letterboxd-actionbar' +
                     (state.requesting ? ' betterseerr-letterboxd-disabled' : '') + '">' +
-                    (progressText ? '<div class="betterseerr-letterboxd-progress">' + escapeHtml(progressText) + '</div>' : '') +
                     '<button type="button" data-request-selected ' +
                         (selectedCount === 0 || state.requesting ? 'disabled' : '') + '>Request selected</button>' +
                 '</div>';
@@ -263,19 +611,18 @@
         }
 
         if (!state.items.length) {
-            if (state.syncMeta?.lastSynced) {
-                body.innerHTML = '<div class="betterseerr-empty-row">No resolved movies found in the last sync.</div>';
-            } else {
-                body.innerHTML = '<div class="betterseerr-empty-row">Enter your Letterboxd username and sync your watchlist.</div>';
-            }
+            body.innerHTML = '';
             return;
         }
 
         const plugin = getPlugin();
         if (!plugin || typeof plugin.createDiscoverCards !== 'function') {
-            body.innerHTML = '<div class="betterseerr-empty-row">Plugin cards are not ready yet.</div>';
+            body.innerHTML = '';
+            updatePanelErrorBar(container, 'Plugin cards are not ready yet.');
             return;
         }
+
+        updatePanelErrorBar(container, state.syncMeta?.lastError || null);
 
         const renderCards = function () {
             const useBackdrop = typeof plugin.shouldUseBackdropThumbnails === 'function'
@@ -312,9 +659,6 @@
                 if (state.selectedIds.has(tmdbId)) {
                     card.classList.add('is-selected');
                 }
-                if (state.requestedIds.has(tmdbId)) {
-                    card.classList.add('is-requested');
-                }
                 card.setAttribute('aria-selected', state.selectedIds.has(tmdbId) ? 'true' : 'false');
 
                 const posterArea = card.querySelector('.cardScalable') || card;
@@ -340,13 +684,6 @@
                     }
                 });
                 posterArea.appendChild(actions);
-
-                if (state.requestedIds.has(tmdbId)) {
-                    const badge = document.createElement('span');
-                    badge.className = 'betterseerr-request-chip betterseerr-request-chip--processing';
-                    badge.textContent = 'Requested';
-                    slot.appendChild(badge);
-                }
 
                 card.addEventListener('click', function (event) {
                     if (event.target.closest('.betterseerr-request-card-actions')) {
@@ -375,6 +712,10 @@
     }
 
     function toggleSelection(tmdbId, selected, container) {
+        if (state.requesting) {
+            return;
+        }
+
         if (selected) {
             state.selectedIds.add(tmdbId);
         } else {
@@ -408,6 +749,10 @@
     }
 
     function selectAll(container) {
+        if (state.requesting) {
+            return;
+        }
+
         state.items.forEach(function (item) {
             const tmdbId = getTmdbId(item);
             if (tmdbId != null && !state.requestedIds.has(tmdbId)) {
@@ -418,6 +763,10 @@
     }
 
     function selectNone(container) {
+        if (state.requesting) {
+            return;
+        }
+
         state.selectedIds.clear();
         updateSelectionUi(container);
     }
@@ -430,7 +779,10 @@
         const input = container.querySelector('#betterseerr-letterboxd-username');
         const username = input ? input.value.trim() : state.username.trim();
         if (!validateUsername(username)) {
-            Dashboard.alert('Enter a valid Letterboxd username.');
+            state.syncMeta = Object.assign({}, state.syncMeta || {}, {
+                lastError: 'Enter a valid Letterboxd username.'
+            });
+            updatePanelErrorBar(container, state.syncMeta.lastError);
             return;
         }
 
@@ -448,7 +800,6 @@
                 console.error('BetterSeerr Letterboxd sync:', err);
                 const message = err?.responseJSON?.message || 'Could not sync Letterboxd watchlist.';
                 state.syncMeta = Object.assign({}, state.syncMeta || {}, { lastError: message });
-                Dashboard.alert(message);
             })
             .finally(function () {
                 stopSyncProgressPolling();
@@ -465,7 +816,7 @@
         }
     }
 
-    function openBulkModal(container) {
+    function createBulkModalShell(title) {
         closeBulkModal();
 
         const wrapper = document.createElement('div');
@@ -479,29 +830,12 @@
         panel.className = 'bst-quality-panel';
         panel.setAttribute('role', 'dialog');
         panel.setAttribute('aria-modal', 'true');
-
-        // Quality modes map to LetterboxdBulkRequestService.ResolveRequestOptionAsync.
         panel.innerHTML =
             '<div class="bst-quality-header">' +
-                '<h3>Request selected movies</h3>' +
+                '<h3>' + escapeHtml(title) + '</h3>' +
                 '<button type="button" class="bst-quality-close" aria-label="Close">&times;</button>' +
             '</div>' +
-            '<div class="bst-quality-list">' +
-                '<button type="button" class="bst-quality-option" data-quality-mode="singleProfile">' +
-                    'Use one quality profile for all' +
-                    '<span class="bst-quality-option-sub">Choose a single Radarr profile for every selected movie.</span>' +
-                '</button>' +
-                '<button type="button" class="bst-quality-option" data-quality-mode="highestAvailable">' +
-                    'Highest quality for each' +
-                    '<span class="bst-quality-option-sub">Use the highest released streaming quality recommendation per movie.</span>' +
-                '</button>' +
-                '<button type="button" class="bst-quality-option" data-quality-mode="mostCommon">' +
-                    'Most common quality for each' +
-                    '<span class="bst-quality-option-sub">Use the most common streaming quality recommendation per movie.</span>' +
-                '</button>' +
-                '<div data-profile-list hidden></div>' +
-                '<div class="bst-quality-loading" data-bulk-summary hidden></div>' +
-            '</div>';
+            '<div class="bst-quality-list"></div>';
 
         wrapper.appendChild(backdrop);
         wrapper.appendChild(panel);
@@ -510,23 +844,191 @@
 
         panel.querySelector('.bst-quality-close').addEventListener('click', closeBulkModal);
 
+        return panel;
+    }
+
+    function getSelectedTmdbIds() {
+        return Array.from(state.selectedIds);
+    }
+
+    function mergeAlreadyRequestedIds(apiIds, selectedIds) {
+        const merged = new Set();
+        // Mix server state with ids requested during this page session.
+        (apiIds || []).forEach(function (id) {
+            merged.add(parseInt(id, 10));
+        });
+        selectedIds.forEach(function (id) {
+            if (state.requestedIds.has(id)) {
+                merged.add(id);
+            }
+        });
+        return Array.from(merged).filter(function (id) {
+            return !Number.isNaN(id);
+        });
+    }
+
+    function checkAlreadyRequested(tmdbIds) {
+        return ApiClient.ajax({
+            url: ApiClient.getUrl('BetterSeerrTabs/letterboxd/request/check'),
+            type: 'POST',
+            data: JSON.stringify({ TmdbIds: tmdbIds }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json'
+        }).then(function (result) {
+            const apiIds = result?.tmdbIds || result?.TmdbIds || [];
+            return mergeAlreadyRequestedIds(apiIds, tmdbIds);
+        });
+    }
+
+    function removeSelectedIds(tmdbIds) {
+        tmdbIds.forEach(function (id) {
+            state.selectedIds.delete(id);
+        });
+    }
+
+    function showQualitySelection(panel, container, tmdbIds) {
+        if (!tmdbIds.length) {
+            return;
+        }
+
+        panel.classList.remove('bst-letterboxd-bulk-panel');
+        const header = panel.querySelector('.bst-quality-header h3');
+        if (header) {
+            header.textContent = 'Request selected movies';
+        }
+
+        const list = panel.querySelector('.bst-quality-list');
+        if (!list) {
+            return;
+        }
+
+        // Keep this batch fixed while user goes through modal.
+        list.innerHTML =
+            '<button type="button" class="bst-quality-option" data-quality-mode="singleProfile">' +
+                'Use one quality profile for all' +
+                '<span class="bst-quality-option-sub">Choose a single Radarr profile for every selected movie.</span>' +
+            '</button>' +
+            '<button type="button" class="bst-quality-option" data-quality-mode="highestAvailable">' +
+                'Highest quality for each' +
+                '<span class="bst-quality-option-sub">Use the highest released streaming quality recommendation per movie.</span>' +
+            '</button>' +
+            '<button type="button" class="bst-quality-option" data-quality-mode="mostCommon">' +
+                'Most common quality for each' +
+                '<span class="bst-quality-option-sub">Use the most common streaming quality recommendation per movie.</span>' +
+            '</button>' +
+            '<div data-profile-list hidden></div>';
+
         panel.querySelectorAll('[data-quality-mode]').forEach(function (button) {
             button.addEventListener('click', function () {
                 const mode = button.getAttribute('data-quality-mode');
                 if (mode === 'singleProfile') {
-                    showProfilePicker(panel, container);
+                    showProfilePicker(panel, container, tmdbIds);
                     return;
                 }
 
                 submitBulkRequest(container, {
                     QualityMode: mode,
-                    TmdbIds: Array.from(state.selectedIds)
+                    TmdbIds: tmdbIds.slice()
                 }, panel);
             });
         });
     }
 
-    function showProfilePicker(panel, container) {
+    function showAlreadyRequestedPrompt(panel, container, alreadyRequestedIds, selectedIds) {
+        const header = panel.querySelector('.bst-quality-header h3');
+        if (header) {
+            header.textContent = 'Already requested';
+        }
+
+        const list = panel.querySelector('.bst-quality-list');
+        if (!list) {
+            return;
+        }
+
+        const count = alreadyRequestedIds.length;
+        const total = selectedIds.length;
+        list.innerHTML =
+            '<div class="bst-letterboxd-bulk-subtitle">' +
+                escapeHtml(count + ' of ' + total + ' selected ' +
+                    (count === 1 ? 'movie already has a request' : 'movies already have requests') + '.') +
+            '</div>' +
+            '<div class="bst-letterboxd-bulk-items bst-letterboxd-bulk-items--prompt">' +
+                alreadyRequestedIds.map(function (id) {
+                    return '<div class="bst-letterboxd-bulk-item is-skipped">' +
+                        '<div class="bst-letterboxd-bulk-item-main">' +
+                            '<span class="bst-letterboxd-bulk-item-title">' +
+                                escapeHtml(getItemTitle(id) || 'Movie') +
+                            '</span>' +
+                        '</div>' +
+                        '<span class="bst-letterboxd-bulk-item-status">Already requested</span>' +
+                    '</div>';
+                }).join('') +
+            '</div>' +
+            '<button type="button" class="bst-quality-option" data-skip-requested>' +
+                'Skip them and continue' +
+                '<span class="bst-quality-option-sub">Request only the ' +
+                    (total - count) + ' remaining ' +
+                    (total - count === 1 ? 'movie' : 'movies') + '.</span>' +
+            '</button>' +
+            '<button type="button" class="bst-quality-option" data-request-all>' +
+                'Request all anyway' +
+                '<span class="bst-quality-option-sub">Include already requested movies in this batch.</span>' +
+            '</button>' +
+            '<button type="button" class="bst-quality-option bst-letterboxd-bulk-cancel" data-cancel-request>Cancel</button>';
+
+        list.querySelector('[data-skip-requested]').addEventListener('click', function () {
+            const remaining = selectedIds.filter(function (id) {
+                return alreadyRequestedIds.indexOf(id) === -1;
+            });
+
+            removeSelectedIds(alreadyRequestedIds);
+            updateSelectionUi(container);
+
+            if (!remaining.length) {
+                list.innerHTML = '<div class="bst-quality-empty">No movies left to request.</div>';
+                return;
+            }
+
+            showQualitySelection(panel, container, remaining);
+        });
+
+        list.querySelector('[data-request-all]').addEventListener('click', function () {
+            showQualitySelection(panel, container, selectedIds.slice());
+        });
+
+        list.querySelector('[data-cancel-request]').addEventListener('click', closeBulkModal);
+    }
+
+    function openBulkModal(container) {
+        const selectedIds = getSelectedTmdbIds();
+        if (!selectedIds.length) {
+            return;
+        }
+
+        const panel = createBulkModalShell('Checking selections…');
+        const list = panel.querySelector('.bst-quality-list');
+        if (list) {
+            list.innerHTML = '<div class="bst-quality-loading">Checking for existing requests…</div>';
+        }
+
+        checkAlreadyRequested(selectedIds)
+            .then(function (alreadyRequestedIds) {
+                if (alreadyRequestedIds.length > 0) {
+                    showAlreadyRequestedPrompt(panel, container, alreadyRequestedIds, selectedIds);
+                    return;
+                }
+
+                showQualitySelection(panel, container, selectedIds);
+            })
+            .catch(function (err) {
+                console.error('BetterSeerr Letterboxd request check:', err);
+                if (list) {
+                    list.innerHTML = '<div class="bst-quality-empty">Could not check existing requests.</div>';
+                }
+            });
+    }
+
+    function showProfilePicker(panel, container, tmdbIds) {
         const list = panel.querySelector('[data-profile-list]');
         if (!list) {
             return;
@@ -558,11 +1060,12 @@
                 btn.addEventListener('click', function () {
                     submitBulkRequest(container, {
                         QualityMode: 'singleProfile',
-                        TmdbIds: Array.from(state.selectedIds),
+                        TmdbIds: tmdbIds.slice(),
                         ServerId: opt.serverId,
                         ProfileId: opt.profileId,
                         RootFolder: opt.rootFolder || null,
-                        Is4k: !!opt.is4k
+                        Is4k: !!opt.is4k,
+                        ProfileName: label
                     }, panel);
                 });
 
@@ -575,20 +1078,14 @@
     }
 
     function submitBulkRequest(container, payload, panel) {
-        state.requesting = true;
-        state.requestProgress = {
-            done: 0,
-            total: payload.TmdbIds.length
-        };
-        renderPanel(container);
-
-        if (panel) {
-            const summary = panel.querySelector('[data-bulk-summary]');
-            if (summary) {
-                summary.hidden = false;
-                summary.textContent = 'Submitting requests…';
-            }
+        if (!panel) {
+            return;
         }
+
+        state.requestProgressAppliedCount = 0;
+        setRequestingUi(container, true);
+        showBulkRequestProgressPanel(panel, payload);
+        startRequestProgressPolling(container);
 
         ApiClient.ajax({
             url: ApiClient.getUrl('BetterSeerrTabs/letterboxd/request'),
@@ -602,33 +1099,14 @@
             const skipped = result?.skipped || result?.Skipped || 0;
             const failed = result?.failed || result?.Failed || 0;
 
-            results.forEach(function (item) {
-                const tmdbId = parseInt(item.tmdbId || item.TmdbId, 10);
-                const status = (item.status || item.Status || '').toLowerCase();
-                // Treat skipped duplicates like successful requests in the UI.
-                if (status === 'requested' || status === 'skipped') {
-                    if (!Number.isNaN(tmdbId)) {
-                        state.requestedIds.add(tmdbId);
-                        state.selectedIds.delete(tmdbId);
-                    }
-                }
-            });
-
-            state.requestProgress.done = payload.TmdbIds.length;
-            closeBulkModal();
-            renderPanel(container);
-
-            Dashboard.alert(
-                'Bulk request complete. Requested: ' + requested +
-                ', skipped: ' + skipped +
-                ', failed: ' + failed + '.'
-            );
+            applyCompletedResults(container, results, state.requestProgressAppliedCount);
+            showBulkRequestComplete(panel, requested, skipped, failed);
         }).catch(function (err) {
             console.error('BetterSeerr Letterboxd bulk request:', err);
-            Dashboard.alert(err?.responseJSON?.message || 'Bulk request failed.');
+            showBulkRequestError(panel, err?.responseJSON?.message || 'Bulk request failed.');
         }).finally(function () {
-            state.requesting = false;
-            renderPanel(container);
+            stopRequestProgressPolling();
+            setRequestingUi(container, false);
         });
     }
 

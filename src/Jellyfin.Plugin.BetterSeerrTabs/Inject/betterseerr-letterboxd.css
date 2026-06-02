@@ -150,6 +150,11 @@
     color: var(--primaryTextColor, #fff);
 }
 
+.betterseerr-letterboxd-toolbar-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
 .betterseerr-letterboxd-selected-count {
     font-size: 0.9em;
     color: var(--secondaryTextColor, rgba(255, 255, 255, 0.65));
@@ -187,14 +192,6 @@
     margin: 0;
 }
 
-.betterseerr-letterboxd-card-slot > .betterseerr-request-chip {
-    position: absolute;
-    top: 0.45em;
-    right: 0.45em;
-    z-index: 4;
-    pointer-events: none;
-}
-
 .betterseerr-letterboxd-actionbar {
     position: sticky;
     bottom: 0;
@@ -210,18 +207,144 @@
     backdrop-filter: blur(8px);
 }
 
-.betterseerr-letterboxd-progress {
-    width: 100%;
+.bst-quality-panel.bst-letterboxd-bulk-panel {
+    max-width: 520px;
+}
+
+.bst-letterboxd-bulk-subtitle {
+    font-size: 0.85em;
+    color: var(--bst-type-secondary, rgba(255, 255, 255, 0.65));
+    margin-bottom: 0.15em;
+}
+
+.bst-letterboxd-bulk-subtitle--error {
+    color: #ffb4bd;
+}
+
+.bst-letterboxd-bulk-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    margin-bottom: 0.35em;
+}
+
+.bst-letterboxd-bulk-progress-track {
+    flex: 1;
+    height: 0.35em;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+}
+
+.bst-letterboxd-bulk-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent, #00a4dc);
+    transition: width 0.25s ease;
+}
+
+.bst-letterboxd-bulk-progress-count {
+    flex-shrink: 0;
+    font-size: 0.82em;
+    color: var(--bst-type-secondary, rgba(255, 255, 255, 0.65));
+    min-width: 4.5em;
+    text-align: right;
+}
+
+.bst-letterboxd-bulk-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+    max-height: 42vh;
+    overflow-y: auto;
+    margin-top: 0.35em;
+}
+
+.bst-letterboxd-bulk-items--prompt {
+    max-height: 28vh;
+    margin-bottom: 0.5em;
+}
+
+.bst-letterboxd-bulk-cancel {
+    text-align: center;
+}
+
+.bst-letterboxd-bulk-done {
+    text-align: center;
+}
+
+.bst-letterboxd-bulk-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75em;
+    padding: 0.65em 0.75em;
+    border: 1px solid var(--bst-border-primary, rgba(255, 255, 255, 0.1));
+    border-radius: 0.5rem;
+    background: var(--bst-bg-secondary, rgba(255, 255, 255, 0.04));
+}
+
+.bst-letterboxd-bulk-item.is-active {
+    border-color: var(--accent, #00a4dc);
+    background: rgba(0, 164, 220, 0.08);
+}
+
+.bst-letterboxd-bulk-item.is-requested,
+.bst-letterboxd-bulk-item.is-skipped {
+    opacity: 0.85;
+}
+
+.bst-letterboxd-bulk-item.is-failed {
+    border-color: rgba(198, 40, 40, 0.45);
+}
+
+.bst-letterboxd-bulk-item-main {
+    min-width: 0;
+    flex: 1;
+}
+
+.bst-letterboxd-bulk-item-title {
+    display: block;
     font-size: 0.9em;
-    color: var(--secondaryTextColor, rgba(255, 255, 255, 0.65));
+    color: var(--bst-type-primary, #fff);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bst-letterboxd-bulk-item-quality {
+    display: block;
+    margin-top: 0.15em;
+    font-size: 0.78em;
+    color: var(--bst-type-secondary, rgba(255, 255, 255, 0.55));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bst-letterboxd-bulk-item-status {
+    flex-shrink: 0;
+    font-size: 0.78em;
+    font-weight: 600;
+    color: var(--bst-type-secondary, rgba(255, 255, 255, 0.65));
+    white-space: nowrap;
+}
+
+.bst-letterboxd-bulk-item.is-active .bst-letterboxd-bulk-item-status {
+    color: var(--accent, #00a4dc);
+}
+
+.bst-letterboxd-bulk-item.is-requested .bst-letterboxd-bulk-item-status,
+.bst-letterboxd-bulk-item.is-skipped .bst-letterboxd-bulk-item-status {
+    color: var(--accent, #00a4dc);
+}
+
+.bst-letterboxd-bulk-item.is-failed .bst-letterboxd-bulk-item-status {
+    color: #ffb4bd;
 }
 
 .betterseerr-discover-card.betterseerr-letterboxd-card {
     cursor: pointer;
-}
-
-.betterseerr-discover-card.betterseerr-letterboxd-card.is-requested {
-    opacity: 0.55;
 }
 
 .betterseerr-letterboxd-select-indicator {
