@@ -2,15 +2,15 @@
 
 <div alt style="text-align: center; transform: scale(.25);">
 	<picture>
-		<source media="(prefers-color-scheme: dark)" srcset="https://github.com/varunaditya-plus/BetterSeerrTabs/raw/main/assets/logo_dark.png" />
-		<img alt="BetterSeerrTabs Logo" src="https://github.com/varunaditya-plus/BetterSeerrTabs/raw/main/assets/logo_light.png" style="width: 170px;" />
+		<source media="(prefers-color-scheme: dark)" srcset="https://github.com/varunaditya-plus/SeerrFin/raw/main/assets/logo_dark.png" />
+		<img alt="SeerrFin Logo" src="https://github.com/varunaditya-plus/SeerrFin/raw/main/assets/logo_light.png" style="width: 170px;" />
 	</picture>
 </div>
 
-# BetterSeerrTabs
-![GitHub License](https://www.shieldcn.dev/github/license/varunaditya-plus/BetterSeerrTabs.svg?variant=outline&size=sm)
-[![GitHub Downloads (all assets, all releases)](https://shieldcn.dev/github/downloads/varunaditya-plus/BetterSeerrTabs.svg?variant=outline&size=sm)](https://github.com/varunaditya-plus/BetterSeerrTabs/releases/latest)
-[![GitHub Release](https://shieldcn.dev/github/release/varunaditya-plus/BetterSeerrTabs.svg?size=sm)](https://github.com/varunaditya-plus/BetterSeerrTabs/releases/latest)
+# SeerrFin (formerly BetterSeerrTabs)
+![GitHub License](https://www.shieldcn.dev/github/license/varunaditya-plus/SeerrFin.svg?variant=outline&size=sm)
+[![GitHub Downloads (all assets, all releases)](https://shieldcn.dev/github/downloads/varunaditya-plus/SeerrFin.svg?variant=outline&size=sm)](https://github.com/varunaditya-plus/SeerrFin/releases/latest)
+[![GitHub Release](https://shieldcn.dev/github/release/varunaditya-plus/SeerrFin.svg?size=sm)](https://github.com/varunaditya-plus/SeerrFin/releases/latest)
 ![Please star this repo](https://shieldcn.dev/badge/★%20please%20star-22c55e.svg?theme=amber&color=eab308&size=sm&variant=outline)
 
 The best way to discover and request Movies and TV Shows by using Seerr directly in Jellyfin. This plugin lets you add two top bar tabs for Movies and TV discovery, with request modals powered by your Jellyseerr instance. The categories are gotten using TMDB.
@@ -44,13 +44,13 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 1. Open **Dashboard → Plugins → Manage Repositories**.
 2. Click **New Repository** and paste this repository URL:
 ```
-https://raw.githubusercontent.com/varunaditya-plus/BetterSeerrTabs/main/manifest.json
+https://raw.githubusercontent.com/varunaditya-plus/SeerrFin/main/manifest.json
 ```
-3. Now go back to **Plugins** in the sidebar, select **All** in the filters above the plugins, and click BetterSeerrTabs. Then click **Install**.
+3. Now go back to **Plugins** in the sidebar, select **All** in the filters above the plugins, and click SeerrFin. Then click **Install**.
 4. Now you have to restart your Jellyfin instance. Go to **Dashboard** and click the **Restart** button. You're done!
 
 ### Configuration
-After installation, now configure the extension so it will work with your Seerr instance. Go to **Dashboard → Plugins → BetterSeerrTabs**, click settings, and follow the instructions. You're not stupid. You figured out how to get Jellyfin and Jellyseerr installed.
+After installation, now configure the extension so it will work with your Seerr instance. Go to **Dashboard → Plugins → SeerrFin**, click settings, and follow the instructions. You're not stupid. You figured out how to get Jellyfin and Jellyseerr installed.
 
 ## Compatibility
 | Jellyfin version | Status |
@@ -63,7 +63,7 @@ After installation, now configure the extension so it will work with your Seerr 
 Please open pull requests if you have any suggestions or features you want to be implemented in this plugin. This is my first C# project, and is inspired heavily by [Home Screen Sections](https://github.com/IAmParadox27/jellyfin-plugin-home-sections). For suggestions, feature requests, or bug reports, open an issue. Please include your Jellyfin version and a screenshot if relevant.
 
 ## License
-BetterSeerrTabs is licensed under the [MIT License](https://github.com/varunaditya-plus/BetterSeerrTabs/tree/main?tab=MIT-1-ov-file#readme).
+SeerrFin is licensed under the [MIT License](https://github.com/varunaditya-plus/SeerrFin/tree/main?tab=MIT-1-ov-file#readme).
 
 ## Credits
 - [Lato](https://fonts.google.com/specimen/Lato) by Łukasz Dziedzic, served via Google Fonts.

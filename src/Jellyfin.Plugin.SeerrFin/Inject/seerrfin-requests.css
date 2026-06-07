@@ -1,0 +1,406 @@
+.seerrfin-requests-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em 1.25em;
+    margin-bottom: 1em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.65em;
+}
+
+.seerrfin-requests-filter {
+    background: none;
+    border: none;
+    padding: 0.35em 0;
+    margin: 0;
+    font: inherit;
+    font-size: 0.95em;
+    color: var(--secondaryTextColor, rgba(255, 255, 255, 0.6));
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.seerrfin-requests-filter:hover,
+.seerrfin-requests-filter:focus {
+    color: var(--primaryTextColor, #fff);
+}
+
+.seerrfin-requests-filter.is-active {
+    color: var(--primaryTextColor, #fff);
+    border-bottom-color: var(--accentTextColor, var(--buttonBackground, #00a4dc));
+}
+
+.seerrfin-requests-grid {
+    display: grid;
+    gap: 1em;
+    align-items: start;
+    justify-content: start;
+    padding-bottom: 1.5em;
+}
+
+.seerrfin-requests-grid--portrait {
+    grid-template-columns: repeat(auto-fill, minmax(440px, 440px));
+}
+
+.seerrfin-requests-grid--landscape {
+    grid-template-columns: repeat(auto-fill, minmax(var(--seerrfin-discover-backdrop-width, 20em), var(--seerrfin-discover-backdrop-width, 20em)));
+}
+
+.seerrfin-request-box {
+    min-width: 0;
+}
+
+.seerrfin-request-card-slot {
+    min-width: 0;
+    position: relative;
+}
+
+.seerrfin-request-card-actions {
+    position: absolute;
+    right: 0.45em;
+    bottom: 0.45em;
+    z-index: 3;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4em;
+    pointer-events: auto;
+}
+
+.seerrfin-request-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.35em;
+    height: 2.35em;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    opacity: 1;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease;
+}
+
+.seerrfin-request-action-btn:hover,
+.seerrfin-request-action-btn:focus-visible {
+    transform: scale(1.05);
+}
+
+.seerrfin-request-play-btn {
+    background: var(--buttonBackground, #00a4dc);
+}
+
+.seerrfin-request-modal-btn {
+    background: #A381FF;
+}
+
+.seerrfin-request-seerr-btn {
+    background: #131928;
+}
+
+.seerrfin-request-radarr-btn {
+    background: #fff;
+}
+
+.seerrfin-request-sonarr-btn {
+    background: #eee;
+}
+
+.seerrfin-request-action-btn .material-icons {
+    font-size: 1.45em;
+    line-height: 1;
+    color: inherit;
+}
+
+.seerrfin-request-action-btn svg {
+    width: 1.45em;
+    height: 1.45em;
+    display: block;
+}
+
+.seerrfin-request-card-slot .seerrfin-discover-card {
+    width: 100%;
+    margin: 0;
+}
+
+.seerrfin-request-card-slot .cardBox {
+    width: 100%;
+    margin: 0;
+}
+
+.seerrfin-request-box-inner {
+    background: var(--cardBackground, rgba(255, 255, 255, 0.06));
+    border-radius: 0.5em;
+    overflow: hidden;
+}
+
+/* Portrait display: discover card left, request details beside it */
+.seerrfin-request-box--portrait .seerrfin-request-box-inner {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.75em;
+    padding: 0.75em;
+}
+
+.seerrfin-request-box--portrait .seerrfin-request-card-slot {
+    flex: 0 0 var(--seerrfin-discover-portrait-width, 13.333em);
+    width: var(--seerrfin-discover-portrait-width, 13.333em);
+}
+
+.seerrfin-request-box--portrait .seerrfin-request-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: flex-start;
+    padding-top: 0.1em;
+    min-height: 100%;
+}
+
+.seerrfin-request-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.seerrfin-request-progress-spacer {
+    flex: 1 1 auto;
+    min-height: 0.35em;
+}
+
+.seerrfin-request-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+    margin-top: 0.8em;
+}
+
+.seerrfin-request-box--portrait .seerrfin-request-progress-spacer + .seerrfin-request-progress {
+    margin-top: 0;
+}
+
+.seerrfin-request-progress-bar {
+    width: 100%;
+    height: 0.45em;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.seerrfin-request-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    transition: width 0.2s ease;
+}
+
+.seerrfin-request-progress-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75em;
+    font-size: 0.78em;
+    line-height: 1.3;
+    color: var(--secondaryTextColor, rgba(255, 255, 255, 0.65));
+}
+
+.seerrfin-request-progress-percent {
+    color: var(--primaryTextColor, #fff);
+    font-weight: 600;
+}
+
+.seerrfin-request-progress[data-status="downloaded-monitored"] .seerrfin-request-progress-bar {
+    background: rgba(76, 175, 80, 0.25);
+}
+
+.seerrfin-request-progress[data-status="downloaded-monitored"] .seerrfin-request-progress-fill {
+    background: #4caf50;
+}
+
+.seerrfin-request-progress[data-status="downloaded-unmonitored"] .seerrfin-request-progress-bar {
+    background: rgba(158, 158, 158, 0.25);
+}
+
+.seerrfin-request-progress[data-status="downloaded-unmonitored"] .seerrfin-request-progress-fill {
+    background: #9e9e9e;
+}
+
+.seerrfin-request-progress[data-status="missing-monitored"] .seerrfin-request-progress-bar {
+    background: rgba(244, 67, 54, 0.25);
+}
+
+.seerrfin-request-progress[data-status="missing-monitored"] .seerrfin-request-progress-fill {
+    background: #f44336;
+}
+
+.seerrfin-request-progress[data-status="missing-unmonitored"] .seerrfin-request-progress-bar {
+    background: rgba(255, 152, 0, 0.25);
+}
+
+.seerrfin-request-progress[data-status="missing-unmonitored"] .seerrfin-request-progress-fill {
+    background: #ff9800;
+}
+
+.seerrfin-request-progress[data-status="queued"] .seerrfin-request-progress-bar {
+    background: rgba(156, 39, 176, 0.25);
+}
+
+.seerrfin-request-progress[data-status="queued"] .seerrfin-request-progress-fill {
+    background: #9c27b0;
+}
+
+.seerrfin-request-progress[data-status="unreleased"] .seerrfin-request-progress-bar {
+    background: rgba(3, 169, 244, 0.25);
+}
+
+.seerrfin-request-progress[data-status="unreleased"] .seerrfin-request-progress-fill {
+    background: #03a9f4;
+}
+
+.seerrfin-request-progress[data-status="failed"] .seerrfin-request-progress-bar {
+    background: rgba(200, 34, 34, 0.25);
+}
+
+.seerrfin-request-progress[data-status="failed"] .seerrfin-request-progress-fill {
+    background: #c82222;
+}
+
+/* Landscape display: discover backdrop card on top, details below */
+.seerrfin-request-box--landscape .seerrfin-request-box-inner {
+    display: flex;
+    flex-direction: column;
+}
+
+.seerrfin-request-box--landscape .seerrfin-request-card-slot {
+    width: var(--seerrfin-discover-backdrop-width, 20em);
+}
+
+.seerrfin-request-box--landscape .seerrfin-request-card-slot .seerrfin-discover-card--backdrop {
+    width: 100%;
+    max-width: var(--seerrfin-discover-backdrop-width, 20em);
+}
+
+.seerrfin-request-box--landscape .seerrfin-request-content {
+    padding: 0.65em 0.75em 0.75em;
+}
+
+.seerrfin-requests-sections .seerrfin-discover-card--static .seerrfin-discover-overlay-title {
+    display: none;
+}
+
+.seerrfin-requests-sections .seerrfin-discover-card--static {
+    pointer-events: none;
+    cursor: default;
+}
+
+.seerrfin-requests-sections .seerrfin-discover-card--static .cardScalable {
+    cursor: default;
+}
+
+.seerrfin-request-title {
+    margin-bottom: 0.35em;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--primaryTextColor, #fff);
+}
+
+.seerrfin-request-year {
+    font-weight: 400;
+    color: var(--secondaryTextColor, rgba(255, 255, 255, 0.6));
+}
+
+.seerrfin-request-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    margin-bottom: 0.45em;
+}
+
+.seerrfin-request-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15em 0.55em;
+    border-radius: 999px;
+    font-size: 0.68em;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #fff;
+    background: rgba(128, 128, 128, 0.45);
+}
+
+.seerrfin-request-chip--available { background: #2e7d32; }
+.seerrfin-request-chip--partial { background: #558b2f; }
+.seerrfin-request-chip--processing { background: var(--buttonBackground, #00a4dc); }
+.seerrfin-request-chip--pending { background: #ef6c00; }
+.seerrfin-request-chip--approved { background: #1565c0; }
+.seerrfin-request-chip--declined { background: #c62828; }
+.seerrfin-request-chip--4k { background: #6a1b9a; }
+.seerrfin-request-chip--type { background: rgba(128, 128, 128, 0.45); }
+
+.seerrfin-request-meta {
+    font-size: 0.88em;
+    line-height: 1.45;
+    color: var(--secondaryTextColor, rgba(255, 255, 255, 0.6));
+}
+
+.seerrfin-request-meta-light {
+    color: var(--primaryTextColor, #fff);
+}
+
+.seerrfin-request-avatar {
+    width: 1.15em;
+    height: 1.15em;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+    margin: 0 0.2em;
+}
+
+.seerrfin-requests-pagination {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin-top: 0.5em;
+}
+
+.seerrfin-requests-page-info {
+    color: var(--secondaryTextColor);
+    font-size: 0.9em;
+}
+
+@media (max-width: 720px) {
+    .seerrfin-requests-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .seerrfin-request-box--landscape .seerrfin-request-card-slot,
+    .seerrfin-request-box--landscape .seerrfin-request-card-slot .seerrfin-discover-card--backdrop {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+/* ElegantFin fixes */
+html.seerrfin-elegantfin .seerrfin-requests-panel .sectionTitleContainer-cards {
+    margin: 0 !important;
+}
+
+html.seerrfin-elegantfin .seerrfin-requests-panel .sectionTitleContainer-cards .sectionTitle-cards {
+    margin: 0 !important;
+    padding-top: 0 !important;
+}
+
+html.seerrfin-elegantfin .seerrfin-request-card-slot .card,
+html.seerrfin-elegantfin .seerrfin-request-card-slot .seerrfin-discover-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    flex: 0 0 auto !important;
+}
+
+html.seerrfin-elegantfin .seerrfin-request-box--landscape .seerrfin-request-card-slot .seerrfin-discover-card--backdrop {
+    width: 100% !important;
+    max-width: 100% !important;
+}

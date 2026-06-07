@@ -1,0 +1,290 @@
+.seerrfin-movies-sections,
+.seerrfin-tv-sections,
+.seerrfin-requests-sections {
+    --seerrfin-discover-backdrop-width: 20em;
+    --seerrfin-discover-portrait-width: 13.333em;
+}
+
+.seerrfin-carousel-section .seerrfin-box-card {
+    flex: 0 0 auto;
+    width: var(--seerrfin-discover-backdrop-width);
+    aspect-ratio: 16 / 9;
+    margin: 0 0.6em 0 0;
+    cursor: pointer;
+    background: var(--cardBackground, rgba(255, 255, 255, 0.06));
+    border: none;
+    border-radius: 0.5em;
+    padding: 0 1em;
+    font: inherit;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.seerrfin-box-backdrop {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.4;
+    pointer-events: none;
+    border-radius: inherit;
+    filter: saturate(1.25) brightness(1.05);
+}
+
+.seerrfin-box-card:has(.seerrfin-box-backdrop) .seerrfin-box-label {
+    position: relative;
+    z-index: 1;
+}
+
+.seerrfin-box-card .seerrfin-box-label {
+    text-align: center;
+    color: var(--primaryTextColor);
+    font-size: 1.5em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.seerrfin-box-card .seerrfin-box-logo,
+.seerrfin-box-card .seerrfin-box-logo-weird {
+    object-fit: contain;
+    pointer-events: none;
+    width: 200px;
+    max-height: 65px;
+}
+
+/* Some of the logos need to be sized differently bc of how they look */
+.seerrfin-box-card .seerrfin-box-logo-weird {
+    max-height: 95px;
+}
+
+.seerrfin-empty-row {
+    padding: 0.5em 1.5em;
+    color: var(--secondaryTextColor);
+    font-style: italic;
+}
+
+.seerrfin-loading-row {
+    padding: 1em 1.5em;
+    color: var(--secondaryTextColor);
+}
+
+.seerrfin-poster-section .sectionTitleContainer-cards {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75em;
+}
+
+.seerrfin-view-more {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--secondaryTextColor, #999);
+    font-size: 0.85em;
+    font-weight: normal;
+    cursor: pointer;
+    white-space: nowrap;
+    opacity: 0.75;
+    transition: opacity 0.15s;
+}
+
+.seerrfin-view-more:hover,
+.seerrfin-view-more:focus {
+    opacity: 1;
+    color: var(--primaryTextColor, #ccc);
+}
+
+.seerrfin-grid-view {
+    padding-top: 0.5em;
+    padding-bottom: 2em;
+}
+
+.seerrfin-grid-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1em;
+}
+
+.seerrfin-grid-back {
+    flex-shrink: 0;
+}
+
+.seerrfin-grid-title {
+    margin: 0;
+}
+
+.seerrfin-grid-loadmore {
+    text-align: center;
+    padding: 1em 0 2em;
+}
+
+.seerrfin-grid-status {
+    padding: 1em 1.5em;
+    color: var(--secondaryTextColor);
+    text-align: center;
+}
+
+@keyframes seerrfin-fadein {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.seerrfin-discover-card .cardImageContainer.lazy-image-fadein-fast {
+    opacity: 1;
+    animation: seerrfin-fadein 0.1s;
+}
+
+.seerrfin-discover-card--backdrop {
+    flex: 0 0 auto;
+    width: var(--seerrfin-discover-backdrop-width);
+}
+
+.seerrfin-poster-section .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop),
+.seerrfin-grid-view .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop) {
+    width: var(--seerrfin-discover-portrait-width);
+}
+
+.seerrfin-grid-view .seerrfin-discover-card--backdrop.seerrfin-discover-card--grid {
+    width: 100%;
+    max-width: var(--seerrfin-discover-backdrop-width);
+}
+
+.seerrfin-discover-card--backdrop .seerrfin-discover-backdrop-scalable {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.5em;
+}
+
+.seerrfin-discover-backdrop-padder {
+    padding-bottom: 56.25%;
+}
+
+.seerrfin-discover-card--backdrop .seerrfin-discover-backdrop-image {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: inherit;
+}
+
+.seerrfin-discover-backdrop-media {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.seerrfin-discover-overlay-title {
+    display: none;
+}
+
+.seerrfin-discover-title-below {
+    display: none;
+}
+
+/* English backdrop: full image, title below */
+.seerrfin-discover-card--backdrop.seerrfin-discover-card--english .seerrfin-discover-backdrop-media {
+    opacity: 1;
+    filter: none;
+}
+
+.seerrfin-discover-card--backdrop.seerrfin-discover-card--english .seerrfin-discover-title-below {
+    display: block;
+}
+
+/* No English backdrop: genre dimmed image w/ title on image */
+.seerrfin-discover-card--backdrop.seerrfin-discover-card--fallback .seerrfin-discover-backdrop-media {
+    opacity: 0.4;
+    filter: saturate(1.25) brightness(1.05);
+}
+
+.seerrfin-discover-card--backdrop.seerrfin-discover-card--fallback .seerrfin-discover-overlay-title {
+    display: -webkit-box;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: var(--primaryTextColor);
+    font-size: 1.1em;
+    font-weight: 600;
+    padding: 0 0.75em;
+    white-space: normal;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+}
+
+.seerrfin-discover-card--backdrop .cardOverlayContainer {
+    border-radius: inherit;
+}
+
+.seerrfin-grid-view .seerrfin-discover-card--backdrop.seerrfin-discover-card--grid {
+    width: 100%;
+    max-width: var(--seerrfin-discover-backdrop-width);
+}
+
+.seerrfin-scroller-wrap {
+    position: relative;
+}
+
+.seerrfin-scroller-wrap > .emby-scrollbuttons {
+    top: 50%;
+    transform: translateY(-50%);
+    min-height: 0;
+    padding-top: 0;
+}
+
+.seerrfin-carousel-section .itemsContainer > .seerrfin-box-card:first-child {
+    margin-left: 0;
+}
+
+/* ElegantFin fixes */
+html.seerrfin-elegantfin .seerrfin-movies-sections .seerrfin-discover-card,
+html.seerrfin-elegantfin .seerrfin-tv-sections .seerrfin-discover-card,
+html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card {
+    padding: 0 !important;
+    flex: 0 0 auto !important;
+}
+
+html.seerrfin-elegantfin .seerrfin-discover-card--backdrop {
+    width: var(--seerrfin-discover-backdrop-width) !important;
+}
+
+html.seerrfin-elegantfin .seerrfin-poster-section .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop),
+html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop) {
+    width: var(--seerrfin-discover-portrait-width) !important;
+}
+
+html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card--backdrop.seerrfin-discover-card--grid {
+    width: 100% !important;
+    max-width: var(--seerrfin-discover-backdrop-width) !important;
+}
+
+html.seerrfin-elegantfin .seerrfin-movies-sections > .verticalSection:not(:first-child),
+html.seerrfin-elegantfin .seerrfin-tv-sections > .verticalSection:not(:first-child) {
+    margin-top: 1em;
+}
+
+html.seerrfin-elegantfin .seerrfin-movies-sections .sectionTitleContainer-cards,
+html.seerrfin-elegantfin .seerrfin-tv-sections .sectionTitleContainer-cards {
+    margin: 0 !important;
+}
+
+html.seerrfin-elegantfin .seerrfin-movies-sections .sectionTitleContainer-cards .sectionTitle-cards,
+html.seerrfin-elegantfin .seerrfin-tv-sections .sectionTitleContainer-cards .sectionTitle-cards {
+    margin: 0 !important;
+    padding-top: 0 !important;
+}

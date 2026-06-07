@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <JellyfinVersion>10.11.2</JellyfinVersion>
+        <JellyfinNugetVersion Condition="!$(JellyfinVersion.StartsWith('10.11'))">$(JellyfinVersion)</JellyfinNugetVersion>
+        <JellyfinNugetVersion Condition="$(JellyfinVersion.StartsWith('10.11'))">$(JellyfinVersion)</JellyfinNugetVersion>
+        <JellyfinNugetVersion Condition="$(JellyfinVersion.StartsWith('10.11.1'))">10.11.0</JellyfinNugetVersion>
+        <JellyfinNugetVersion Condition="$(JellyfinVersion.StartsWith('10.11.0'))">10.11.0</JellyfinNugetVersion>
+        <TargetFramework Condition="$(JellyfinVersion.StartsWith('10.11'))">net9.0</TargetFramework>
+        <TargetFramework Condition="'$(JellyfinVersion)' == '10.10.7'">net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <Version>1.4.2.0</Version>
+        <RootNamespace>Jellyfin.Plugin.SeerrFin</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Jellyfin.Common" Version="$(JellyfinNugetVersion)" />
+        <PackageReference Include="Jellyfin.Model" Version="$(JellyfinNugetVersion)" />
+        <PackageReference Include="Jellyfin.Controller" Version="$(JellyfinNugetVersion)" />
+        <PackageReference Include="Jellyfin.Data" Version="$(JellyfinNugetVersion)" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Configuration\config.html" />
+        <EmbeddedResource Include="Inject\seerrfin-tabs.js" />
+        <EmbeddedResource Include="Inject\seerrfin-tabs.css" />
+        <EmbeddedResource Include="Inject\seerrfin-modal.js" />
+        <EmbeddedResource Include="Inject\seerrfin-modal.css" />
+        <EmbeddedResource Include="Inject\seerrfin-requests.js" />
+        <EmbeddedResource Include="Inject\seerrfin-requests.css" />
+        <EmbeddedResource Include="Inject\seerrfin-letterboxd.js" />
+        <EmbeddedResource Include="Inject\seerrfin-letterboxd.css" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\meta.json" Link="meta.json" CopyToOutputDirectory="Always" />
+        <None Include="..\..\thumb.png" Link="thumb.png" CopyToOutputDirectory="Always" />
+    </ItemGroup>
+
+</Project>

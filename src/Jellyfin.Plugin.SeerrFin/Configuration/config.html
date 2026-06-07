@@ -1,0 +1,1069 @@
+<div data-role="page" id="seerrFinConfigurationPage" class="page type-interior pluginConfigurationPage fullWidthContent">
+    <style>
+        #seerrFinConfigurationPage {
+            padding: 2em 1em;
+        }
+
+        .bst-page-banner {
+            background: #fff;
+            color: #000;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.5em 1em;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: 500;
+            line-height: 1.3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bst-page-banner a {
+            color: #000;
+        }
+
+        #seerrFinConfigurationPage .content-primary {
+            margin: 0 auto;
+            padding-left: 5em !important;
+            padding-right: 5em !important;
+        }
+
+        #seerrFinConfigurationPage form,
+        #seerrFinConfigurationPage .readOnlyContent {
+            max-width: none !important;
+        }
+
+        .bst-container,
+        .seerrFinConfigurationForm {
+            display: flex;
+            flex-direction: column;
+            gap: 2.5em;
+        }
+
+        .seerrFinConfigurationForm {
+            width: 100%;
+        }
+
+        .bst-section-title {
+            text-align: center;
+            font-size: 1.35em;
+            font-weight: 400;
+            margin: 0 0 1em;
+            line-height: 1.3;
+        }
+
+        .bst-card {
+            border: 1px solid var(--divider, rgba(255, 255, 255, 0.2));
+            padding: 1em;
+        }
+
+        .bst-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 2em;
+            margin-bottom: 1.25em;
+        }
+
+        .bst-section-header--footer {
+            margin-bottom: 0;
+            margin-top: 0.65em;
+        }
+
+        .bst-link {
+            color: var(--accent, #52b2fa);
+            text-decoration: underline;
+            font-size: 1em;
+            line-height: 1.5;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .bst-dep-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05em;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .bst-dep-item.is-ok {
+            color: #4caf50;
+        }
+
+        .bst-dep-item.is-missing {
+            color: #ff5252;
+        }
+
+        .bst-dep-item:last-child,
+        .bst-input-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .bst-icon {
+            width: 1.2em;
+            text-align: center;
+        }
+
+        .bst-tabs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1em;
+        }
+
+        .bst-input-group {
+            margin-bottom: 1.75em;
+        }
+
+        .bst-label {
+            display: block;
+            font-size: 1em;
+            line-height: 1.4;
+            margin-bottom: 0.5em;
+        }
+
+        .bst-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            border: 2px solid var(--cardBackground, transparent);
+            background: var(--cardBackground, rgba(255, 255, 255, 0.08));
+            color: inherit;
+            font-size: 1.05em;
+            line-height: 1.4;
+        }
+
+        .bst-input:focus {
+            border-color: var(--accent, #00a4dc);
+            outline: none;
+        }
+
+        .bst-input.bst-textarea {
+            min-height: 110px;
+            resize: none;
+            font-family: monospace;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .bst-field-desc {
+            font-size: 0.92em;
+            color: var(--secondaryTextColor, rgba(255, 255, 255, 0.55));
+            margin-top: 0.55em;
+            line-height: 1.55;
+        }
+
+        .bst-field-desc--inline,
+        .bst-field-desc--footer {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bst-field-desc--inline {
+            margin: 0;
+            font-size: 1em;
+            line-height: 1.5;
+            color: inherit;
+        }
+
+        .bst-field-desc--footer {
+            margin-top: 0;
+        }
+
+        .seerrFinConfigurationForm .bst-field-desc {
+            color: #6a6a6a;
+        }
+
+        .bst-field-main {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25em;
+        }
+
+        .bst-label--side {
+            color: #fff;
+            font-size: 1.15em;
+            line-height: 1.4;
+            margin: 0;
+            padding-top: 0.65em;
+        }
+
+        .bst-input-stack {
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bst-input-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5em;
+        }
+
+        .bst-input-row > .bst-input-group {
+            flex: 1 1 14em;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+
+        .bst-input-row .bst-field-main {
+            gap: 0.75em;
+        }
+
+        .bst-input-row .bst-label--side {
+            flex: 0 0 auto;
+            font-size: 1.05em;
+            padding-top: 0.65em;
+            max-width: 42%;
+        }
+
+        .bst-save-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 0;
+            background: var(--accent, #00a4dc);
+            color: #fff;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 24px;
+            font-size: 1em;
+        }
+
+        .bst-save-btn:hover {
+            opacity: 0.9;
+        }
+
+        .bst-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5em;
+            margin-bottom: 1.25em;
+        }
+
+        .bst-toggle-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .bst-toggle-copy {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bst-toggle-label {
+            display: block;
+            font-size: 1.05em;
+            line-height: 1.4;
+            color: #fff;
+        }
+
+        .bst-toggle {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+
+        .bst-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .bst-toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.18);
+            transition: background 0.2s ease;
+        }
+
+        .bst-toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            transition: transform 0.2s ease;
+        }
+
+        .bst-toggle input:checked + .bst-toggle-slider {
+            background: var(--accent, #00a4dc);
+        }
+
+        .bst-toggle input:checked + .bst-toggle-slider:before {
+            transform: translateX(22px);
+        }
+
+        .bst-toggle input:focus-visible + .bst-toggle-slider {
+            outline: 2px solid var(--accent, #00a4dc);
+            outline-offset: 2px;
+        }
+
+        .bst-toggle-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.65em;
+            flex-shrink: 0;
+        }
+
+        .bst-customize-btn {
+            height: 26px;
+            padding: 0 0.75em;
+            border: 1px solid var(--divider, rgba(255, 255, 255, 0.25));
+            background: var(--cardBackground, rgba(255, 255, 255, 0.08));
+            color: inherit;
+            font-size: 0.85em;
+            line-height: 1;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .bst-customize-btn:hover,
+        .bst-customize-btn:focus-visible {
+            border-color: var(--accent, #00a4dc);
+            outline: none;
+        }
+
+        .bst-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100000;
+            padding: 1.5em;
+            box-sizing: border-box;
+        }
+
+        .bst-modal-overlay.is-open {
+            display: flex;
+        }
+
+        .bst-modal {
+            width: min(100%, 34em);
+            max-height: calc(100vh - 3em);
+            overflow: auto;
+            background: var(--background, #101010);
+            border: 1px solid var(--divider, rgba(255, 255, 255, 0.2));
+            padding: 1.25em;
+            box-sizing: border-box;
+        }
+
+        .bst-modal-title {
+            margin: 0 0 1.25em;
+            font-size: 1.15em;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .bst-modal-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1em;
+            margin-bottom: 1.25em;
+        }
+
+        .bst-modal-row-label {
+            font-size: 1em;
+            color: #fff;
+        }
+
+        .bst-duotone-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.65em;
+        }
+
+        .bst-color-swatch {
+            height: 26px;
+        }
+
+        .bst-color-swatch:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .bst-color-swatch input[type="color"] {
+            height: 100%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .bst-color-swatch:disabled input[type="color"] {
+            cursor: not-allowed;
+        }
+
+        .bst-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75em;
+            margin-top: 1.25em;
+        }
+
+        .bst-modal-btn {
+            padding: 0.55em 1.1em;
+            border: 1px solid var(--divider, rgba(255, 255, 255, 0.25));
+            background: var(--cardBackground, rgba(255, 255, 255, 0.08));
+            color: inherit;
+            cursor: pointer;
+            font-size: 0.95em;
+        }
+
+        .bst-modal-btn--primary {
+            border-color: var(--accent, #00a4dc);
+            background: var(--accent, #00a4dc);
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .bst-tabs-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bst-input-row {
+                flex-direction: column;
+            }
+
+            .bst-field-main {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5em;
+            }
+
+            .bst-label--side {
+                flex: none;
+                max-width: none;
+                padding-top: 0;
+            }
+        }
+    </style>
+
+    <div class="content-primary">
+        <div class="bst-container">
+            <div class="bst-page-banner">
+                <span>SeerrFin</span>
+                <a href="https://github.com/varunaditya-plus/SeerrFin" target="_blank" rel="noopener">Help</a>
+            </div>
+
+            <!-- Dependencies Section -->
+            <div class="bst-section-container">
+                <div class="bst-section-title">Dependencies</div>
+                <div class="bst-card">
+                    <div id="bstDepFileTransformation" class="bst-dep-item is-missing">
+                        <span class="bst-icon">✕</span>
+                        <span>File transformation</span>
+                    </div>
+                    <div id="bstDepCustomTabs" class="bst-dep-item is-missing">
+                        <span class="bst-icon">✕</span>
+                        <span>Custom tabs</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Custom Tabs Section -->
+            <div class="bst-section-container">
+                <div class="bst-section-title">Add custom tabs</div>
+                <div class="bst-card">
+                    <div class="bst-section-header">
+                        <div class="bst-field-desc bst-field-desc--inline">
+                            In <strong>Dashboard → Plugins → Custom Tabs</strong>, add tabs using the values below
+                        </div>
+                        <a class="bst-link" href="/web/#/configurationpage?name=Custom%20Tabs">Open Custom Tabs</a>
+                    </div>
+                    <div class="bst-tabs-grid">
+                        <div class="bst-card">
+                            <div class="bst-input-group">
+                                <label class="bst-label">Display text</label>
+                                <input type="text" class="bst-input" readonly value="Movies" />
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label">Html Content</label>
+                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections seerrfin-movies-sections"&gt;&lt;/div&gt;</textarea>
+                            </div>
+                        </div>
+                        <div class="bst-card">
+                            <div class="bst-input-group">
+                                <label class="bst-label">Display text</label>
+                                <input type="text" class="bst-input" readonly value="TV Shows" />
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label">Html Content</label>
+                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections seerrfin-tv-sections"&gt;&lt;/div&gt;</textarea>
+                            </div>
+                        </div>
+                        <div class="bst-card">
+                            <div class="bst-input-group">
+                                <label class="bst-label">Display text</label>
+                                <input type="text" class="bst-input" readonly value="Requests" />
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label">Html Content</label>
+                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections seerrfin-requests-sections"&gt;&lt;/div&gt;</textarea>
+                            </div>
+                        </div>
+                        <div class="bst-card">
+                            <div class="bst-input-group">
+                                <label class="bst-label">Display text</label>
+                                <input type="text" class="bst-input" readonly value="Letterboxd" />
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label">Html Content</label>
+                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections seerrfin-letterboxd-sections"&gt;&lt;/div&gt;</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <form class="seerrFinConfigurationForm">
+                <div class="bst-section-container">
+                    <div class="bst-section-title">Jellyseerr</div>
+                    <div class="bst-card">
+                        <div class="bst-input-group">
+                            <div class="bst-field-main">
+                                <label class="bst-label bst-label--side" for="jellyseerrUrl">Jellyseerr URL</label>
+                                <div class="bst-input-stack">
+                                    <input id="jellyseerrUrl" name="jellyseerrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:5055" />
+                                    <div class="bst-field-desc">Internal URL used by the server (e.g. http://localhost:5055)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-group">
+                            <div class="bst-field-main">
+                                <label class="bst-label bst-label--side" for="externalJellyseerrUrl">External Jellyseerr URL</label>
+                                <div class="bst-input-stack">
+                                    <input id="externalJellyseerrUrl" name="externalJellyseerrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:5055" />
+                                    <div class="bst-field-desc">The URL you usually use to access Jellyseerr (defaults to Jellyseerr URL above)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-group">
+                            <div class="bst-field-main">
+                                <label class="bst-label bst-label--side" for="jellyseerrApiKey">Jellyseerr API Key</label>
+                                <div class="bst-input-stack">
+                                    <input id="jellyseerrApiKey" name="jellyseerrApiKey" type="password" class="bst-input" />
+                                    <div class="bst-field-desc">Access Key for Jellyseerr which you can get by going to Jellyseerr → Settings → API Key</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="jellyseerrPreferredLanguages">Preferred languages</label>
+                                    <div class="bst-input-stack">
+                                        <input id="jellyseerrPreferredLanguages" name="jellyseerrPreferredLanguages" type="text" class="bst-input" />
+                                        <div class="bst-field-desc">Comma-separated ISO codes.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="watchRegion">Watch region</label>
+                                    <div class="bst-input-stack">
+                                        <input id="watchRegion" name="watchRegion" type="text" class="bst-input" />
+                                        <div class="bst-field-desc">Region for streaming provider carousel.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="rowItemLimit">Items per row</label>
+                                    <div class="bst-input-stack">
+                                        <input id="rowItemLimit" name="rowItemLimit" type="number" class="bst-input" />
+                                        <div class="bst-field-desc">Less items means carousels load faster.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bst-section-container">
+                    <div class="bst-section-title">Radarr / Sonarr — Fill if you want download progress on request cards</div>
+                    <div class="bst-card">
+                        <div class="bst-input-row" style="margin-bottom: 1.25em;">
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="radarrUrl">Radarr URL</label>
+                                    <div class="bst-input-stack">
+                                        <input id="radarrUrl" name="radarrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:7878" />
+                                        <div class="bst-field-desc">URL used by the server to reach Radarr (or you use to access it)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="radarrApiKey">Radarr API Key</label>
+                                    <div class="bst-input-stack">
+                                        <input id="radarrApiKey" name="radarrApiKey" type="password" class="bst-input" autocomplete="off" />
+                                        <div class="bst-field-desc">Key for Radarr which you can get from Radarr → Settings → General → Security → API Key</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="sonarrUrl">Sonarr URL</label>
+                                    <div class="bst-input-stack">
+                                        <input id="sonarrUrl" name="sonarrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:8989" />
+                                        <div class="bst-field-desc">URL used by the server to reach Sonarr (or you use to access it)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <div class="bst-field-main">
+                                    <label class="bst-label bst-label--side" for="sonarrApiKey">Sonarr API Key</label>
+                                    <div class="bst-input-stack">
+                                        <input id="sonarrApiKey" name="sonarrApiKey" type="password" class="bst-input" autocomplete="off" />
+                                        <div class="bst-field-desc">Key for Sonarr which you can get from Sonarr → Settings → General → Security → API Key</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bst-section-container">
+                    <div class="bst-section-title">Display settings</div>
+                    <div class="bst-card">
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="streamingServiceUseImages">Streaming services</label>
+                                <div class="bst-field-desc">Show streaming service logos instead of text in browse carousels.</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <button type="button" class="bst-customize-btn" data-customize-key="streamingService">Customize</button>
+                                <label class="bst-toggle">
+                                    <input id="streamingServiceUseImages" name="streamingServiceUseImages" type="checkbox" checked />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="studioNetworkUseImages">Studio / Network</label>
+                                <div class="bst-field-desc">Show studio and network logos instead of text in browse carousels.</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <button type="button" class="bst-customize-btn" data-customize-key="studioNetwork">Customize</button>
+                                <label class="bst-toggle">
+                                    <input id="studioNetworkUseImages" name="studioNetworkUseImages" type="checkbox" checked />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="genreUseBackdrops">Genre background</label>
+                                <div class="bst-field-desc">Show a random movie or show background behind each genre box.</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <button type="button" class="bst-customize-btn" data-customize-key="genreBackdrop">Customize</button>
+                                <label class="bst-toggle">
+                                    <input id="genreUseBackdrops" name="genreUseBackdrops" type="checkbox" checked />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="discoverUsePosters">Poster thumbnails</label>
+                                <div class="bst-field-desc">Use portrait posters in discovery rows instead of landscape thumbnails. (Landscape thumbnails need TMDB API Key)</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <button type="button" class="bst-customize-btn" data-customize-key="discoverBackdrop">Customize</button>
+                                <label class="bst-toggle">
+                                    <input id="discoverUsePosters" name="discoverUsePosters" type="checkbox" checked />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="qualityRecommendations">Quality recommendations</label>
+                                <div class="bst-field-desc">Show quality recommendations in the request modal to help you choose a quality profile. (uses JustWatch for qualities)</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle">
+                                    <input id="qualityRecommendations" name="qualityRecommendations" type="checkbox" checked />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="elegantFinFixes">ElegantFin fixes</label>
+                                <div class="bst-field-desc">Some fixes to correct card sizing and spacing if you use the ElegantFin theme.</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle">
+                                    <input id="elegantFinFixes" name="elegantFinFixes" type="checkbox" />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bst-section-container">
+                    <div class="bst-section-title">TMDB</div>
+                    <div class="bst-card">
+                        <div class="bst-input-group">
+                            <div class="bst-field-main">
+                                <label class="bst-label bst-label--side" for="tmdbApiKey">TMDB API Key</label>
+                                <div class="bst-input-stack">
+                                    <input id="tmdbApiKey" name="tmdbApiKey" type="password" class="bst-input" autocomplete="off" />
+                                    <div class="bst-section-header bst-section-header--footer">
+                                        <div class="bst-field-desc bst-field-desc--footer">
+                                            Optional, but recommended. This loads movie/tv details directly, meaning data in modals will load faster. Requesting still uses Jellyseerr.
+                                        </div>
+                                        <a class="bst-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">Get an API key</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="bst-save-btn">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="bstCustomizeModal" class="bst-modal-overlay" aria-hidden="true">
+        <div class="bst-modal" role="dialog" aria-modal="true" aria-labelledby="bstCustomizeModalTitle">
+            <h3 id="bstCustomizeModalTitle" class="bst-modal-title"></h3>
+            <div class="bst-modal-row">
+                <span class="bst-modal-row-label">Duotone filter</span>
+                <div class="bst-duotone-controls">
+                    <label class="bst-toggle">
+                        <input id="bstCustomizeDuotone" type="checkbox" />
+                        <span class="bst-toggle-slider"></span>
+                    </label>
+                    <label class="bst-color-swatch" title="Color 1 (shadows)">
+                        <input id="bstCustomizeDuotoneDark" type="color" value="#969696" />
+                    </label>
+                    <label class="bst-color-swatch" title="Color 2 (highlights)">
+                        <input id="bstCustomizeDuotoneLight" type="color" value="#ffffff" />
+                    </label>
+                </div>
+            </div>
+            <div class="bst-modal-actions">
+                <button type="button" class="bst-modal-btn" id="bstCustomizeCancel">Cancel</button>
+                <button type="button" class="bst-modal-btn bst-modal-btn--primary" id="bstCustomizeApply">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            const pluginId = 'c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c';
+            const form = document.querySelector('.seerrFinConfigurationForm');
+
+            const DISPLAY_STYLE_ITEMS = {
+                streamingService: {
+                    label: 'Streaming services',
+                    configKey: 'StreamingService',
+                    defaultDuotone: true
+                },
+                studioNetwork: {
+                    label: 'Studio / Network',
+                    configKey: 'StudioNetwork',
+                    defaultDuotone: true
+                },
+                genreBackdrop: {
+                    label: 'Genre background',
+                    configKey: 'GenreBackdrop',
+                    defaultDuotone: false
+                },
+                discoverBackdrop: {
+                    label: 'Poster thumbnails',
+                    configKey: 'DiscoverBackdrop',
+                    defaultDuotone: false
+                }
+            };
+
+            let activeCustomizeKey = null;
+
+            function createDefaultDisplayCustomizations() {
+                const customizations = {};
+                Object.keys(DISPLAY_STYLE_ITEMS).forEach(function (key) {
+                    const item = DISPLAY_STYLE_ITEMS[key];
+                    customizations[item.configKey] = defaultDisplayItemStyle(item);
+                });
+                return customizations;
+            }
+
+            let displayCustomizations = createDefaultDisplayCustomizations();
+
+            const customizeModal = document.getElementById('bstCustomizeModal');
+            const customizeTitle = document.getElementById('bstCustomizeModalTitle');
+            const customizeDuotone = document.getElementById('bstCustomizeDuotone');
+            const customizeDuotoneLight = document.getElementById('bstCustomizeDuotoneLight');
+            const customizeDuotoneDark = document.getElementById('bstCustomizeDuotoneDark');
+            const customizeCancel = document.getElementById('bstCustomizeCancel');
+            const customizeApply = document.getElementById('bstCustomizeApply');
+
+            function normalizeHexColor(value, fallback) {
+                const raw = String(value || fallback || '').replace('#', '').trim();
+                if (/^[0-9a-fA-F]{6}$/.test(raw)) {
+                    return raw.toLowerCase();
+                }
+                return String(fallback || 'ffffff').replace('#', '').toLowerCase();
+            }
+
+            function toColorInputValue(value, fallback) {
+                return '#' + normalizeHexColor(value, fallback);
+            }
+
+            function defaultDisplayItemStyle(item) {
+                return {
+                    DuotoneEnabled: item.defaultDuotone,
+                    DuotoneLight: 'ffffff',
+                    DuotoneDark: '969696'
+                };
+            }
+
+            function readDisplayItemStyle(source, item) {
+                const defaults = defaultDisplayItemStyle(item);
+                if (!source) {
+                    return defaults;
+                }
+
+                return {
+                    DuotoneEnabled: source.DuotoneEnabled ?? source.duotoneEnabled ?? defaults.DuotoneEnabled,
+                    DuotoneLight: normalizeHexColor(source.DuotoneLight ?? source.duotoneLight, defaults.DuotoneLight),
+                    DuotoneDark: normalizeHexColor(source.DuotoneDark ?? source.duotoneDark, defaults.DuotoneDark)
+                };
+            }
+
+            function buildDisplayCustomizationsPayload() {
+                const payload = {};
+                Object.keys(DISPLAY_STYLE_ITEMS).forEach(function (key) {
+                    const item = DISPLAY_STYLE_ITEMS[key];
+                    const style = displayCustomizations[item.configKey] || defaultDisplayItemStyle(item);
+                    payload[item.configKey] = {
+                        DuotoneEnabled: style.DuotoneEnabled === true,
+                        DuotoneLight: normalizeHexColor(style.DuotoneLight, 'ffffff'),
+                        DuotoneDark: normalizeHexColor(style.DuotoneDark, '969696')
+                    };
+                });
+                return payload;
+            }
+
+            function loadDisplayCustomizationsFromConfig(config) {
+                let root = {};
+
+                try {
+                    root = JSON.parse(config.DisplayCustomizationsJson || config.displayCustomizationsJson || '{}');
+                } catch (err) {
+                    root = {};
+                }
+
+                const loaded = {};
+                Object.keys(DISPLAY_STYLE_ITEMS).forEach(function (key) {
+                    const item = DISPLAY_STYLE_ITEMS[key];
+                    const source = root[item.configKey] || root[key] || null;
+                    loaded[item.configKey] = readDisplayItemStyle(source, item);
+                });
+
+                displayCustomizations = loaded;
+                return loaded;
+            }
+
+            function updateDuotoneColorState() {
+                const enabled = customizeDuotone.checked;
+                customizeDuotoneLight.disabled = !enabled;
+                customizeDuotoneDark.disabled = !enabled;
+            }
+
+            function closeCustomizeModal() {
+                activeCustomizeKey = null;
+                customizeModal.classList.remove('is-open');
+                customizeModal.setAttribute('aria-hidden', 'true');
+            }
+
+            function openCustomizeModal(key) {
+                const item = DISPLAY_STYLE_ITEMS[key];
+                if (!item || !customizeModal) {
+                    return;
+                }
+
+                activeCustomizeKey = key;
+                const style = displayCustomizations[item.configKey] || defaultDisplayItemStyle(item);
+
+                customizeTitle.textContent = 'Customize ' + item.label;
+                customizeDuotone.checked = style.DuotoneEnabled === true;
+                customizeDuotoneLight.value = toColorInputValue(style.DuotoneLight, 'ffffff');
+                customizeDuotoneDark.value = toColorInputValue(style.DuotoneDark, '969696');
+                updateDuotoneColorState();
+
+                customizeModal.classList.add('is-open');
+                customizeModal.setAttribute('aria-hidden', 'false');
+            }
+
+            function applyCustomizeModal() {
+                if (!activeCustomizeKey) {
+                    return;
+                }
+
+                const item = DISPLAY_STYLE_ITEMS[activeCustomizeKey];
+                displayCustomizations[item.configKey] = {
+                    DuotoneEnabled: customizeDuotone.checked,
+                    DuotoneLight: normalizeHexColor(customizeDuotoneLight.value, 'ffffff'),
+                    DuotoneDark: normalizeHexColor(customizeDuotoneDark.value, '969696')
+                };
+
+                closeCustomizeModal();
+            }
+
+            document.querySelectorAll('.bst-customize-btn').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    openCustomizeModal(button.getAttribute('data-customize-key'));
+                });
+            });
+
+            customizeDuotone.addEventListener('change', updateDuotoneColorState);
+            if (customizeCancel) {
+                customizeCancel.addEventListener('click', closeCustomizeModal);
+            }
+            if (customizeApply) {
+                customizeApply.addEventListener('click', applyCustomizeModal);
+            }
+            if (customizeModal) {
+                customizeModal.addEventListener('click', function (event) {
+                    if (event.target === customizeModal) {
+                        closeCustomizeModal();
+                    }
+                });
+            }
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && customizeModal && customizeModal.classList.contains('is-open')) {
+                    closeCustomizeModal();
+                }
+            });
+
+            function setDependencyRow(elementId, isInstalled, label) {
+                const row = document.getElementById(elementId);
+                if (!row) return;
+                
+                row.classList.toggle('is-ok', isInstalled);
+                row.classList.toggle('is-missing', !isInstalled);
+                
+                const icon = row.querySelector('.bst-icon');
+                if (icon) {
+                    icon.textContent = isInstalled ? '✓' : '✕';
+                }
+                
+                const textSpan = row.querySelector('span:not(.bst-icon)');
+                if (textSpan) {
+                    textSpan.textContent = label;
+                }
+            }
+
+            function probePlugin(names) {
+                return ApiClient.ajax({
+                    type: 'GET',
+                    url: ApiClient.getUrl('/Plugins'),
+                    dataType: 'json'
+                }).then(function (plugins) {
+                    const lowered = names.map(function (n) { return n.toLowerCase(); });
+                    for (let i = 0; i < plugins.length; i++) {
+                        const nm = (plugins[i].Name || '').toLowerCase();
+                        if (lowered.indexOf(nm) !== -1 && plugins[i].Status === 'Active') {
+                            return true;
+                        }
+                    }
+                    return false;
+                }).catch(function () {
+                    return false;
+                });
+            }
+
+            function checkInstalledPlugins() {
+                Promise.all([
+                    probePlugin(['File Transformation']),
+                    probePlugin(['Custom Tabs'])
+                ]).then(function (results) {
+                    setDependencyRow('bstDepFileTransformation', results[0] === true, 'File transformation');
+                    setDependencyRow('bstDepCustomTabs', results[1] === true, 'Custom tabs');
+                });
+            }
+
+            checkInstalledPlugins();
+
+            Dashboard.showLoadingMsg();
+            ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                loadDisplayCustomizationsFromConfig(config);
+                document.querySelector('#jellyseerrUrl').value = config.JellyseerrUrl || '';
+                document.querySelector('#externalJellyseerrUrl').value = config.ExternalJellyseerrUrl || '';
+                document.querySelector('#jellyseerrApiKey').value = config.JellyseerrApiKey || '';
+                document.querySelector('#radarrUrl').value = config.RadarrUrl || '';
+                document.querySelector('#radarrApiKey').value = config.RadarrApiKey || '';
+                document.querySelector('#sonarrUrl').value = config.SonarrUrl || '';
+                document.querySelector('#sonarrApiKey').value = config.SonarrApiKey || '';
+                document.querySelector('#jellyseerrPreferredLanguages').value = config.JellyseerrPreferredLanguages || 'en';
+                document.querySelector('#watchRegion').value = config.WatchRegion || 'US';
+                document.querySelector('#rowItemLimit').value = config.RowItemLimit || 20;
+                document.querySelector('#tmdbApiKey').value = config.TmdbApiKey || '';
+                document.querySelector('#streamingServiceUseImages').checked = config.StreamingServiceUseImages !== false;
+                document.querySelector('#studioNetworkUseImages').checked = config.StudioNetworkUseImages !== false;
+                document.querySelector('#genreUseBackdrops').checked = config.GenreUseBackdrops !== false;
+                document.querySelector('#discoverUsePosters').checked = config.DiscoverUsePosters !== false;
+                document.querySelector('#elegantFinFixes').checked = config.ElegantFinFixes === true;
+                document.querySelector('#qualityRecommendations').checked = config.QualityRecommendations !== false;
+                Dashboard.hideLoadingMsg();
+            }).catch(function () {
+                displayCustomizations = createDefaultDisplayCustomizations();
+                Dashboard.hideLoadingMsg();
+            });
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    config.DisplayCustomizationsJson = JSON.stringify(buildDisplayCustomizationsPayload());
+                    config.JellyseerrUrl = document.querySelector('#jellyseerrUrl').value;
+                    config.ExternalJellyseerrUrl = document.querySelector('#externalJellyseerrUrl').value;
+                    config.JellyseerrApiKey = document.querySelector('#jellyseerrApiKey').value;
+                    config.RadarrUrl = document.querySelector('#radarrUrl').value.trim();
+                    config.RadarrApiKey = document.querySelector('#radarrApiKey').value.trim();
+                    config.SonarrUrl = document.querySelector('#sonarrUrl').value.trim();
+                    config.SonarrApiKey = document.querySelector('#sonarrApiKey').value.trim();
+                    config.JellyseerrPreferredLanguages = document.querySelector('#jellyseerrPreferredLanguages').value;
+                    config.WatchRegion = document.querySelector('#watchRegion').value || 'US';
+                    config.RowItemLimit = parseInt(document.querySelector('#rowItemLimit').value, 10) || 20;
+                    config.TmdbApiKey = document.querySelector('#tmdbApiKey').value.trim();
+                    config.StreamingServiceUseImages = document.querySelector('#streamingServiceUseImages').checked;
+                    config.StudioNetworkUseImages = document.querySelector('#studioNetworkUseImages').checked;
+                    config.GenreUseBackdrops = document.querySelector('#genreUseBackdrops').checked;
+                    config.DiscoverUsePosters = document.querySelector('#discoverUsePosters').checked;
+                    config.ElegantFinFixes = document.querySelector('#elegantFinFixes').checked;
+                    config.QualityRecommendations = document.querySelector('#qualityRecommendations').checked;
+                    return ApiClient.updatePluginConfiguration(pluginId, config);
+                }).then(function (result) {
+                    Dashboard.processPluginConfigurationUpdateResult(result);
+                    Dashboard.hideLoadingMsg();
+                    if (window.seerrFinPlugin) {
+                        window.seerrFinPlugin.invalidateDisplaySettings();
+                    }
+                }).catch(function () {
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+        })();
+    </script>
+</div>
