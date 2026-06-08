@@ -20,6 +20,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         _watchersReady: false,
         _handlersBound: false,
         _gridPageSize: 40,
+        _carouselScrollThreshold: 1200,
         _displaySettings: null,
 
         init: function () {
@@ -256,7 +257,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 self.loadDisplaySettings(),
                 ...rows.map(function (row) {
                     return self.fetchDiscover(row.path).then(function (result) {
-                        return { row: row, items: result.items };
+                        return { row: row, items: result.items, total: result.total };
                     });
                 })
             ]).then(function (results) {
@@ -280,7 +281,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 container.innerHTML = '';
                 loadedRows.forEach(function (result) {
                     try {
-                        container.appendChild(self.buildPosterRow(result.row.title, result.items, result.row.path));
+                        container.appendChild(self.buildPosterRow(result.row.title, result.items, result.row.path, {
+                            total: result.total
+                        }));
                     } catch (err) {
                         console.warn('SeerrFin: row render failed', result.row.title, err);
                     }
@@ -590,7 +593,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             return false;
         },
 
-        buildPosterRow: function (title, items, path) {
+        buildPosterRow: function (title, items, path, options) {
+            options = options || {};
             const section = document.createElement('div');
             section.className = 'verticalSection seerrfin-poster-section';
 
@@ -625,14 +629,154 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 return section;
             }
 
+            if (path) {
+                const total = parseInt(options.total || '0', 10);
+                section.dataset.path = path;
+                section.dataset.loadedCount = String(items.length);
+                section.dataset.total = String(total);
+                section.dataset.hasMore = String(total === 0 || items.length < total);
+            }
+
             itemsContainer.innerHTML = this.createDiscoverCards(items);
-            this.appendHorizontalScroller(section, itemsContainer, { focusScale: true });
+            this.appendHorizontalScroller(section, itemsContainer, { focusScale: true, scrollEvent: true });
             if (this.shouldUseBackdropThumbnails()) {
                 this.hydrateDiscoverBackdropCards(itemsContainer);
             } else {
                 this.initLazyImages(itemsContainer);
             }
             return section;
+        },
+
+        bindRowInfiniteScroll: function (section) {
+            if (section.dataset.seerrfinRowScrollBound === 'true') {
+                return;
+            }
+
+            const scroller = section.querySelector('[is="emby-scroller"]');
+            if (!scroller || !section.dataset.path) {
+                return;
+            }
+
+            if (!scroller.scroller || typeof scroller.addScrollEventListener !== 'function') {
+                const retries = parseInt(section.dataset.seerrfinRowScrollRetries || '0', 10);
+                if (retries >= 10) {
+                    return;
+                }
+                section.dataset.seerrfinRowScrollRetries = String(retries + 1);
+                const self = this;
+                requestAnimationFrame(function () {
+                    self.bindRowInfiniteScroll(section);
+                });
+                return;
+            }
+
+            delete section.dataset.seerrfinRowScrollRetries;
+            section.dataset.seerrfinRowScrollBound = 'true';
+            section._seerrfinRowScroller = scroller;
+
+            const self = this;
+            scroller.addScrollEventListener(function () {
+                self.scheduleRowScrollCheck(section);
+            }, { passive: true });
+
+            self.scheduleRowScrollCheck(section);
+        },
+
+        scheduleRowScrollCheck: function (section) {
+            if (section._seerrfinRowScrollRaf) {
+                return;
+            }
+            const self = this;
+            section._seerrfinRowScrollRaf = requestAnimationFrame(function () {
+                section._seerrfinRowScrollRaf = 0;
+                self.checkRowScrollEnd(section);
+            });
+        },
+
+        checkRowScrollEnd: function (section) {
+            if (section.dataset.hasMore !== 'true' || section.dataset.loading === 'true') {
+                return;
+            }
+
+            const scroller = section._seerrfinRowScroller;
+            if (!scroller || typeof scroller.getScrollPosition !== 'function' || typeof scroller.getScrollSize !== 'function') {
+                return;
+            }
+
+            const pos = scroller.getScrollPosition() || 0;
+            const size = scroller.getScrollSize() || 0;
+            const viewport = scroller.clientWidth || 0;
+            const threshold = this._carouselScrollThreshold;
+            const nearEnd = size <= viewport + threshold || pos + viewport >= size - threshold;
+
+            if (nearEnd) {
+                this.loadMorePosterRowItems(section);
+            }
+        },
+
+        loadMorePosterRowItems: function (section) {
+            const self = this;
+            const path = section.dataset.path;
+            const itemsContainer = section.querySelector('.itemsContainer');
+            if (!path || !itemsContainer || section.dataset.hasMore !== 'true') {
+                return;
+            }
+
+            if (section.dataset.loading === 'true') {
+                return;
+            }
+
+            const loadedCount = parseInt(section.dataset.loadedCount || '0', 10);
+            const pageSize = self._gridPageSize;
+            section.dataset.loading = 'true';
+
+            self.fetchDiscover(path, '?startIndex=' + encodeURIComponent(loadedCount) + '&limit=' + encodeURIComponent(pageSize)).then(function (result) {
+                section.dataset.loading = 'false';
+
+                if (!result.items.length) {
+                    section.dataset.hasMore = 'false';
+                    return;
+                }
+
+                const total = parseInt(result.total || section.dataset.total || '0', 10);
+                if (total > 0) {
+                    section.dataset.total = String(total);
+                }
+
+                const existingIds = new Set();
+                itemsContainer.querySelectorAll('.seerrfin-discover-card[data-tmdb-id]').forEach(function (card) {
+                    existingIds.add(card.getAttribute('data-tmdb-id'));
+                });
+                const newItems = result.items.filter(function (item) {
+                    const id = String(self.getProviderId(item, 'Tmdb') ||
+                        self.getProviderId(item, 'Jellyseerr') ||
+                        self.getField(item, 'id', 'Id') || '');
+                    return id && !existingIds.has(id) && existingIds.add(id);
+                });
+
+                if (newItems.length) {
+                    itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(newItems));
+                    if (self.shouldUseBackdropThumbnails()) {
+                        self.hydrateDiscoverBackdropCards(itemsContainer);
+                    } else {
+                        self.initLazyImages(itemsContainer);
+                    }
+                }
+
+                const newCount = loadedCount + result.items.length;
+                section.dataset.loadedCount = String(newCount);
+                const hasMore = result.items.length === pageSize && (total === 0 || newCount < total);
+                section.dataset.hasMore = String(hasMore);
+
+                const scroller = section._seerrfinRowScroller;
+                if (scroller && scroller.scroller && scroller.scroller.reload) {
+                    scroller.scroller.reload();
+                }
+                self.scheduleRowScrollCheck(section);
+            }).catch(function (err) {
+                section.dataset.loading = 'false';
+                console.error('SeerrFin row load failed:', err);
+            });
         },
 
         appendHorizontalScroller: function (section, itemsContainer, options) {
@@ -643,6 +787,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 ? 'padded-top-focusscale padded-bottom-focusscale emby-scroller'
                 : 'emby-scroller';
             scroller.setAttribute('data-centerfocus', 'true');
+            if (settings.scrollEvent) {
+                scroller.setAttribute('data-scrollevent', 'true');
+            }
 
             scroller.appendChild(itemsContainer);
 
@@ -1375,6 +1522,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         },
 
         refreshScrollers: function (container) {
+            const self = this;
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
                     const scrollers = container.querySelectorAll('[is="emby-scroller"]');
@@ -1385,6 +1533,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         if (scroller.enableMouseWheelScroll) {
                             scroller.enableMouseWheelScroll();
                         }
+                    });
+
+                    container.querySelectorAll('.seerrfin-poster-section').forEach(function (section) {
+                        self.bindRowInfiniteScroll(section);
                     });
                 });
             });

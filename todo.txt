@@ -1,0 +1,6 @@
+- add search functionality via Search tab, Search button next to tabs, or via Jellyfin's search
+- the back/forward buttons in the discover page should show across from the category title, not in the middle of the carousel
+
+- show progress/playability on cards in discover pages and let user play directly from there
+- add layout editor for modal
+- add layout editor for carousel pages

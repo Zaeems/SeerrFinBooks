@@ -132,7 +132,7 @@ public class JellyseerrDiscoveryService
         {
             Items = items,
             StartIndex = startIndex,
-            TotalRecordCount = isGridRequest ? totalResults : items.Count
+            TotalRecordCount = totalResults > 0 ? totalResults : items.Count
         };
     }
 
