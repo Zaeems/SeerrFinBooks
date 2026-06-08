@@ -1,12 +1,15 @@
 using System.Collections.Concurrent;
 using Jellyfin.Plugin.SeerrFin.Configuration;
 using Jellyfin.Plugin.SeerrFin.Helpers;
+using Jellyfin.Plugin.SeerrFin.Model;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.SeerrFin.Services;
 
 public class TmdbBackdropService
 {
+    private const int MaxBatchConcurrency = 5;
+
     private readonly HttpClient _httpClient;
     private readonly ImageCacheService _imageCacheService;
     private readonly ILogger<TmdbBackdropService> _logger;
@@ -21,26 +24,75 @@ public class TmdbBackdropService
 
     public async Task<CachedBackdropDto?> GetCachedBackdropAsync(string mediaType, int tmdbId, CancellationToken cancellationToken = default)
     {
-        string cacheKey = $"{mediaType}:{tmdbId}";
-        if (_cache.TryGetValue(cacheKey, out CachedBackdropDto? cached) && !string.IsNullOrEmpty(cached.TmdbBackdropPath))
-        {
-            string cachedSourceUrl = "https://image.tmdb.org/t/p/w780" + cached.TmdbBackdropPath;
-            string refreshedUrl = ImageCacheHelper.GetCachedImageUrl(_imageCacheService, cachedSourceUrl, _logger);
-            if (!string.IsNullOrEmpty(refreshedUrl))
+        List<BackdropBatchItemDto> results = await GetCachedBackdropsAsync(
+            new BackdropBatchRequestItemDto[]
             {
-                return new CachedBackdropDto
+                new()
                 {
-                    BackdropUrl = refreshedUrl,
-                    TmdbBackdropPath = cached.TmdbBackdropPath,
-                    HasEnglishBackdrop = cached.HasEnglishBackdrop
-                };
-            }
+                    MediaType = mediaType,
+                    TmdbId = tmdbId
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
 
-            _cache.TryRemove(cacheKey, out _);
-        }
-        else if (cached != null)
+        BackdropBatchItemDto? match = results.FirstOrDefault();
+        if (match == null || string.IsNullOrEmpty(match.BackdropUrl))
         {
-            _cache.TryRemove(cacheKey, out _);
+            return null;
+        }
+
+        return new CachedBackdropDto
+        {
+            BackdropUrl = match.BackdropUrl,
+            TmdbBackdropPath = match.TmdbBackdropPath,
+            HasEnglishBackdrop = match.HasEnglishBackdrop
+        };
+    }
+
+    public async Task<List<BackdropBatchItemDto>> GetCachedBackdropsAsync(IEnumerable<BackdropBatchRequestItemDto> items, CancellationToken cancellationToken = default)
+    {
+        List<BackdropBatchRequestItemDto> uniqueItems = items
+            .Where(item => item.TmdbId > 0 && (string.Equals(item.MediaType, "movie", StringComparison.OrdinalIgnoreCase) || string.Equals(item.MediaType, "tv", StringComparison.OrdinalIgnoreCase)))
+            .GroupBy(item => $"{item.MediaType.ToLowerInvariant()}:{item.TmdbId}")
+            .Select(group => group.First())
+            .ToList();
+
+        if (uniqueItems.Count == 0)
+        {
+            return new List<BackdropBatchItemDto>();
+        }
+
+        using SemaphoreSlim semaphore = new(MaxBatchConcurrency, MaxBatchConcurrency);
+        IEnumerable<Task<BackdropBatchItemDto?>> tasks = uniqueItems.Select(async item =>
+        {
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await ResolveBackdropItemAsync(item, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        BackdropBatchItemDto?[] resolved = await Task.WhenAll(tasks).ConfigureAwait(false);
+        return resolved
+            .Where(item => item != null && !string.IsNullOrEmpty(item.BackdropUrl))
+            .Cast<BackdropBatchItemDto>()
+            .ToList();
+    }
+
+    private async Task<BackdropBatchItemDto?> ResolveBackdropItemAsync(BackdropBatchRequestItemDto item, CancellationToken cancellationToken)
+    {
+        string mediaType = item.MediaType.ToLowerInvariant();
+        int tmdbId = item.TmdbId;
+        string cacheKey = $"{mediaType}:{tmdbId}";
+
+        CachedBackdropDto? cached = TryGetCachedBackdrop(cacheKey);
+        if (cached != null)
+        {
+            return ToBatchItem(mediaType, tmdbId, cached);
         }
 
         PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
@@ -78,8 +130,47 @@ public class TmdbBackdropService
             HasEnglishBackdrop = pick.HasEnglishBackdrop
         };
         _cache[cacheKey] = dto;
-        return dto;
+        return ToBatchItem(mediaType, tmdbId, dto);
     }
+
+    private CachedBackdropDto? TryGetCachedBackdrop(string cacheKey)
+    {
+        if (!_cache.TryGetValue(cacheKey, out CachedBackdropDto? cached))
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(cached.TmdbBackdropPath))
+        {
+            _cache.TryRemove(cacheKey, out _);
+            return null;
+        }
+
+        string cachedSourceUrl = "https://image.tmdb.org/t/p/w780" + cached.TmdbBackdropPath;
+        string refreshedUrl = ImageCacheHelper.GetCachedImageUrl(_imageCacheService, cachedSourceUrl, _logger);
+        if (!string.IsNullOrEmpty(refreshedUrl))
+        {
+            return new CachedBackdropDto
+            {
+                BackdropUrl = refreshedUrl,
+                TmdbBackdropPath = cached.TmdbBackdropPath,
+                HasEnglishBackdrop = cached.HasEnglishBackdrop
+            };
+        }
+
+        _cache.TryRemove(cacheKey, out _);
+        return null;
+    }
+
+    private static BackdropBatchItemDto ToBatchItem(string mediaType, int tmdbId, CachedBackdropDto cached) =>
+        new()
+        {
+            MediaType = mediaType,
+            TmdbId = tmdbId,
+            BackdropUrl = cached.BackdropUrl,
+            TmdbBackdropPath = cached.TmdbBackdropPath,
+            HasEnglishBackdrop = cached.HasEnglishBackdrop
+        };
 
     public sealed class CachedBackdropDto
     {

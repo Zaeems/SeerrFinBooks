@@ -218,13 +218,57 @@ public class SeerrFinController : ControllerBase
     [HttpGet("CachedImage/{cacheKey}")]
     public ActionResult GetCachedImage([FromRoute] string cacheKey)
     {
-        (byte[]? data, string? contentType) = _imageCacheService.GetCachedImage(cacheKey);
-        if (data == null || contentType == null)
+        CachedImageFile? cachedFile = _imageCacheService.GetCachedImageFile(cacheKey);
+        if (cachedFile == null || !System.IO.File.Exists(cachedFile.FilePath))
         {
             return NotFound();
         }
 
-        return File(data, contentType);
+        PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
+        if (config.DeveloperMode)
+        {
+            Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        }
+        else
+        {
+            Response.Headers.CacheControl = $"public, max-age={cachedFile.MaxAgeSeconds}";
+        }
+
+        Response.Headers.ETag = cachedFile.ETag;
+        Response.Headers.LastModified = cachedFile.LastModified.ToString("R");
+
+        if (Request.Headers.TryGetValue("If-None-Match", out Microsoft.Extensions.Primitives.StringValues etagValues)
+            && etagValues.Any(value => string.Equals(value, cachedFile.ETag, StringComparison.Ordinal)))
+        {
+            return StatusCode(304);
+        }
+
+        if (Request.Headers.TryGetValue("If-Modified-Since", out Microsoft.Extensions.Primitives.StringValues modifiedValues)
+            && DateTime.TryParse(modifiedValues.FirstOrDefault(), out DateTime ifModifiedSince)
+            && ifModifiedSince.ToUniversalTime() >= cachedFile.LastModified)
+        {
+            return StatusCode(304);
+        }
+
+        return PhysicalFile(cachedFile.FilePath, cachedFile.ContentType);
+    }
+
+    [HttpPost("backdrops")]
+    [Authorize]
+    public async Task<ActionResult<BackdropBatchResponseDto>> GetBackdrops(
+        [FromBody] BackdropBatchRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Items == null || request.Items.Count == 0)
+        {
+            return BadRequest();
+        }
+
+        List<BackdropBatchItemDto> items = await _tmdbBackdropService
+            .GetCachedBackdropsAsync(request.Items, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Ok(new BackdropBatchResponseDto { Items = items });
     }
 
     [HttpGet("discover/movies/trending")]

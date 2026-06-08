@@ -15,6 +15,7 @@ public class ImageCacheService
     private readonly HttpClient _httpClient;
     private readonly string _cacheDirectory;
     private readonly ConcurrentDictionary<string, CachedImageDto> _imageCache = new();
+    private readonly ConcurrentDictionary<string, Task<string?>> _inflightDownloads = new();
 
     public ImageCacheService(
         ILogger<ImageCacheService> logger,
@@ -48,33 +49,19 @@ public class ImageCacheService
             CleanupCacheEntry(cacheKey);
         }
 
-        // Remove oldest 10% when at capacity so new downloads don't grow too much
-        PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
-        if (_imageCache.Count >= config.MaxImageCacheEntries)
-        {
-            EvictOldEntries();
-        }
-
-        return await DownloadAndCacheImage(sourceUrl, cacheKey, cacheTimeoutSeconds).ConfigureAwait(false);
+        return await GetOrStartDownload(sourceUrl, cacheKey, cacheTimeoutSeconds).ConfigureAwait(false);
     }
 
-    public (byte[]? data, string? contentType) GetCachedImage(string cacheKey)
+    public CachedImageFile? GetCachedImageFile(string cacheKey)
     {
         if (!_imageCache.TryGetValue(cacheKey, out CachedImageDto? cachedInfo))
         {
-            return (null, null);
+            return null;
         }
 
         if (cachedInfo.ExpiresAt > DateTime.UtcNow && File.Exists(cachedInfo.FilePath))
         {
-            try
-            {
-                return (File.ReadAllBytes(cachedInfo.FilePath), cachedInfo.ContentType);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error reading cached image {CacheKey}", cacheKey);
-            }
+            return BuildCachedImageFile(cachedInfo);
         }
 
         if (!string.IsNullOrEmpty(cachedInfo.SourceUrl))
@@ -85,12 +72,28 @@ public class ImageCacheService
                 && _imageCache.TryGetValue(cacheKey, out cachedInfo)
                 && File.Exists(cachedInfo.FilePath))
             {
-                return (File.ReadAllBytes(cachedInfo.FilePath), cachedInfo.ContentType);
+                return BuildCachedImageFile(cachedInfo);
             }
         }
 
         _imageCache.TryRemove(cacheKey, out _);
-        return (null, null);
+        return null;
+    }
+
+    private async Task<string?> GetOrStartDownload(string sourceUrl, string cacheKey, int cacheTimeoutSeconds)
+    {
+        Task<string?> downloadTask = _inflightDownloads.GetOrAdd(
+            cacheKey,
+            _ => DownloadAndCacheImage(sourceUrl, cacheKey, cacheTimeoutSeconds));
+
+        try
+        {
+            return await downloadTask.ConfigureAwait(false);
+        }
+        finally
+        {
+            _inflightDownloads.TryRemove(cacheKey, out _);
+        }
     }
 
     private bool IsValidCacheKey(string cacheKey)
@@ -104,6 +107,17 @@ public class ImageCacheService
     {
         try
         {
+            if (IsValidCacheKey(cacheKey))
+            {
+                return cacheKey;
+            }
+
+            PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
+            if (_imageCache.Count >= config.MaxImageCacheEntries)
+            {
+                EvictOldEntries();
+            }
+
             using HttpResponseMessage response = await _httpClient.GetAsync(sourceUrl).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
@@ -116,14 +130,15 @@ public class ImageCacheService
             string filePath = Path.Combine(_cacheDirectory, $"{cacheKey}{extension}");
             await File.WriteAllBytesAsync(filePath, imageData).ConfigureAwait(false);
 
+            DateTime cachedAt = DateTime.UtcNow;
             _imageCache[cacheKey] = new CachedImageDto
             {
                 CacheKey = cacheKey,
                 SourceUrl = sourceUrl,
                 FilePath = filePath,
                 ContentType = contentType,
-                CachedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddSeconds(cacheTimeoutSeconds)
+                CachedAt = cachedAt,
+                ExpiresAt = cachedAt.AddSeconds(cacheTimeoutSeconds)
             };
             SaveCacheIndex();
             return cacheKey;
@@ -133,6 +148,44 @@ public class ImageCacheService
             _logger.LogError(ex, "Error caching image from {SourceUrl}", sourceUrl);
             return null;
         }
+    }
+
+    private CachedImageFile BuildCachedImageFile(CachedImageDto cachedInfo)
+    {
+        DateTime lastModified = cachedInfo.CachedAt;
+        try
+        {
+            lastModified = File.GetLastWriteTimeUtc(cachedInfo.FilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read last write time for {FilePath}", cachedInfo.FilePath);
+        }
+
+        int maxAgeSeconds = Math.Max(0, (int)Math.Ceiling((cachedInfo.ExpiresAt - DateTime.UtcNow).TotalSeconds));
+        long fileLength = 0;
+        try
+        {
+            fileLength = new FileInfo(cachedInfo.FilePath).Length;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read file length for {FilePath}", cachedInfo.FilePath);
+        }
+
+        return new CachedImageFile
+        {
+            FilePath = cachedInfo.FilePath,
+            ContentType = cachedInfo.ContentType,
+            LastModified = lastModified,
+            MaxAgeSeconds = maxAgeSeconds,
+            ETag = BuildETag(cachedInfo.CacheKey, lastModified, fileLength)
+        };
+    }
+
+    private static string BuildETag(string cacheKey, DateTime lastModified, long fileLength)
+    {
+        return $"\"{cacheKey}-{lastModified.Ticks:x}-{fileLength:x}\"";
     }
 
     private void CleanupCacheEntry(string cacheKey)

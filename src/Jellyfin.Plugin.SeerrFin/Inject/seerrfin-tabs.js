@@ -1089,56 +1089,105 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
         },
 
-        ensureTmdbApiKey: function () {
-            const self = this;
-            if (self._tmdbApiKey !== undefined) {
-                return Promise.resolve(self._tmdbApiKey);
-            }
-
-            if (!self._tmdbApiKeyPromise) {
-                self._tmdbApiKeyPromise = self.fetchJson('client-settings').then(function (data) {
-                    const key = (data && (data.tmdbApiKey || data.TmdbApiKey)) || '';
-                    self._tmdbApiKey = String(key).trim();
-                    return self._tmdbApiKey;
-                }).catch(function () {
-                    self._tmdbApiKey = '';
-                    return '';
-                });
-            }
-
-            return self._tmdbApiKeyPromise;
+        getBackdropCacheKey: function (mediaType, tmdbId) {
+            return String(mediaType || '').toLowerCase() + ':' + String(tmdbId || '');
         },
 
-        fetchTmdbBackdropUrl: function (mediaType, tmdbId) {
+        normalizeBackdropBatchItem: function (item) {
+            if (!item) {
+                return null;
+            }
+
+            const mediaType = String(item.mediaType || item.MediaType || '').toLowerCase();
+            const tmdbId = parseInt(item.tmdbId || item.TmdbId || '0', 10);
+            const url = item.backdropUrl || item.BackdropUrl || '';
+            const path = item.tmdbBackdropPath || item.TmdbBackdropPath || '';
+            const hasEnglish = !!(item.hasEnglishBackdrop || item.HasEnglishBackdrop);
+
+            return {
+                mediaType: mediaType,
+                tmdbId: tmdbId,
+                url: url ? this.resolveImageUrl(url) : '',
+                path: path,
+                hasEnglishBackdrop: hasEnglish
+            };
+        },
+
+        fetchTmdbBackdropBatch: function (items) {
             const self = this;
-            const cacheKey = mediaType + ':' + tmdbId;
-
-            if (self._backdropInflight && self._backdropInflight[cacheKey]) {
-                return self._backdropInflight[cacheKey];
+            if (!items || !items.length) {
+                return Promise.resolve(self._backdropResultCache || {});
             }
 
-            if (!self._backdropInflight) {
-                self._backdropInflight = {};
+            if (!self._backdropResultCache) {
+                self._backdropResultCache = {};
             }
 
-            const promise = self.fetchJson('backdrop/' + encodeURIComponent(mediaType) + '/' + encodeURIComponent(tmdbId))
-                .then(function (data) {
-                    const url = data && (data.backdropUrl || data.BackdropUrl);
-                    const hasEnglish = !!(data && (data.hasEnglishBackdrop || data.HasEnglishBackdrop));
-                    return {
-                        url: url ? self.resolveImageUrl(url) : '',
-                        path: (data && (data.tmdbBackdropPath || data.TmdbBackdropPath)) || '',
-                        hasEnglishBackdrop: hasEnglish
-                    };
-                })
-                .catch(function () {
-                    return { url: '', hasEnglishBackdrop: false };
-                })
-                .finally(function () {
-                    delete self._backdropInflight[cacheKey];
+            const unique = {};
+            const uncached = [];
+
+            items.forEach(function (item) {
+                const mediaType = String(item.mediaType || '').toLowerCase();
+                const tmdbId = parseInt(item.tmdbId || '0', 10);
+                if (!mediaType || !tmdbId) {
+                    return;
+                }
+
+                const cacheKey = self.getBackdropCacheKey(mediaType, tmdbId);
+                if (unique[cacheKey]) {
+                    return;
+                }
+
+                unique[cacheKey] = true;
+                if (!self._backdropResultCache[cacheKey]) {
+                    uncached.push({
+                        mediaType: mediaType,
+                        tmdbId: tmdbId
+                    });
+                }
+            });
+
+            if (!uncached.length) {
+                return Promise.resolve(self._backdropResultCache);
+            }
+
+            if (!self._backdropBatchInflight) {
+                self._backdropBatchInflight = {};
+            }
+
+            const batchKey = uncached.map(function (item) {
+                return item.mediaType + ':' + item.tmdbId;
+            }).sort().join('|');
+
+            if (self._backdropBatchInflight[batchKey]) {
+                return self._backdropBatchInflight[batchKey];
+            }
+
+            const promise = ApiClient.ajax({
+                url: ApiClient.getUrl('SeerrFin/backdrops'),
+                type: 'POST',
+                contentType: 'application/json',
+                dataType: 'json',
+                data: JSON.stringify({ items: uncached })
+            }).then(function (data) {
+                const results = data && (data.items || data.Items || []);
+                (results || []).forEach(function (item) {
+                    const normalized = self.normalizeBackdropBatchItem(item);
+                    if (!normalized || !normalized.tmdbId) {
+                        return;
+                    }
+
+                    const cacheKey = self.getBackdropCacheKey(normalized.mediaType, normalized.tmdbId);
+                    self._backdropResultCache[cacheKey] = normalized;
                 });
+                return self._backdropResultCache;
+            }).catch(function () {
+                return self._backdropResultCache;
+            }).finally(function () {
+                delete self._backdropBatchInflight[batchKey];
+            });
 
-            self._backdropInflight[cacheKey] = promise;
+            self._backdropBatchInflight[batchKey] = promise;
             return promise;
         },
 
@@ -1164,36 +1213,6 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
         },
 
-        hydrateDiscoverBackdropCard: function (card) {
-            const self = this;
-            if (!card || card.dataset.backdropLoaded === 'true') {
-                return Promise.resolve();
-            }
-
-            const seerrFallback = card.getAttribute('data-fallback-src') || '';
-            const mediaId = card.dataset.tmdbId;
-            const mediaType = card.dataset.mediaType;
-
-            return self.ensureTmdbApiKey().then(function (apiKey) {
-                if (!apiKey) {
-                    self.applyDiscoverBackdropResult(card, null, seerrFallback);
-                    card.dataset.backdropLoaded = 'true';
-                    return;
-                }
-
-                if (!mediaId || !mediaType) {
-                    self.applyDiscoverBackdropResult(card, null, seerrFallback);
-                    card.dataset.backdropLoaded = 'true';
-                    return;
-                }
-
-                return self.fetchTmdbBackdropUrl(mediaType, mediaId).then(function (result) {
-                    self.applyDiscoverBackdropResult(card, result, seerrFallback);
-                    card.dataset.backdropLoaded = 'true';
-                });
-            });
-        },
-
         hydrateDiscoverBackdropCards: function (container) {
             const self = this;
             if (!container) {
@@ -1205,39 +1224,63 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 return;
             }
 
-            cards.forEach(function (card) {
-                const fallbackUrl = card.getAttribute('data-fallback-src') || '';
-                if (card.getAttribute('data-tmdb-backdrop-path') || fallbackUrl) {
-                    self.setDiscoverBackdropPresentation(card, 'fallback');
-                    self.setDiscoverBackdropImage(card, fallbackUrl);
-                }
-            });
-
-            if (!self._backdropHydrateQueue) {
-                self._backdropHydrateQueue = [];
-                self._backdropHydrateActive = 0;
+            if (!self._backdropResultCache) {
+                self._backdropResultCache = {};
             }
+
+            const batchItems = [];
+            const cardEntries = [];
 
             cards.forEach(function (card) {
                 card.dataset.backdropHydrateQueued = 'true';
-                self._backdropHydrateQueue.push(card);
+
+                const seerrFallback = card.getAttribute('data-fallback-src') || '';
+                const mediaId = card.dataset.tmdbId;
+                const mediaType = card.dataset.mediaType;
+                const backdropPath = card.getAttribute('data-tmdb-backdrop-path') || '';
+                const cacheKey = mediaType && mediaId ? self.getBackdropCacheKey(mediaType, mediaId) : '';
+                const cachedResult = cacheKey ? self._backdropResultCache[cacheKey] : null;
+
+                if (cachedResult) {
+                    self.applyDiscoverBackdropResult(card, cachedResult, seerrFallback);
+                    card.dataset.backdropLoaded = 'true';
+                    return;
+                }
+
+                if (backdropPath || seerrFallback) {
+                    self.setDiscoverBackdropPresentation(card, 'fallback');
+                    self.setDiscoverBackdropImage(card, seerrFallback);
+                }
+
+                if (!mediaId || !mediaType) {
+                    card.dataset.backdropLoaded = 'true';
+                    return;
+                }
+
+                batchItems.push({
+                    mediaType: mediaType,
+                    tmdbId: parseInt(mediaId, 10)
+                });
+                cardEntries.push({
+                    card: card,
+                    seerrFallback: seerrFallback,
+                    mediaType: mediaType,
+                    mediaId: mediaId
+                });
             });
 
-            self.pumpBackdropHydrateQueue();
-        },
-
-        pumpBackdropHydrateQueue: function () {
-            const self = this;
-            const maxConcurrent = 4;
-
-            while (self._backdropHydrateActive < maxConcurrent && self._backdropHydrateQueue.length) {
-                const card = self._backdropHydrateQueue.shift();
-                self._backdropHydrateActive++;
-                self.hydrateDiscoverBackdropCard(card).finally(function () {
-                    self._backdropHydrateActive--;
-                    self.pumpBackdropHydrateQueue();
-                });
+            if (!cardEntries.length) {
+                return;
             }
+
+            self.fetchTmdbBackdropBatch(batchItems).then(function () {
+                cardEntries.forEach(function (entry) {
+                    const cacheKey = self.getBackdropCacheKey(entry.mediaType, entry.mediaId);
+                    const result = self._backdropResultCache[cacheKey] || null;
+                    self.applyDiscoverBackdropResult(entry.card, result, entry.seerrFallback);
+                    entry.card.dataset.backdropLoaded = 'true';
+                });
+            });
         },
 
         bindRequestHandler: function () {
