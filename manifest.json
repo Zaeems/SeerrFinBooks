@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/SeerrFin",
     "versions": [
       {
+        "version": "1.5.3.0",
+        "changelog": "Added advanced settings for all parts of the app to allow user to configure intricate functionality",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/SeerrFin/releases/download/1.5.3.0/Jellyfin.Plugin.SeerrFin_10.11.0.zip",
+        "checksum": "8E7A83B1719E748395C6BE907FA5804D",
+        "timestamp": "2026-06-12T20:33:00.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.5.2.0",
         "changelog": "Update caching to use batch backdrop hydration and cache headers with Etags to load cached images faster without a request for each image",
         "targetAbi": "10.11.0.0",
