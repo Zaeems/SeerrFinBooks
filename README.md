@@ -17,7 +17,9 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 
 </div>
 
-<img src="assets/preview.png" style="width:100%;"/>
+<div align="center" style="width:100%;">
+  <video src="https://github.com/user-attachments/assets/cec5bc22-0468-442a-8688-ff52f3129fe0"></video>
+</div>
 
 ---
 
@@ -50,14 +52,20 @@ https://raw.githubusercontent.com/varunaditya-plus/SeerrFin/main/manifest.json
 4. Now you have to restart your Jellyfin instance. Go to **Dashboard** and click the **Restart** button. You're done!
 
 ### Configuration
-After installation, now configure the extension so it will work with your Seerr instance. Go to **Dashboard → Plugins → SeerrFin**, click settings, and follow the instructions. You're not stupid. You figured out how to get Jellyfin and Jellyseerr installed.
+After installation, now configure the extension so it will work with your Seerr instance. Go to **Dashboard → SeerrFin**, click settings, and follow the instructions. You're not stupid. You figured out how to get Jellyfin and Jellyseerr installed.
 
-## Compatibility
-| Jellyfin version | Status |
-|---|---|
-| 10.11.x | Tested |
-| 10.10.x | Should work |
-| Earlier | Untested |
+## Screenshots
+<table>
+  <tr>
+    <td><img width="1720" height="720" alt="Movie tab" src="https://github.com/user-attachments/assets/94fcae0d-9027-4e96-a6fc-d2c8fd1734c5" /></td>
+    <td><img width="1720" height="720" alt="Content modal" src="https://github.com/user-attachments/assets/9b347369-79dd-4f6a-8abb-ba70f83040c3" /></td>
+  </tr>
+  <tr>
+    <td><img width="1720" height="720" alt="Request tab" src="https://github.com/user-attachments/assets/c247919c-a22d-4852-afe5-70f03ee8f8d1" /></td>
+    <td><img width="1720" height="720" alt="Letterboxd import tab" src="https://github.com/user-attachments/assets/4eae17eb-ebbc-4b6c-a28f-241088d00936" /></td>
+  </tr>
+</table>
+
 
 ## Contributing & Support
 Please open pull requests if you have any suggestions or features you want to be implemented in this plugin. This is my first C# project, and is inspired heavily by [Home Screen Sections](https://github.com/IAmParadox27/jellyfin-plugin-home-sections). For suggestions, feature requests, or bug reports, open an issue. Please include your Jellyfin version and a screenshot if relevant.
