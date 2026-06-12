@@ -68,22 +68,23 @@ public static class TmdbBackdropHelper
         };
     }
 
-    public static async Task<BackdropPickResult> FetchBackdropAsync(HttpClient httpClient, string mediaType, int tmdbId, string apiKey, CancellationToken cancellationToken = default)
+    public static async Task<BackdropPickResult> FetchBackdropAsync(HttpClient httpClient, string mediaType, int tmdbId, string apiKey, string? languageFilter = "en,null,en-US", bool preferOriginalLanguage = false, CancellationToken cancellationToken = default)
     {
         string segment = string.Equals(mediaType, "tv", StringComparison.OrdinalIgnoreCase) ? "tv" : "movie";
         string baseUrl = $"https://api.themoviedb.org/3/{segment}/{tmdbId.ToString(CultureInfo.InvariantCulture)}/images";
-        string filteredUrl = AppendQuery(baseUrl, "include_image_language", "en,null,en-US");
+        string filter = string.IsNullOrWhiteSpace(languageFilter) ? "en,null,en-US" : languageFilter;
+        string filteredUrl = AppendQuery(baseUrl, "include_image_language", filter);
 
-        BackdropPickResult filtered = await TryFetchBackdrop(httpClient, filteredUrl, apiKey, cancellationToken).ConfigureAwait(false);
+        BackdropPickResult filtered = await TryFetchBackdrop(httpClient, filteredUrl, apiKey, preferOriginalLanguage, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(filtered.FilePath))
         {
             return filtered;
         }
 
-        return await TryFetchBackdrop(httpClient, baseUrl, apiKey, cancellationToken).ConfigureAwait(false);
+        return await TryFetchBackdrop(httpClient, baseUrl, apiKey, preferOriginalLanguage, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<BackdropPickResult> TryFetchBackdrop(HttpClient httpClient, string url, string apiKey, CancellationToken cancellationToken = default)
+    private static async Task<BackdropPickResult> TryFetchBackdrop(HttpClient httpClient, string url, string apiKey, bool preferOriginalLanguage, CancellationToken cancellationToken = default)
     {
         using HttpRequestMessage request = BuildRequest(url, apiKey);
         using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -94,7 +95,42 @@ public static class TmdbBackdropHelper
 
         string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         JObject? payload = JObject.Parse(json);
-        return PickBackdrop(payload?.Value<JArray>("backdrops"));
+        return PickBackdrop(payload?.Value<JArray>("backdrops"), preferOriginalLanguage);
+    }
+
+    private static BackdropPickResult PickBackdrop(IEnumerable<JToken>? backdrops, bool preferOriginalLanguage)
+    {
+        if (!preferOriginalLanguage)
+        {
+            return PickBackdrop(backdrops);
+        }
+
+        if (backdrops == null)
+        {
+            return new BackdropPickResult();
+        }
+
+        List<JObject> valid = backdrops
+            .OfType<JObject>()
+            .Where(b => !string.IsNullOrEmpty(b.Value<string>("file_path")))
+            .ToList();
+
+        if (valid.Count == 0)
+        {
+            return new BackdropPickResult();
+        }
+
+        static string? TopPath(IEnumerable<JObject> items) => items.OrderByDescending(b => b.Value<float?>("vote_average") ?? 0f).FirstOrDefault()?.Value<string>("file_path");
+
+        string? originalPath = TopPath(valid.Where(b =>
+            !string.IsNullOrEmpty(b.Value<string>("iso_639_1")) &&
+            !string.Equals(b.Value<string>("iso_639_1"), "en", StringComparison.OrdinalIgnoreCase)));
+        if (!string.IsNullOrEmpty(originalPath))
+        {
+            return new BackdropPickResult { FilePath = originalPath, HasEnglishBackdrop = false };
+        }
+
+        return PickBackdrop(backdrops);
     }
 
     private static HttpRequestMessage BuildRequest(string url, string apiKey)

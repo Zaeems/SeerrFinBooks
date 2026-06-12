@@ -16,6 +16,27 @@
         return div.innerHTML;
     }
 
+    function readAdvancedBool(value, fallback) {
+        if (value === true || value === false) {
+            return value;
+        }
+        return fallback;
+    }
+
+    function getRequestModalAdvanced() {
+        const plugin = window.seerrFinPlugin;
+        const modal = plugin && plugin._displaySettings && plugin._displaySettings.Advanced
+            ? plugin._displaySettings.Advanced.requestModal
+            : null;
+        return {
+            tvSeasonPickerEnabled: readAdvancedBool(modal && modal.tvSeasonPickerEnabled, true),
+            includeSpecialsSeason: readAdvancedBool(modal && modal.includeSpecialsSeason, false),
+            requireExplicitSeasonSelection: readAdvancedBool(modal && modal.requireExplicitSeasonSelection, false),
+            showRequest4kButton: readAdvancedBool(modal && modal.showRequest4kButton, true),
+            backdropLanguageFilter: (modal && modal.backdropLanguageFilter) || 'en,null,en-US'
+        };
+    }
+
     function tmdbImage(path, size) {
         if (!path) {
             return '';
@@ -173,7 +194,11 @@
     function fetchTmdbLogoPath(mediaId, mediaType, apiKey) {
         const segment = mediaType === 'tv' ? 'tv' : 'movie';
         const base = 'https://api.themoviedb.org/3/' + segment + '/' + mediaId + '/images';
-        const filteredUrl = appendTmdbQuery(base, 'include_image_language', 'en,null,en-US');
+        const filteredUrl = appendTmdbQuery(
+            base,
+            'include_image_language',
+            getRequestModalAdvanced().backdropLanguageFilter
+        );
 
         return fetchTmdbJson(filteredUrl, apiKey)
             .then(function (payload) {
@@ -451,9 +476,16 @@
     }
 
     function getRequestableSeasons(details) {
+        const includeSpecials = getRequestModalAdvanced().includeSpecialsSeason === true;
         return (details.seasons || [])
             .filter(function (season) {
-                return season.episodeCount !== 0 && season.seasonNumber > 0;
+                if (season.episodeCount === 0) {
+                    return false;
+                }
+                if (!includeSpecials && season.seasonNumber <= 0) {
+                    return false;
+                }
+                return true;
             })
             .sort(function (a, b) {
                 return a.seasonNumber - b.seasonNumber;
@@ -581,7 +613,8 @@
                     return selectedSeasons.indexOf(num) !== -1;
                 });
                 selectAllInput.indeterminate = selectedSeasons.length > 0 && !selectAllInput.checked;
-                continueBtn.disabled = selectedSeasons.length === 0;
+                const requireExplicit = getRequestModalAdvanced().requireExplicitSeasonSelection === true;
+                continueBtn.disabled = requireExplicit && selectedSeasons.length === 0;
             }
 
             selectAllInput.addEventListener('change', function () {
@@ -653,8 +686,11 @@
 
     function openQualityModal(mediaId, mediaType, title, onSuccess, is4k, selectedSeasons) {
         if (mediaType === 'tv' && selectedSeasons === undefined) {
-            openSeasonModal(mediaId, mediaType, title, onSuccess, is4k);
-            return;
+            if (getRequestModalAdvanced().tvSeasonPickerEnabled !== false) {
+                openSeasonModal(mediaId, mediaType, title, onSuccess, is4k);
+                return;
+            }
+            selectedSeasons = [];
         }
 
         closeQualityModal();
@@ -875,14 +911,16 @@
         });
         actionsLeft.appendChild(requestBtn);
 
-        const request4kBtn = document.createElement('button');
-        request4kBtn.type = 'button';
-        request4kBtn.className = 'bst-btn-request-4k';
-        request4kBtn.textContent = 'Request 4K';
-        request4kBtn.addEventListener('click', function () {
-            openQualityModal(mediaId, mediaType, title, undefined, true);
-        });
-        actionsLeft.appendChild(request4kBtn);
+        if (getRequestModalAdvanced().showRequest4kButton !== false) {
+            const request4kBtn = document.createElement('button');
+            request4kBtn.type = 'button';
+            request4kBtn.className = 'bst-btn-request-4k';
+            request4kBtn.textContent = 'Request 4K';
+            request4kBtn.addEventListener('click', function () {
+                openQualityModal(mediaId, mediaType, title, undefined, true);
+            });
+            actionsLeft.appendChild(request4kBtn);
+        }
 
         if (trailerKey) {
             const trailerBtn = document.createElement('button');

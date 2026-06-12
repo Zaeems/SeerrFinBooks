@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.SeerrFin.Configuration;
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using Jellyfin.Plugin.SeerrFin.Helpers;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Dto;
@@ -21,8 +22,11 @@ public class JellyseerrDiscoveryService
         _logger = logger;
     }
 
-    public QueryResult<BaseItemDto> GetAnimeRow(string username, int startIndex = 0, int? limit = null) =>
-        GetDiscoverRow(username, "/api/v1/discover/tv?genre=16&keywords=210024", "tv", startIndex, limit, useSeerrMapping: true);
+    public QueryResult<BaseItemDto> GetAnimeRow(string username, int startIndex = 0, int? limit = null)
+    {
+        AdvancedDiscoverySettings discovery = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Discovery;
+        return GetDiscoverRow(username, discovery.AnimeDiscoverPath, "tv", startIndex, limit, useSeerrMapping: discovery.UseSeerrMappingForAnime);
+    }
 
     public QueryResult<BaseItemDto> GetDiscoverRow(string username, string jellyseerrPath, string? mediaTypeFilter = null, int startIndex = 0, int? limit = null, bool useSeerrMapping = false)
     {
@@ -47,9 +51,8 @@ public class JellyseerrDiscoveryService
         client.DefaultRequestHeaders.Add("X-Api-User", jellyseerrUserId.ToString());
 
         // Seerr mapping needs to be used for Anime discovery because of Seerr's default filters applied on their direct API.
-        DiscoverItemFilterOptions mapping = useSeerrMapping
-            ? DiscoverItemFilterOptions.Seerr
-            : DiscoverItemFilterOptions.Default;
+        AdvancedDiscoverySettings discoverySettings = AdvancedSettingsHelper.Resolve(config).Discovery;
+        DiscoverItemFilterOptions mapping = ResolveMapping(config, useSeerrMapping);
 
         List<BaseItemDto> items = new();
         int jellyseerrPage = 1;
@@ -57,7 +60,7 @@ public class JellyseerrDiscoveryService
         int skipped = 0;
         int totalResults = 0;
         bool isGridRequest = limit.HasValue;
-        int maxJellyseerrPages = isGridRequest ? 20 : 5;
+        int maxJellyseerrPages = isGridRequest ? discoverySettings.GridMaxJellyseerrPages : discoverySettings.CarouselMaxJellyseerrPages;
 
         // Paginate until we have enough items or hit the max pages
         while (items.Count < targetLimit && jellyseerrPage <= maxJellyseerrPages)
@@ -288,11 +291,21 @@ public class JellyseerrDiscoveryService
 
     public List<int> GetAlreadyRequestedMovieIds(string username, IEnumerable<int> tmdbIds)
     {
+        string scope = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration)
+            .Letterboxd.AlreadyRequestedStatusScope;
+        bool availableOnly = string.Equals(scope, "availableOnly", StringComparison.OrdinalIgnoreCase);
+
         List<int> alreadyRequested = new();
         foreach (int tmdbId in tmdbIds.Distinct())
         {
             JObject? details = GetMediaDetails(username, "movie", tmdbId);
-            if (details?.Value<JObject>("mediaInfo") != null)
+            JObject? mediaInfo = details?.Value<JObject>("mediaInfo");
+            if (mediaInfo == null)
+            {
+                continue;
+            }
+
+            if (!availableOnly || IsAvailableInLibrary(details!))
             {
                 alreadyRequested.Add(tmdbId);
             }
@@ -382,8 +395,10 @@ public class JellyseerrDiscoveryService
     private BaseItemDto? MapDiscoverItem(JObject item, DiscoverItemFilterOptions filterOptions)
     {
         PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
+        AdvancedDiscoverySettings discovery = AdvancedSettingsHelper.Resolve(config).Discovery;
+        AdvancedTmdbSettings tmdb = AdvancedSettingsHelper.Resolve(config).Tmdb;
 
-        if (item.Value<bool?>("adult") == true)
+        if (discovery.HideAdultContent && item.Value<bool?>("adult") == true)
         {
             return null;
         }
@@ -419,17 +434,19 @@ public class JellyseerrDiscoveryService
         }
 
         string posterPath = item.Value<string>("posterPath") ?? string.Empty;
+        string posterSize = string.IsNullOrWhiteSpace(tmdb.PosterImageSize) ? "w600_and_h900_bestv2" : tmdb.PosterImageSize;
         string posterUrl = string.IsNullOrEmpty(posterPath)
             ? string.Empty
             : ImageCacheHelper.GetCachedImageUrl(
                 _imageCacheService,
-                $"https://image.tmdb.org/t/p/w600_and_h900_bestv2{posterPath}",
+                $"https://image.tmdb.org/t/p/{posterSize}{posterPath}",
                 _logger);
 
         string backdropPath = item.Value<string>("backdropPath") ?? item.Value<string>("backdrop_path") ?? string.Empty;
+        string backdropSize = string.IsNullOrWhiteSpace(tmdb.BackdropImageSize) ? "w780" : tmdb.BackdropImageSize;
         string backdropUrl = string.IsNullOrEmpty(backdropPath)
             ? string.Empty
-            : ImageCacheHelper.GetCachedImageUrl(_imageCacheService, $"https://image.tmdb.org/t/p/w780{backdropPath}", _logger);
+            : ImageCacheHelper.GetCachedImageUrl(_imageCacheService, $"https://image.tmdb.org/t/p/{backdropSize}{backdropPath}", _logger);
 
         float rating = item.Value<float?>("vote_average") ?? item.Value<float?>("voteAverage") ?? 0f;
         string? mediaType = item.Value<string>("mediaType");
@@ -477,23 +494,29 @@ public class JellyseerrDiscoveryService
         return string.Equals(status, "AVAILABLE", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "PARTIALLY_AVAILABLE", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static DiscoverItemFilterOptions ResolveMapping(PluginConfiguration config, bool useSeerrMapping)
+    {
+        AdvancedDiscoverySettings discovery = AdvancedSettingsHelper.Resolve(config).Discovery;
+        if (useSeerrMapping && discovery.UseSeerrMappingForAnime)
+        {
+            return new DiscoverItemFilterOptions
+            {
+                ApplyLanguageFilter = false,
+                HideRequestedMedia = false,
+                HideAvailableInLibrary = false
+            };
+        }
+
+        return new DiscoverItemFilterOptions
+        {
+            ApplyLanguageFilter = discovery.ApplyLanguageFilter,
+            HideRequestedMedia = discovery.HideRequestedMedia,
+            HideAvailableInLibrary = discovery.HideAvailableInLibrary
+        };
+    }
+
     private sealed class DiscoverItemFilterOptions
     {
-        public static DiscoverItemFilterOptions Default { get; } = new()
-        {
-            ApplyLanguageFilter = true,
-            HideRequestedMedia = true,
-            HideAvailableInLibrary = false
-        };
-
-        // Pass TMDB filters through and show all results.
-        public static DiscoverItemFilterOptions Seerr { get; } = new()
-        {
-            ApplyLanguageFilter = false,
-            HideRequestedMedia = false,
-            HideAvailableInLibrary = false
-        };
-
         public bool ApplyLanguageFilter { get; init; }
 
         public bool HideRequestedMedia { get; init; }

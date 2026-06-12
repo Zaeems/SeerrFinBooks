@@ -6,8 +6,7 @@
     }
     window.__seerrFinLetterboxdInit = true;
 
-    const CARD_OPTIONS = { interactive: false, includeMetaText: true };
-    const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{1,30}$/;
+    const DEFAULT_USERNAME_PATTERN = '^[a-zA-Z0-9_-]{1,30}$';
 
     const state = {
         username: '',
@@ -32,6 +31,38 @@
 
     function getPlugin() {
         return window.seerrFinPlugin || null;
+    }
+
+    function getLetterboxdAdvanced() {
+        const plugin = getPlugin();
+        const advanced = plugin && plugin._displaySettings && plugin._displaySettings.Advanced;
+        return (advanced && advanced.letterboxd) || {};
+    }
+
+    function getUsernamePattern() {
+        const pattern = getLetterboxdAdvanced().usernamePattern || DEFAULT_USERNAME_PATTERN;
+        try {
+            return new RegExp(pattern);
+        } catch (err) {
+            console.warn('SeerrFin: invalid Letterboxd username pattern, using default', err);
+            return new RegExp(DEFAULT_USERNAME_PATTERN);
+        }
+    }
+
+    function getCardOptions() {
+        const settings = getLetterboxdAdvanced();
+        return {
+            interactive: settings.requestCardsInteractive === true,
+            includeMetaText: settings.requestCardsIncludeMetaText !== false
+        };
+    }
+
+    function getDefaultBulkQualityMode() {
+        return getLetterboxdAdvanced().defaultBulkQualityMode || 'singleProfile';
+    }
+
+    function getAlreadyRequestedMode() {
+        return getLetterboxdAdvanced().alreadyRequestedMode || 'prompt';
     }
 
     function findActiveContainer() {
@@ -628,7 +659,7 @@
             const useBackdrop = typeof plugin.shouldUseBackdropThumbnails === 'function'
                 ? plugin.shouldUseBackdropThumbnails()
                 : false;
-            const cardOptions = Object.assign({}, CARD_OPTIONS, {
+            const cardOptions = Object.assign({}, getCardOptions(), {
                 forceBackdrop: useBackdrop
             });
             const discoverItems = state.items.map(mapItemToDiscover).filter(function (item) {
@@ -772,7 +803,7 @@
     }
 
     function validateUsername(username) {
-        return USERNAME_PATTERN.test((username || '').trim());
+        return getUsernamePattern().test((username || '').trim());
     }
 
     function handleSync(container) {
@@ -989,14 +1020,54 @@
                 return;
             }
 
-            showQualitySelection(panel, container, remaining);
+            continueBulkRequest(panel, container, remaining);
         });
 
         list.querySelector('[data-request-all]').addEventListener('click', function () {
-            showQualitySelection(panel, container, selectedIds.slice());
+            continueBulkRequest(panel, container, selectedIds.slice());
         });
 
         list.querySelector('[data-cancel-request]').addEventListener('click', closeBulkModal);
+    }
+
+    function continueBulkRequest(panel, container, tmdbIds) {
+        const defaultMode = getDefaultBulkQualityMode();
+        if (defaultMode === 'highestAvailable' || defaultMode === 'mostCommon') {
+            submitBulkRequest(container, {
+                QualityMode: defaultMode,
+                TmdbIds: tmdbIds.slice()
+            }, panel);
+            return;
+        }
+
+        showQualitySelection(panel, container, tmdbIds);
+    }
+
+    function handleAlreadyRequested(panel, container, alreadyRequestedIds, selectedIds) {
+        const mode = getAlreadyRequestedMode();
+        if (mode === 'requestAll') {
+            continueBulkRequest(panel, container, selectedIds.slice());
+            return;
+        }
+
+        if (mode === 'skip') {
+            const remaining = selectedIds.filter(function (id) {
+                return alreadyRequestedIds.indexOf(id) === -1;
+            });
+            removeSelectedIds(alreadyRequestedIds);
+            updateSelectionUi(container);
+            if (!remaining.length) {
+                const list = panel.querySelector('.bst-quality-list');
+                if (list) {
+                    list.innerHTML = '<div class="bst-quality-empty">No movies left to request.</div>';
+                }
+                return;
+            }
+            continueBulkRequest(panel, container, remaining);
+            return;
+        }
+
+        showAlreadyRequestedPrompt(panel, container, alreadyRequestedIds, selectedIds);
     }
 
     function openBulkModal(container) {
@@ -1014,11 +1085,11 @@
         checkAlreadyRequested(selectedIds)
             .then(function (alreadyRequestedIds) {
                 if (alreadyRequestedIds.length > 0) {
-                    showAlreadyRequestedPrompt(panel, container, alreadyRequestedIds, selectedIds);
+                    handleAlreadyRequested(panel, container, alreadyRequestedIds, selectedIds);
                     return;
                 }
 
-                showQualitySelection(panel, container, selectedIds);
+                continueBulkRequest(panel, container, selectedIds);
             })
             .catch(function (err) {
                 console.error('SeerrFin Letterboxd request check:', err);

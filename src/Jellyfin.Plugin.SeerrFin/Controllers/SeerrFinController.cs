@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using Jellyfin.Plugin.SeerrFin.Configuration;
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using Jellyfin.Plugin.SeerrFin.Model;
 using Jellyfin.Plugin.SeerrFin.Services;
 using MediaBrowser.Controller.Library;
@@ -179,7 +180,8 @@ public class SeerrFinController : ControllerBase
             config.DiscoverUsePosters,
             config.ElegantFinFixes,
             config.QualityRecommendations,
-            displayCustomizations = DisplayCustomizationsHelper.Resolve(config)
+            displayCustomizations = DisplayCustomizationsHelper.Resolve(config),
+            advanced = AdvancedSettingsHelper.BuildFrontendPayload(config)
         });
     }
 

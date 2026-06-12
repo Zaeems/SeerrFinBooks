@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.SeerrFin.Configuration;
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using Jellyfin.Plugin.SeerrFin.Services;
 using Microsoft.Extensions.Logging;
 
@@ -16,9 +17,9 @@ public static class ImageCacheHelper
             return string.Empty;
         }
 
+        PluginConfiguration? config = SeerrFinPlugin.Instance?.Configuration;
         try
         {
-            PluginConfiguration? config = SeerrFinPlugin.Instance?.Configuration;
             int cacheTimeout = config?.CacheTimeoutSeconds ?? 86400;
 
             // Used in discovery mapping which allows cached images to be used in discovery cards
@@ -31,13 +32,20 @@ public static class ImageCacheHelper
                 return $"/SeerrFin/CachedImage/{cacheKey}";
             }
 
-            logger?.LogWarning("Failed to cache image from {SourceUrl}, using original URL", sourceUrl);
-            return sourceUrl;
+            bool fallback = config == null || AdvancedSettingsHelper.Resolve(config).Tmdb.FallbackToOriginalImageUrl;
+            if (fallback)
+            {
+                logger?.LogWarning("Failed to cache image from {SourceUrl}, using original URL", sourceUrl);
+                return sourceUrl;
+            }
+
+            return string.Empty;
         }
         catch (Exception ex)
         {
             logger?.LogError(ex, "Error caching image from {SourceUrl}", sourceUrl);
-            return sourceUrl;
+            bool fallback = config == null || AdvancedSettingsHelper.Resolve(config).Tmdb.FallbackToOriginalImageUrl;
+            return fallback ? sourceUrl : string.Empty;
         }
     }
 }

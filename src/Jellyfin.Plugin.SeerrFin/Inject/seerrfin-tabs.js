@@ -424,8 +424,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         'qualityRecommendations',
                         true
                     ),
-                    DisplayCustomizations: self.parseDisplayCustomizations(data)
+                    DisplayCustomizations: self.parseDisplayCustomizations(data),
+                    Advanced: self.parseAdvancedSettings(data)
                 };
+                self.applyAdvancedSettings(self._displaySettings.Advanced);
                 self.syncElegantFinFixes();
                 return self._displaySettings;
             }).catch(function () {
@@ -436,11 +438,86 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     DiscoverUsePosters: true,
                     ElegantFinFixes: false,
                     QualityRecommendations: true,
-                    DisplayCustomizations: self.parseDisplayCustomizations(null)
+                    DisplayCustomizations: self.parseDisplayCustomizations(null),
+                    Advanced: self.parseAdvancedSettings(null)
                 };
+                self.applyAdvancedSettings(self._displaySettings.Advanced);
                 self.syncElegantFinFixes();
                 return self._displaySettings;
             });
+        },
+
+        readAdvancedBool: function (value, fallback) {
+            if (value === true || value === false) {
+                return value;
+            }
+            return fallback;
+        },
+
+        parseAdvancedSettings: function (data) {
+            const self = this;
+            const root = (data && (data.advanced || data.Advanced)) || {};
+            const discovery = root.discovery || root.Discovery || {};
+            const carousel = root.carousel || root.Carousel || {};
+            const requests = root.requests || root.Requests || {};
+            const requestModal = root.requestModal || root.RequestModal || {};
+            const tmdb = root.tmdb || root.Tmdb || {};
+            const letterboxd = root.letterboxd || root.Letterboxd || {};
+            return {
+                discovery: {
+                    gridPageSize: discovery.gridPageSize ?? discovery.GridPageSize ?? 40
+                },
+                carousel: {
+                    carouselScrollThreshold: carousel.carouselScrollThreshold ?? carousel.CarouselScrollThreshold ?? 1200,
+                    discoverRowFocusScale: self.readAdvancedBool(carousel.discoverRowFocusScale ?? carousel.DiscoverRowFocusScale, true),
+                    browseCarouselFocusScale: self.readAdvancedBool(carousel.browseCarouselFocusScale ?? carousel.BrowseCarouselFocusScale, false),
+                    enableCenterFocus: self.readAdvancedBool(carousel.enableCenterFocus ?? carousel.EnableCenterFocus, true),
+                    enableRowInfiniteScroll: self.readAdvancedBool(carousel.enableRowInfiniteScroll ?? carousel.EnableRowInfiniteScroll, true),
+                    rowScrollBindRetries: carousel.rowScrollBindRetries ?? carousel.RowScrollBindRetries ?? 10
+                },
+                requests: {
+                    pageSize: requests.pageSize ?? requests.PageSize ?? 20,
+                    fetchSize: requests.fetchSize ?? requests.FetchSize ?? 100,
+                    cardsInteractive: self.readAdvancedBool(requests.cardsInteractive ?? requests.CardsInteractive, false),
+                    cardsIncludeMetaText: self.readAdvancedBool(requests.cardsIncludeMetaText ?? requests.CardsIncludeMetaText, false),
+                    includePartialsInProcessingFilter: self.readAdvancedBool(requests.includePartialsInProcessingFilter ?? requests.IncludePartialsInProcessingFilter, false),
+                    splitPartiallyAvailableFilter: self.readAdvancedBool(requests.splitPartiallyAvailableFilter ?? requests.SplitPartiallyAvailableFilter, false)
+                },
+                requestModal: {
+                    tvSeasonPickerEnabled: self.readAdvancedBool(requestModal.tvSeasonPickerEnabled ?? requestModal.TvSeasonPickerEnabled, true),
+                    includeSpecialsSeason: self.readAdvancedBool(requestModal.includeSpecialsSeason ?? requestModal.IncludeSpecialsSeason, false),
+                    requireExplicitSeasonSelection: self.readAdvancedBool(requestModal.requireExplicitSeasonSelection ?? requestModal.RequireExplicitSeasonSelection, false),
+                    showRequest4kButton: self.readAdvancedBool(requestModal.showRequest4kButton ?? requestModal.ShowRequest4kButton, true),
+                    backdropLanguageFilter: requestModal.backdropLanguageFilter || requestModal.BackdropLanguageFilter || 'en,null,en-US'
+                },
+                tmdb: {
+                    genreBackdropSelectionMode: tmdb.genreBackdropSelectionMode || tmdb.GenreBackdropSelectionMode || 'random'
+                },
+                letterboxd: {
+                    usernamePattern: letterboxd.usernamePattern || letterboxd.UsernamePattern || '^[a-zA-Z0-9_-]{1,30}$',
+                    requestCardsInteractive: self.readAdvancedBool(letterboxd.requestCardsInteractive ?? letterboxd.RequestCardsInteractive, false),
+                    requestCardsIncludeMetaText: self.readAdvancedBool(letterboxd.requestCardsIncludeMetaText ?? letterboxd.RequestCardsIncludeMetaText, true),
+                    defaultBulkQualityMode: letterboxd.defaultBulkQualityMode || letterboxd.DefaultBulkQualityMode || 'singleProfile',
+                    alreadyRequestedMode: letterboxd.alreadyRequestedMode || letterboxd.AlreadyRequestedMode || 'prompt',
+                }
+            };
+        },
+
+        applyAdvancedSettings: function (advanced) {
+            advanced = advanced || this.parseAdvancedSettings(null);
+            this._gridPageSize = Number(advanced.discovery.gridPageSize) || 40;
+            this._carouselScrollThreshold = Number(advanced.carousel.carouselScrollThreshold) || 1200;
+            this._rowScrollBindRetries = Number(advanced.carousel.rowScrollBindRetries) || 10;
+            this._advancedSettings = advanced;
+        },
+
+        getAdvancedCarouselSetting: function (key, fallback) {
+            const carousel = (this._advancedSettings || {}).carousel || {};
+            const value = carousel[key];
+            if (value === true || value === false) {
+                return value;
+            }
+            return fallback;
         },
 
         parseDisplayCustomizations: function (data) {
@@ -461,7 +538,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 settings.GenreUseBackdrops,
                 settings.DiscoverUsePosters,
                 settings.ElegantFinFixes,
-                JSON.stringify(settings.DisplayCustomizations || {})
+                JSON.stringify(settings.DisplayCustomizations || {}),
+                JSON.stringify(settings.Advanced || {})
             ].join(':');
         },
 
@@ -638,7 +716,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
 
             itemsContainer.innerHTML = this.createDiscoverCards(items);
-            this.appendHorizontalScroller(section, itemsContainer, { focusScale: true, scrollEvent: true });
+            this.appendHorizontalScroller(section, itemsContainer, {
+                focusScale: this.getAdvancedCarouselSetting('discoverRowFocusScale', true),
+                scrollEvent: this.getAdvancedCarouselSetting('enableRowInfiniteScroll', true)
+            });
             if (this.shouldUseBackdropThumbnails()) {
                 this.hydrateDiscoverBackdropCards(itemsContainer);
             } else {
@@ -648,6 +729,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         },
 
         bindRowInfiniteScroll: function (section) {
+            if (!this.getAdvancedCarouselSetting('enableRowInfiniteScroll', true)) {
+                return;
+            }
+
             if (section.dataset.seerrfinRowScrollBound === 'true') {
                 return;
             }
@@ -659,7 +744,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             if (!scroller.scroller || typeof scroller.addScrollEventListener !== 'function') {
                 const retries = parseInt(section.dataset.seerrfinRowScrollRetries || '0', 10);
-                if (retries >= 10) {
+                const maxRetries = this._rowScrollBindRetries || 10;
+                if (retries >= maxRetries) {
                     return;
                 }
                 section.dataset.seerrfinRowScrollRetries = String(retries + 1);
@@ -786,7 +872,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             scroller.className = settings.focusScale
                 ? 'padded-top-focusscale padded-bottom-focusscale emby-scroller'
                 : 'emby-scroller';
-            scroller.setAttribute('data-centerfocus', 'true');
+            if (this.getAdvancedCarouselSetting('enableCenterFocus', true)) {
+                scroller.setAttribute('data-centerfocus', 'true');
+            }
             if (settings.scrollEvent) {
                 scroller.setAttribute('data-scrollevent', 'true');
             }
@@ -830,7 +918,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
 
             itemsContainer.innerHTML = html;
-            this.appendHorizontalScroller(section, itemsContainer, { focusScale: false });
+            this.appendHorizontalScroller(section, itemsContainer, {
+                focusScale: this.getAdvancedCarouselSetting('browseCarouselFocusScale', false)
+            });
             return section;
         },
 
@@ -851,7 +941,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             if (kind === 'genre' && (this._displaySettings || {}).GenreUseBackdrops !== false) {
                 const backdrops = item.backdrops || [];
                 if (backdrops.length) {
-                    const backdropPath = backdrops[Math.floor(Math.random() * backdrops.length)];
+                    const mode = ((this._advancedSettings || {}).tmdb || {}).genreBackdropSelectionMode || 'random';
+                    const backdropPath = mode === 'first' ? backdrops[0] : backdrops[Math.floor(Math.random() * backdrops.length)];
                     const backdropUrl = this.buildTmdbImageUrl(backdropPath, 'genreBackdrop');
                     if (backdropUrl) {
                         content += '<span class="seerrfin-box-backdrop" style="background-image: url(\'' + backdropUrl + '\')"></span>';

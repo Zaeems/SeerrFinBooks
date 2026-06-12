@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using Jellyfin.Plugin.SeerrFin;
+using Jellyfin.Plugin.SeerrFin.Configuration;
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using Jellyfin.Plugin.SeerrFin.Model;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -7,14 +10,6 @@ namespace Jellyfin.Plugin.SeerrFin.Services;
 
 public class LetterboxdBulkRequestService
 {
-    // Map jw tier labels to common the Seerr profile name variants.
-    private static readonly Dictionary<string, string[]> QualityLabelAliases = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Ultra-HD"] = new[] { "Ultra-HD", "Ultra HD", "4K", "UHD", "2160p" },
-        ["HD - 720p/1080p"] = new[] { "HD - 720p/1080p", "HD", "720p", "1080p", "HD-720p/1080p" },
-        ["SD"] = new[] { "SD", "DVD", "480p" }
-    };
-
     private readonly JellyseerrRequestService _requestService;
     private readonly JustWatchQualitiesService _qualitiesService;
     private readonly ILogger<LetterboxdBulkRequestService> _logger;
@@ -72,7 +67,10 @@ public class LetterboxdBulkRequestService
             return result;
         }
 
-        string qualityMode = NormalizeQualityMode(payload.QualityMode);
+        string qualityMode = NormalizeQualityMode(
+            string.IsNullOrWhiteSpace(payload.QualityMode)
+                ? AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Letterboxd.DefaultBulkQualityMode
+                : payload.QualityMode);
         if (qualityMode == "singleprofile" &&
             (payload.ServerId == null || payload.ProfileId == null))
         {
@@ -229,9 +227,14 @@ public class LetterboxdBulkRequestService
             _ => null
         };
 
+        AdvancedJustWatchSettings jwSettings = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).JustWatch;
         if (string.IsNullOrWhiteSpace(targetLabel))
         {
-            // jw can be empty for niche movies, so use the normal default profile.
+            if (!jwSettings.FallbackToDefaultProfile)
+            {
+                return (null, null, null, false, null, null, "Quality recommendation unavailable.");
+            }
+
             JObject? fallback = GetDefaultProfileOption(requestOptions, prefer4k: false);
             return (
                 fallback?.Value<int?>("serverId"),
@@ -243,7 +246,7 @@ public class LetterboxdBulkRequestService
                 "Quality recommendation unavailable; used default profile.");
         }
 
-        bool prefer4k = string.Equals(targetLabel, "Ultra-HD", StringComparison.OrdinalIgnoreCase);
+        bool prefer4k = string.Equals(targetLabel, "Ultra-HD", StringComparison.OrdinalIgnoreCase) && jwSettings.Prefer4kServerForUltraHd;
         JObject? matched = FindProfileOption(requestOptions, targetLabel, prefer4k);
         if (matched != null)
         {
@@ -307,7 +310,8 @@ public class LetterboxdBulkRequestService
 
     private static JObject? MatchByLabel(IEnumerable<JObject> options, string targetLabel)
     {
-        if (QualityLabelAliases.TryGetValue(targetLabel, out string[]? aliases))
+        Dictionary<string, string[]> aliasesByLabel = AdvancedSettingsHelper.GetQualityLabelAliases(SeerrFinPlugin.Instance.Configuration);
+        if (aliasesByLabel.TryGetValue(targetLabel, out string[]? aliases))
         {
             foreach (string alias in aliases)
             {

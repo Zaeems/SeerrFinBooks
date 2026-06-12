@@ -1,5 +1,6 @@
 using System.Globalization;
 using Jellyfin.Plugin.SeerrFin.Configuration;
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -386,6 +387,8 @@ public sealed class ServarrProgressService
             };
         }
 
+        bool downloadedActive = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Servarr.DownloadedProgressIsActive;
+
         if (hasFile && monitored)
         {
             return new ServarrProgressInfo
@@ -395,7 +398,7 @@ public sealed class ServarrProgressService
                 Percent = 100,
                 DownloadedBytes = sizeOnDisk,
                 TotalBytes = sizeOnDisk,
-                IsActive = true,
+                IsActive = downloadedActive,
                 OpenUrl = openUrl
             };
         }
@@ -409,7 +412,7 @@ public sealed class ServarrProgressService
                 Percent = 100,
                 DownloadedBytes = sizeOnDisk,
                 TotalBytes = sizeOnDisk,
-                IsActive = true,
+                IsActive = downloadedActive,
                 OpenUrl = openUrl
             };
         }
@@ -484,7 +487,10 @@ public sealed class ServarrProgressService
 
     private static List<JObject> FilterEpisodesBySeasons(IEnumerable<JObject> episodes, HashSet<int> seasonNumbers)
     {
-        IEnumerable<JObject> scoped = episodes.Where(e => e.Value<int?>("seasonNumber") != 0);
+        bool includeSpecials = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Servarr.IncludeSpecialsInSeriesProgress;
+        IEnumerable<JObject> scoped = includeSpecials
+            ? episodes
+            : episodes.Where(e => e.Value<int?>("seasonNumber") != 0);
         if (seasonNumbers.Count == 0)
         {
             return scoped.ToList();

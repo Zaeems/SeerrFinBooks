@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using MediaBrowser.Model.Plugins;
 
 namespace Jellyfin.Plugin.SeerrFin.Configuration;
@@ -47,4 +48,6 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool QualityRecommendations { get; set; } = true;
 
     public string DisplayCustomizationsJson { get; set; } = string.Empty;
+
+    public AdvancedSettings? Advanced { get; set; }
 }

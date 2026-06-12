@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Jellyfin.Plugin.SeerrFin.Configuration;
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using Jellyfin.Plugin.SeerrFin.Helpers;
 using Jellyfin.Plugin.SeerrFin.Model;
 using Microsoft.Extensions.Logging;
@@ -8,8 +9,6 @@ namespace Jellyfin.Plugin.SeerrFin.Services;
 
 public class TmdbBackdropService
 {
-    private const int MaxBatchConcurrency = 5;
-
     private readonly HttpClient _httpClient;
     private readonly ImageCacheService _imageCacheService;
     private readonly ILogger<TmdbBackdropService> _logger;
@@ -62,7 +61,8 @@ public class TmdbBackdropService
             return new List<BackdropBatchItemDto>();
         }
 
-        using SemaphoreSlim semaphore = new(MaxBatchConcurrency, MaxBatchConcurrency);
+        int concurrency = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Tmdb.BackdropBatchConcurrency;
+        using SemaphoreSlim semaphore = new(concurrency, concurrency);
         IEnumerable<Task<BackdropBatchItemDto?>> tasks = uniqueItems.Select(async item =>
         {
             await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -102,11 +102,14 @@ public class TmdbBackdropService
             return null;
         }
 
+        AdvancedTmdbSettings tmdbSettings = AdvancedSettingsHelper.Resolve(config).Tmdb;
         BackdropPickResult pick = await TmdbBackdropHelper.FetchBackdropAsync(
             _httpClient,
             mediaType,
             tmdbId,
             apiKey,
+            tmdbSettings.BackdropLanguageFilter,
+            tmdbSettings.PreferOriginalLanguageImages,
             cancellationToken).ConfigureAwait(false);
 
         if (string.IsNullOrEmpty(pick.FilePath))
@@ -115,7 +118,8 @@ public class TmdbBackdropService
         }
 
         string path = pick.FilePath.StartsWith('/') ? pick.FilePath : "/" + pick.FilePath;
-        string sourceUrl = "https://image.tmdb.org/t/p/w780" + path;
+        string backdropSize = string.IsNullOrWhiteSpace(tmdbSettings.BackdropImageSize) ? "w780" : tmdbSettings.BackdropImageSize;
+        string sourceUrl = $"https://image.tmdb.org/t/p/{backdropSize}{path}";
         string backdropUrl = ImageCacheHelper.GetCachedImageUrl(_imageCacheService, sourceUrl, _logger);
 
         if (string.IsNullOrEmpty(backdropUrl))
@@ -146,7 +150,9 @@ public class TmdbBackdropService
             return null;
         }
 
-        string cachedSourceUrl = "https://image.tmdb.org/t/p/w780" + cached.TmdbBackdropPath;
+        AdvancedTmdbSettings tmdbSettings = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Tmdb;
+        string backdropSize = string.IsNullOrWhiteSpace(tmdbSettings.BackdropImageSize) ? "w780" : tmdbSettings.BackdropImageSize;
+        string cachedSourceUrl = $"https://image.tmdb.org/t/p/{backdropSize}{cached.TmdbBackdropPath}";
         string refreshedUrl = ImageCacheHelper.GetCachedImageUrl(_imageCacheService, cachedSourceUrl, _logger);
         if (!string.IsNullOrEmpty(refreshedUrl))
         {

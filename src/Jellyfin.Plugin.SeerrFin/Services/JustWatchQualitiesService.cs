@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.SeerrFin.Configuration;
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using Jellyfin.Plugin.SeerrFin.Model;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -99,7 +100,8 @@ public class JustWatchQualitiesService
         string jwType = string.Equals(mediaType, "movie", StringComparison.OrdinalIgnoreCase) ? "MOVIE" : "SHOW";
         string normalizedTitle = Normalize(metadata.Value.Title);
 
-        JArray? edges = await GetJwSearchEdgesAsync(metadata.Value.Title, cancellationToken).ConfigureAwait(false);
+        AdvancedJustWatchSettings jwSettings = AdvancedSettingsHelper.Resolve(config).JustWatch;
+        JArray? edges = await GetJwSearchEdgesAsync(metadata.Value.Title, jwSettings, cancellationToken).ConfigureAwait(false);
         if (edges == null)
         {
             return null;
@@ -134,7 +136,7 @@ public class JustWatchQualitiesService
                     return null;
                 }
 
-                qualities = FindQualities(await GetJwPageOffersAsync(fullPath, cancellationToken).ConfigureAwait(false));
+                qualities = FindQualities(await GetJwPageOffersAsync(fullPath, jwSettings, cancellationToken).ConfigureAwait(false));
             }
 
             return qualities == null ? null : ToDto(qualities.Value);
@@ -189,18 +191,19 @@ public class JustWatchQualitiesService
         }
     }
 
-    private async Task<JArray?> GetJwSearchEdgesAsync(string query, CancellationToken cancellationToken)
+    private async Task<JArray?> GetJwSearchEdgesAsync(string query, AdvancedJustWatchSettings settings, CancellationToken cancellationToken)
     {
+        PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
         var payload = new JObject
         {
             ["operationName"] = "GetSearchResults",
             ["query"] = SearchQuery,
             ["variables"] = new JObject
             {
-                ["country"] = "US",
-                ["language"] = "en",
+                ["country"] = AdvancedSettingsHelper.ResolveJustWatchCountry(config),
+                ["language"] = settings.Language,
                 ["searchQuery"] = query,
-                ["first"] = 10,
+                ["first"] = settings.SearchResultLimit,
                 ["location"] = "SearchSuggester"
             }
         };
@@ -209,8 +212,9 @@ public class JustWatchQualitiesService
         return data?["data"]?["searchTitles"]?["edges"] as JArray;
     }
 
-    private async Task<JArray?> GetJwPageOffersAsync(string fullPath, CancellationToken cancellationToken)
+    private async Task<JArray?> GetJwPageOffersAsync(string fullPath, AdvancedJustWatchSettings settings, CancellationToken cancellationToken)
     {
+        PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
         var payload = new JObject
         {
             ["operationName"] = "GetUrlTitleDetails",
@@ -220,7 +224,7 @@ public class JustWatchQualitiesService
                 ["platform"] = "WEB",
                 ["fullPath"] = fullPath,
                 ["site"] = "www",
-                ["country"] = "US"
+                ["country"] = AdvancedSettingsHelper.ResolveJustWatchCountry(config)
             }
         };
 

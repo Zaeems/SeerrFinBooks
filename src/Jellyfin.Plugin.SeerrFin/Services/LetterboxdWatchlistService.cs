@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Jellyfin.Plugin.SeerrFin.Configuration;
+using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
+using Jellyfin.Plugin.SeerrFin;
 using Jellyfin.Plugin.SeerrFin.Model;
 using MediaBrowser.Model.Dto;
 using Newtonsoft.Json.Linq;
@@ -28,7 +30,8 @@ public class LetterboxdWatchlistService
     public LetterboxdWatchlistService(IHttpClientFactory httpClientFactory)
     {
         _httpClient = httpClientFactory.CreateClient(nameof(LetterboxdWatchlistService));
-        _httpClient.Timeout = TimeSpan.FromSeconds(60);
+        int timeout = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Letterboxd.HttpTimeoutSeconds;
+        _httpClient.Timeout = TimeSpan.FromSeconds(timeout);
     }
 
     public LetterboxdSyncProgressDto GetSyncProgress(Guid userId)
@@ -44,7 +47,7 @@ public class LetterboxdWatchlistService
     public async Task<(List<BaseItemDto> Items, int TotalCount, int ResolvedCount, int UnresolvedCount)> SyncAsync(Guid userId, string username, CancellationToken cancellationToken = default)
     {
         username = username.Trim();
-        if (string.IsNullOrWhiteSpace(username) || username.Contains('/') || username.Contains('\\'))
+        if (!AdvancedSettingsHelper.IsValidLetterboxdUsername(SeerrFinPlugin.Instance.Configuration, username))
         {
             throw new ArgumentException("Invalid Letterboxd username.");
         }
@@ -165,7 +168,8 @@ public class LetterboxdWatchlistService
             return 0;
         }
 
-        return (int)Math.Round(page * 50.0 / totalPages);
+        int pagesWeight = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Letterboxd.SyncPagesProgressWeight;
+        return (int)Math.Round(page * pagesWeight / (double)totalPages);
     }
 
     private static int TmdbProgressPercent(int resolvedIndex, int totalMovies)
@@ -175,7 +179,9 @@ public class LetterboxdWatchlistService
             return 100;
         }
 
-        return 50 + (int)Math.Round(resolvedIndex * 50.0 / totalMovies);
+        int pagesWeight = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Letterboxd.SyncPagesProgressWeight;
+        int tmdbWeight = Math.Max(0, 100 - pagesWeight);
+        return pagesWeight + (int)Math.Round(resolvedIndex * tmdbWeight / (double)totalMovies);
     }
 
     private void SetSyncProgress(Guid userId, int percent, string phase)

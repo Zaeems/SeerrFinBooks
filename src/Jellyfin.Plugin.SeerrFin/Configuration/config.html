@@ -314,6 +314,61 @@
             flex-shrink: 0;
         }
 
+        .bst-advanced-subsections {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5em;
+        }
+
+        .bst-subsection-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75em;
+            width: 100%;
+            margin: 0 0 0.5em;
+            padding: 0;
+            border: none;
+            background: none;
+            color: inherit;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .bst-subsection-toggle .bst-subsection-title {
+            font-size: 1.2em;
+            font-weight: 400;
+            line-height: 1.3;
+        }
+
+        .bst-subsection-chevron {
+            display: inline-block;
+            font-size: 0.85em;
+            line-height: 1;
+            opacity: 0.7;
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .bst-advanced-subsection.is-collapsed .bst-subsection-chevron {
+            transform: rotate(180deg);
+        }
+
+        .bst-advanced-subsection.is-collapsed > .bst-card {
+            display: none;
+        }
+
+        .bst-advanced-subsection > .bst-card > .bst-input-row,
+        .bst-advanced-subsection > .bst-card > .bst-input-group {
+            margin-bottom: 1.25em;
+        }
+
+        .bst-advanced-subsection > .bst-card > .bst-input-row:last-child,
+        .bst-advanced-subsection > .bst-card > .bst-input-group:last-child,
+        .bst-advanced-subsection > .bst-card > .bst-toggle-row:last-child {
+            margin-bottom: 0;
+        }
+
         .bst-customize-btn {
             height: 26px;
             padding: 0 0.75em;
@@ -528,7 +583,7 @@
             <!-- Configuration Form -->
             <form class="seerrFinConfigurationForm">
                 <div class="bst-section-container">
-                    <div class="bst-section-title">Jellyseerr</div>
+                    <div class="bst-section-title">Jellyseerr configuration</div>
                     <div class="bst-card">
                         <div class="bst-input-group">
                             <div class="bst-field-main">
@@ -590,7 +645,7 @@
                 </div>
 
                 <div class="bst-section-container">
-                    <div class="bst-section-title">Radarr / Sonarr — Fill if you want download progress on request cards</div>
+                    <div class="bst-section-title">Radarr/Sonarr configuration for download progress on Requests page</div>
                     <div class="bst-card">
                         <div class="bst-input-row" style="margin-bottom: 1.25em;">
                             <div class="bst-input-group">
@@ -718,7 +773,7 @@
                 </div>
 
                 <div class="bst-section-container">
-                    <div class="bst-section-title">TMDB</div>
+                    <div class="bst-section-title">TMDB configuration</div>
                     <div class="bst-card">
                         <div class="bst-input-group">
                             <div class="bst-field-main">
@@ -733,6 +788,486 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bst-section-container">
+                    <div class="bst-section-title">Advanced settings (this can break stuff)</div>
+                    <div class="bst-card">
+                        <div class="bst-advanced-subsections">
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">Discovery</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advApplyLanguageFilter">Apply language filter</label>
+                                <div class="bst-field-desc">Filter discovery carousels by the preferred language from Jellyseerr settings.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advApplyLanguageFilter" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advHideRequestedMedia">Hide requested media</label>
+                                <div class="bst-field-desc">Hide movies/shows that already have been requested through Jellyseerr.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advHideRequestedMedia" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advHideAvailableInLibrary">Hide available in library</label>
+                                <div class="bst-field-desc">Hide movies/shows that are "Available" or "Partially Available".</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advHideAvailableInLibrary" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advHideAdultContent">Hide adult content</label>
+                                <div class="bst-field-desc">Exclude adult movies/shows from discovery rows (porn).</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advHideAdultContent" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advUseSeerrMappingForAnime">Seerr mapping for anime</label>
+                                <div class="bst-field-desc">Use Seerr filters for the anime carousel to properly get anime.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advUseSeerrMappingForAnime" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-input-group">
+                            <label class="bst-label" for="advAnimeDiscoverPath">Anime discover path</label>
+                            <div class="bst-input-stack">
+                                <input id="advAnimeDiscoverPath" type="text" class="bst-input" />
+                                <div class="bst-field-desc">Jellyseerr API path used for the anime carousel row.</div>
+                            </div>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advCarouselMaxPages">Maximum carousel length</label>
+                                <div class="bst-input-stack">
+                                    <input id="advCarouselMaxPages" type="number" class="bst-input" min="1" max="50" />
+                                    <div class="bst-field-desc">Max Jellyseerr pages fetched per horizontal carousel row.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advGridMaxPages">Maximum grid length</label>
+                                <div class="bst-input-stack">
+                                    <input id="advGridMaxPages" type="number" class="bst-input" min="1" max="100" />
+                                    <div class="bst-field-desc">Max Jellyseerr pages fetched for grid views.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advGridPageSize">Grid page size</label>
+                                <div class="bst-input-stack">
+                                    <input id="advGridPageSize" type="number" class="bst-input" min="1" max="200" />
+                                    <div class="bst-field-desc">Items loaded per page in grid views.</div>
+                                </div>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
+
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">Carousel</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advEnableRowInfiniteScroll">Row infinite scroll</label>
+                                <div class="bst-field-desc">Load more items when scrolling near the end of a row.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advEnableRowInfiniteScroll" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advDiscoverRowFocusScale">Focus scale on discover rows</label>
+                                <div class="bst-field-desc">Enlarge the centered card on home discover rows.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advDiscoverRowFocusScale" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advBrowseCarouselFocusScale">Focus scale on browse carousels</label>
+                                <div class="bst-field-desc">Enlarge the centered card on browse tab carousels.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advBrowseCarouselFocusScale" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advEnableCenterFocus">Center focus on scrollers</label>
+                                <div class="bst-field-desc">Keep the focused card centered while scrolling.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advEnableCenterFocus" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advCarouselScrollThreshold">Scroll threshold (px)</label>
+                                <div class="bst-input-stack">
+                                    <input id="advCarouselScrollThreshold" type="number" class="bst-input" min="100" max="10000" />
+                                    <div class="bst-field-desc">Pixels from row edge before loading the next page.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advRowScrollBindRetries">Scroll bind retries</label>
+                                <div class="bst-input-stack">
+                                    <input id="advRowScrollBindRetries" type="number" class="bst-input" min="1" max="50" />
+                                    <div class="bst-field-desc">How many times to retry binding row scroll listeners.</div>
+                                </div>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
+
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">Requests page</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advRequestsPageSize">Page size</label>
+                                <div class="bst-input-stack">
+                                    <input id="advRequestsPageSize" type="number" class="bst-input" min="1" max="100" />
+                                    <div class="bst-field-desc">Requests shown per page in the Requests tab.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advRequestsFetchSize">Fetch size</label>
+                                <div class="bst-input-stack">
+                                    <input id="advRequestsFetchSize" type="number" class="bst-input" min="1" max="500" />
+                                    <div class="bst-field-desc">How many requests to fetch from Jellyseerr per API call.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advRequestsCardsInteractive">Interactive request cards</label>
+                                <div class="bst-field-desc">Enable hover actions and card interactivity on the Requests tab.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advRequestsCardsInteractive" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advRequestsCardsIncludeMetaText">Show metadata on request cards</label>
+                                <div class="bst-field-desc">Show year and status text under request cards.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advRequestsCardsIncludeMetaText" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advIncludePartialsInProcessingFilter">Include partials in Processing filter</label>
+                                <div class="bst-field-desc">Include partially available titles in the Processing filter.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advIncludePartialsInProcessingFilter" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advSplitPartiallyAvailableFilter">Split Partially Available filter</label>
+                                <div class="bst-field-desc">When on, Available filter excludes partially available titles.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advSplitPartiallyAvailableFilter" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                            </div>
+                        </div>
+
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">Request modal</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advTvSeasonPickerEnabled">TV season picker</label>
+                                <div class="bst-field-desc">Show a season picker before choosing a quality profile for TV.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advTvSeasonPickerEnabled" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advIncludeSpecialsSeason">Include specials (season 0)</label>
+                                <div class="bst-field-desc">Allow season 0 (specials) in the TV season picker.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advIncludeSpecialsSeason" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advRequireExplicitSeasonSelection">Require explicit season selection</label>
+                                <div class="bst-field-desc">Require at least one season before continuing; off requests all seasons.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advRequireExplicitSeasonSelection" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advShowRequest4kButton">Show Request 4K button</label>
+                                <div class="bst-field-desc">Show the separate Request 4K button in the details modal.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advShowRequest4kButton" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                            </div>
+                        </div>
+
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">Radarr / Sonarr progress</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advDownloadedProgressIsActive">Downloaded progress is active</label>
+                                <div class="bst-field-desc">Treat downloaded items as active for progress bar styling.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advDownloadedProgressIsActive" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advIncludeSpecialsInSeriesProgress">Include specials in series progress</label>
+                                <div class="bst-field-desc">Count season 0 episodes when calculating series download progress.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advIncludeSpecialsInSeriesProgress" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                            </div>
+                        </div>
+
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">TMDB images</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advBackdropBatchConcurrency">Backdrop batch concurrency</label>
+                                <div class="bst-input-stack">
+                                    <input id="advBackdropBatchConcurrency" type="number" class="bst-input" min="1" max="20" />
+                                    <div class="bst-field-desc">How many TMDB backdrop fetches run in parallel.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advBackdropImageSize">Backdrop image size</label>
+                                <div class="bst-input-stack">
+                                    <input id="advBackdropImageSize" type="text" class="bst-input" />
+                                    <div class="bst-field-desc">TMDB size token for landscape backdrops (e.g. w780).</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advPosterImageSize">Poster image size</label>
+                                <div class="bst-input-stack">
+                                    <input id="advPosterImageSize" type="text" class="bst-input" />
+                                    <div class="bst-field-desc">TMDB size token for portrait posters.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advGenreBackdropSelectionMode">Genre backdrop mode</label>
+                                <div class="bst-input-stack">
+                                    <select id="advGenreBackdropSelectionMode" class="bst-input">
+                                        <option value="random">Random</option>
+                                        <option value="first">First</option>
+                                    </select>
+                                    <div class="bst-field-desc">Pick a random or first backdrop for genre boxes.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-input-group">
+                            <label class="bst-label" for="advBackdropLanguageFilter">Backdrop language filter</label>
+                            <div class="bst-input-stack">
+                                <input id="advBackdropLanguageFilter" type="text" class="bst-input" />
+                                <div class="bst-field-desc">TMDB include_image_language value for backdrop and logo fetches.</div>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advPreferOriginalLanguageImages">Prefer original language images</label>
+                                <div class="bst-field-desc">Prefer original-language backdrops over filtered languages.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advPreferOriginalLanguageImages" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advFallbackToOriginalImageUrl">Fallback to original image URL</label>
+                                <div class="bst-field-desc">Use the source TMDB URL when image caching fails.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advFallbackToOriginalImageUrl" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                            </div>
+                        </div>
+
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">JustWatch</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advJwUseWatchRegion">Use watch region for country</label>
+                                <div class="bst-field-desc">Use the Watch region setting instead of the country below.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advJwUseWatchRegion" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advJwCountry">Country</label>
+                                <div class="bst-input-stack">
+                                    <input id="advJwCountry" type="text" class="bst-input" />
+                                    <div class="bst-field-desc">JustWatch country code for quality lookups.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advJwLanguage">Language</label>
+                                <div class="bst-input-stack">
+                                    <input id="advJwLanguage" type="text" class="bst-input" />
+                                    <div class="bst-field-desc">JustWatch language code for quality lookups.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advJwSearchResultLimit">Search result limit</label>
+                                <div class="bst-input-stack">
+                                    <input id="advJwSearchResultLimit" type="number" class="bst-input" min="1" max="50" />
+                                    <div class="bst-field-desc">Max JustWatch results to consider per title.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advJwFallbackToDefaultProfile">Fallback to default profile</label>
+                                <div class="bst-field-desc">Use the default Radarr profile when no quality match is found.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advJwFallbackToDefaultProfile" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advJwPrefer4kServerForUltraHd">Prefer 4K server for Ultra-HD</label>
+                                <div class="bst-field-desc">Route Ultra-HD matches to a 4K Radarr server when available.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advJwPrefer4kServerForUltraHd" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-input-group">
+                            <label class="bst-label" for="advJwQualityAliasJson">Quality alias JSON (optional)</label>
+                            <div class="bst-input-stack">
+                                <textarea id="advJwQualityAliasJson" class="bst-input bst-textarea" rows="3" placeholder='{"Ultra-HD":["4K","UHD"]}'></textarea>
+                                <div class="bst-field-desc">Custom label aliases merged over built-in JustWatch-to-Radarr mappings.</div>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
+
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">Letterboxd</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-input-group">
+                            <label class="bst-label" for="advLbUsernamePattern">Username pattern (regex)</label>
+                            <div class="bst-input-stack">
+                                <input id="advLbUsernamePattern" type="text" class="bst-input" />
+                                <div class="bst-field-desc">Regex used to validate Letterboxd usernames before sync.</div>
+                            </div>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advLbHttpTimeoutSeconds">HTTP timeout (seconds)</label>
+                                <div class="bst-input-stack">
+                                    <input id="advLbHttpTimeoutSeconds" type="number" class="bst-input" min="10" max="300" />
+                                    <div class="bst-field-desc">Timeout for Letterboxd page scraping requests.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advLbSyncPagesProgressWeight">Sync pages progress weight (%)</label>
+                                <div class="bst-input-stack">
+                                    <input id="advLbSyncPagesProgressWeight" type="number" class="bst-input" min="0" max="100" />
+                                    <div class="bst-field-desc">How much of the sync progress bar reflects page fetching.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advLbDefaultBulkQualityMode">Default bulk quality mode</label>
+                                <div class="bst-input-stack">
+                                    <select id="advLbDefaultBulkQualityMode" class="bst-input">
+                                        <option value="singleProfile">Single profile</option>
+                                        <option value="highestAvailable">Highest available</option>
+                                        <option value="mostCommon">Most common</option>
+                                    </select>
+                                    <div class="bst-field-desc">Default quality strategy when bulk-requesting from Letterboxd.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advLbAlreadyRequestedMode">Already requested mode</label>
+                                <div class="bst-input-stack">
+                                    <select id="advLbAlreadyRequestedMode" class="bst-input">
+                                        <option value="prompt">Prompt</option>
+                                        <option value="skip">Auto-skip</option>
+                                        <option value="requestAll">Request all</option>
+                                    </select>
+                                    <div class="bst-field-desc">How to handle movies already requested during bulk request.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advLbAlreadyRequestedStatusScope">Already requested scope</label>
+                                <div class="bst-input-stack">
+                                    <select id="advLbAlreadyRequestedStatusScope" class="bst-input">
+                                        <option value="anyMediaInfo">Any media info</option>
+                                        <option value="availableOnly">Available only</option>
+                                    </select>
+                                    <div class="bst-field-desc">Which Jellyseerr statuses count as already requested.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advLbRequestCardsInteractive">Interactive Letterboxd cards</label>
+                                <div class="bst-field-desc">Enable hover actions on Letterboxd watchlist cards.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advLbRequestCardsInteractive" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advLbRequestCardsIncludeMetaText">Show metadata on Letterboxd cards</label>
+                                <div class="bst-field-desc">Show year and status text under Letterboxd cards.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advLbRequestCardsIncludeMetaText" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                            </div>
+                        </div>
+
+                        <div class="bst-advanced-subsection">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                                <span class="bst-subsection-title">Cache / developer</span>
+                                <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
+                            </button>
+                            <div class="bst-card">
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advDeveloperMode">Developer mode</label>
+                                <div class="bst-field-desc">Bust asset cache on every page load.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advDeveloperMode" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advCacheTimeoutSeconds">Cache timeout (seconds)</label>
+                                <div class="bst-input-stack">
+                                    <input id="advCacheTimeoutSeconds" type="number" class="bst-input" min="60" max="604800" />
+                                    <div class="bst-field-desc">How long cached TMDB images are kept before refetch.</div>
+                                </div>
+                            </div>
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advMaxImageCacheEntries">Max image cache entries</label>
+                                <div class="bst-input-stack">
+                                    <input id="advMaxImageCacheEntries" type="number" class="bst-input" min="100" max="50000" />
+                                    <div class="bst-field-desc">Maximum number of images stored in the disk cache.</div>
+                                </div>
+                            </div>
+                        </div>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -863,6 +1398,242 @@
                 return payload;
             }
 
+            function createDefaultAdvanced() {
+                return {
+                    Discovery: {
+                        ApplyLanguageFilter: true,
+                        HideRequestedMedia: false,
+                        HideAvailableInLibrary: false,
+                        HideAdultContent: true,
+                        UseSeerrMappingForAnime: true,
+                        AnimeDiscoverPath: '/api/v1/discover/tv?genre=16&keywords=210024',
+                        CarouselMaxJellyseerrPages: 5,
+                        GridMaxJellyseerrPages: 20,
+                        GridPageSize: 40
+                    },
+                    Carousel: {
+                        CarouselScrollThreshold: 1200,
+                        DiscoverRowFocusScale: true,
+                        BrowseCarouselFocusScale: false,
+                        EnableCenterFocus: true,
+                        EnableRowInfiniteScroll: true,
+                        RowScrollBindRetries: 10
+                    },
+                    Requests: {
+                        PageSize: 20,
+                        FetchSize: 100,
+                        CardsInteractive: false,
+                        CardsIncludeMetaText: false,
+                        IncludePartialsInProcessingFilter: false,
+                        SplitPartiallyAvailableFilter: false
+                    },
+                    RequestModal: {
+                        TvSeasonPickerEnabled: true,
+                        IncludeSpecialsSeason: false,
+                        RequireExplicitSeasonSelection: false,
+                        ShowRequest4kButton: true
+                    },
+                    Servarr: {
+                        DownloadedProgressIsActive: true,
+                        IncludeSpecialsInSeriesProgress: false
+                    },
+                    Tmdb: {
+                        BackdropBatchConcurrency: 5,
+                        BackdropImageSize: 'w780',
+                        PosterImageSize: 'w600_and_h900_bestv2',
+                        BackdropLanguageFilter: 'en,null,en-US',
+                        PreferOriginalLanguageImages: false,
+                        GenreBackdropSelectionMode: 'random',
+                        FallbackToOriginalImageUrl: true
+                    },
+                    JustWatch: {
+                        UseWatchRegionForCountry: false,
+                        Country: 'US',
+                        Language: 'en',
+                        SearchResultLimit: 10,
+                        FallbackToDefaultProfile: true,
+                        Prefer4kServerForUltraHd: true,
+                        QualityAliasJson: ''
+                    },
+                    Letterboxd: {
+                        UsernamePattern: '^[a-zA-Z0-9_-]{1,30}$',
+                        RequestCardsInteractive: false,
+                        RequestCardsIncludeMetaText: true,
+                        DefaultBulkQualityMode: 'singleProfile',
+                        AlreadyRequestedMode: 'prompt',
+                        AlreadyRequestedStatusScope: 'anyMediaInfo',
+                        HttpTimeoutSeconds: 60,
+                        SyncPagesProgressWeight: 50
+                    }
+                };
+            }
+
+            function readAdvancedSection(source, key, defaults) {
+                const section = (source && (source[key] || source[key.charAt(0).toLowerCase() + key.slice(1)])) || {};
+                const merged = Object.assign({}, defaults);
+                Object.keys(defaults).forEach(function (field) {
+                    const camel = field.charAt(0).toLowerCase() + field.slice(1);
+                    if (section[field] !== undefined) {
+                        merged[field] = section[field];
+                    } else if (section[camel] !== undefined) {
+                        merged[field] = section[camel];
+                    }
+                });
+                return merged;
+            }
+
+            function loadAdvancedFromConfig(config) {
+                const defaults = createDefaultAdvanced();
+                const source = config.Advanced || config.advanced || {};
+                return {
+                    Discovery: readAdvancedSection(source, 'Discovery', defaults.Discovery),
+                    Carousel: readAdvancedSection(source, 'Carousel', defaults.Carousel),
+                    Requests: readAdvancedSection(source, 'Requests', defaults.Requests),
+                    RequestModal: readAdvancedSection(source, 'RequestModal', defaults.RequestModal),
+                    Servarr: readAdvancedSection(source, 'Servarr', defaults.Servarr),
+                    Tmdb: readAdvancedSection(source, 'Tmdb', defaults.Tmdb),
+                    JustWatch: readAdvancedSection(source, 'JustWatch', defaults.JustWatch),
+                    Letterboxd: readAdvancedSection(source, 'Letterboxd', defaults.Letterboxd)
+                };
+            }
+
+            function setAdvancedFormValues(advanced) {
+                const d = advanced.Discovery;
+                document.querySelector('#advApplyLanguageFilter').checked = d.ApplyLanguageFilter !== false;
+                document.querySelector('#advHideRequestedMedia').checked = d.HideRequestedMedia === true;
+                document.querySelector('#advHideAvailableInLibrary').checked = d.HideAvailableInLibrary === true;
+                document.querySelector('#advHideAdultContent').checked = d.HideAdultContent !== false;
+                document.querySelector('#advUseSeerrMappingForAnime').checked = d.UseSeerrMappingForAnime !== false;
+                document.querySelector('#advAnimeDiscoverPath').value = d.AnimeDiscoverPath || '';
+                document.querySelector('#advCarouselMaxPages').value = d.CarouselMaxJellyseerrPages || 5;
+                document.querySelector('#advGridMaxPages').value = d.GridMaxJellyseerrPages || 20;
+                document.querySelector('#advGridPageSize').value = d.GridPageSize || 40;
+
+                const c = advanced.Carousel;
+                document.querySelector('#advEnableRowInfiniteScroll').checked = c.EnableRowInfiniteScroll !== false;
+                document.querySelector('#advDiscoverRowFocusScale').checked = c.DiscoverRowFocusScale !== false;
+                document.querySelector('#advBrowseCarouselFocusScale').checked = c.BrowseCarouselFocusScale === true;
+                document.querySelector('#advEnableCenterFocus').checked = c.EnableCenterFocus !== false;
+                document.querySelector('#advCarouselScrollThreshold').value = c.CarouselScrollThreshold || 1200;
+                document.querySelector('#advRowScrollBindRetries').value = c.RowScrollBindRetries || 10;
+
+                const r = advanced.Requests;
+                document.querySelector('#advRequestsPageSize').value = r.PageSize || 20;
+                document.querySelector('#advRequestsFetchSize').value = r.FetchSize || 100;
+                document.querySelector('#advRequestsCardsInteractive').checked = r.CardsInteractive === true;
+                document.querySelector('#advRequestsCardsIncludeMetaText').checked = r.CardsIncludeMetaText === true;
+                document.querySelector('#advIncludePartialsInProcessingFilter').checked = r.IncludePartialsInProcessingFilter === true;
+                document.querySelector('#advSplitPartiallyAvailableFilter').checked = r.SplitPartiallyAvailableFilter === true;
+
+                const m = advanced.RequestModal;
+                document.querySelector('#advTvSeasonPickerEnabled').checked = m.TvSeasonPickerEnabled !== false;
+                document.querySelector('#advIncludeSpecialsSeason').checked = m.IncludeSpecialsSeason === true;
+                document.querySelector('#advRequireExplicitSeasonSelection').checked = m.RequireExplicitSeasonSelection === true;
+                document.querySelector('#advShowRequest4kButton').checked = m.ShowRequest4kButton !== false;
+
+                const s = advanced.Servarr;
+                document.querySelector('#advDownloadedProgressIsActive').checked = s.DownloadedProgressIsActive !== false;
+                document.querySelector('#advIncludeSpecialsInSeriesProgress').checked = s.IncludeSpecialsInSeriesProgress === true;
+
+                const t = advanced.Tmdb;
+                document.querySelector('#advBackdropBatchConcurrency').value = t.BackdropBatchConcurrency || 5;
+                document.querySelector('#advBackdropImageSize').value = t.BackdropImageSize || 'w780';
+                document.querySelector('#advPosterImageSize').value = t.PosterImageSize || 'w600_and_h900_bestv2';
+                document.querySelector('#advBackdropLanguageFilter').value = t.BackdropLanguageFilter || 'en,null,en-US';
+                document.querySelector('#advPreferOriginalLanguageImages').checked = t.PreferOriginalLanguageImages === true;
+                document.querySelector('#advGenreBackdropSelectionMode').value = t.GenreBackdropSelectionMode || 'random';
+                document.querySelector('#advFallbackToOriginalImageUrl').checked = t.FallbackToOriginalImageUrl !== false;
+
+                const jw = advanced.JustWatch;
+                document.querySelector('#advJwUseWatchRegion').checked = jw.UseWatchRegionForCountry === true;
+                document.querySelector('#advJwCountry').value = jw.Country || 'US';
+                document.querySelector('#advJwLanguage').value = jw.Language || 'en';
+                document.querySelector('#advJwSearchResultLimit').value = jw.SearchResultLimit || 10;
+                document.querySelector('#advJwFallbackToDefaultProfile').checked = jw.FallbackToDefaultProfile !== false;
+                document.querySelector('#advJwPrefer4kServerForUltraHd').checked = jw.Prefer4kServerForUltraHd !== false;
+                document.querySelector('#advJwQualityAliasJson').value = jw.QualityAliasJson || '';
+
+                const lb = advanced.Letterboxd;
+                document.querySelector('#advLbUsernamePattern').value = lb.UsernamePattern || '';
+                document.querySelector('#advLbHttpTimeoutSeconds').value = lb.HttpTimeoutSeconds || 60;
+                document.querySelector('#advLbSyncPagesProgressWeight').value = lb.SyncPagesProgressWeight || 50;
+                document.querySelector('#advLbDefaultBulkQualityMode').value = lb.DefaultBulkQualityMode || 'singleProfile';
+                document.querySelector('#advLbAlreadyRequestedMode').value = lb.AlreadyRequestedMode || 'prompt';
+                document.querySelector('#advLbAlreadyRequestedStatusScope').value = lb.AlreadyRequestedStatusScope || 'anyMediaInfo';
+                document.querySelector('#advLbRequestCardsInteractive').checked = lb.RequestCardsInteractive === true;
+                document.querySelector('#advLbRequestCardsIncludeMetaText').checked = lb.RequestCardsIncludeMetaText !== false;
+            }
+
+            function buildAdvancedPayload() {
+                return {
+                    Discovery: {
+                        ApplyLanguageFilter: document.querySelector('#advApplyLanguageFilter').checked,
+                        HideRequestedMedia: document.querySelector('#advHideRequestedMedia').checked,
+                        HideAvailableInLibrary: document.querySelector('#advHideAvailableInLibrary').checked,
+                        HideAdultContent: document.querySelector('#advHideAdultContent').checked,
+                        UseSeerrMappingForAnime: document.querySelector('#advUseSeerrMappingForAnime').checked,
+                        AnimeDiscoverPath: document.querySelector('#advAnimeDiscoverPath').value.trim(),
+                        CarouselMaxJellyseerrPages: parseInt(document.querySelector('#advCarouselMaxPages').value, 10) || 5,
+                        GridMaxJellyseerrPages: parseInt(document.querySelector('#advGridMaxPages').value, 10) || 20,
+                        GridPageSize: parseInt(document.querySelector('#advGridPageSize').value, 10) || 40
+                    },
+                    Carousel: {
+                        CarouselScrollThreshold: parseInt(document.querySelector('#advCarouselScrollThreshold').value, 10) || 1200,
+                        DiscoverRowFocusScale: document.querySelector('#advDiscoverRowFocusScale').checked,
+                        BrowseCarouselFocusScale: document.querySelector('#advBrowseCarouselFocusScale').checked,
+                        EnableCenterFocus: document.querySelector('#advEnableCenterFocus').checked,
+                        EnableRowInfiniteScroll: document.querySelector('#advEnableRowInfiniteScroll').checked,
+                        RowScrollBindRetries: parseInt(document.querySelector('#advRowScrollBindRetries').value, 10) || 10
+                    },
+                    Requests: {
+                        PageSize: parseInt(document.querySelector('#advRequestsPageSize').value, 10) || 20,
+                        FetchSize: parseInt(document.querySelector('#advRequestsFetchSize').value, 10) || 100,
+                        CardsInteractive: document.querySelector('#advRequestsCardsInteractive').checked,
+                        CardsIncludeMetaText: document.querySelector('#advRequestsCardsIncludeMetaText').checked,
+                        IncludePartialsInProcessingFilter: document.querySelector('#advIncludePartialsInProcessingFilter').checked,
+                        SplitPartiallyAvailableFilter: document.querySelector('#advSplitPartiallyAvailableFilter').checked
+                    },
+                    RequestModal: {
+                        TvSeasonPickerEnabled: document.querySelector('#advTvSeasonPickerEnabled').checked,
+                        IncludeSpecialsSeason: document.querySelector('#advIncludeSpecialsSeason').checked,
+                        RequireExplicitSeasonSelection: document.querySelector('#advRequireExplicitSeasonSelection').checked,
+                        ShowRequest4kButton: document.querySelector('#advShowRequest4kButton').checked
+                    },
+                    Servarr: {
+                        DownloadedProgressIsActive: document.querySelector('#advDownloadedProgressIsActive').checked,
+                        IncludeSpecialsInSeriesProgress: document.querySelector('#advIncludeSpecialsInSeriesProgress').checked
+                    },
+                    Tmdb: {
+                        BackdropBatchConcurrency: parseInt(document.querySelector('#advBackdropBatchConcurrency').value, 10) || 5,
+                        BackdropImageSize: document.querySelector('#advBackdropImageSize').value.trim() || 'w780',
+                        PosterImageSize: document.querySelector('#advPosterImageSize').value.trim() || 'w600_and_h900_bestv2',
+                        BackdropLanguageFilter: document.querySelector('#advBackdropLanguageFilter').value.trim() || 'en,null,en-US',
+                        PreferOriginalLanguageImages: document.querySelector('#advPreferOriginalLanguageImages').checked,
+                        GenreBackdropSelectionMode: document.querySelector('#advGenreBackdropSelectionMode').value || 'random',
+                        FallbackToOriginalImageUrl: document.querySelector('#advFallbackToOriginalImageUrl').checked
+                    },
+                    JustWatch: {
+                        UseWatchRegionForCountry: document.querySelector('#advJwUseWatchRegion').checked,
+                        Country: document.querySelector('#advJwCountry').value.trim() || 'US',
+                        Language: document.querySelector('#advJwLanguage').value.trim() || 'en',
+                        SearchResultLimit: parseInt(document.querySelector('#advJwSearchResultLimit').value, 10) || 10,
+                        FallbackToDefaultProfile: document.querySelector('#advJwFallbackToDefaultProfile').checked,
+                        Prefer4kServerForUltraHd: document.querySelector('#advJwPrefer4kServerForUltraHd').checked,
+                        QualityAliasJson: document.querySelector('#advJwQualityAliasJson').value.trim()
+                    },
+                    Letterboxd: {
+                        UsernamePattern: document.querySelector('#advLbUsernamePattern').value.trim(),
+                        RequestCardsInteractive: document.querySelector('#advLbRequestCardsInteractive').checked,
+                        RequestCardsIncludeMetaText: document.querySelector('#advLbRequestCardsIncludeMetaText').checked,
+                        DefaultBulkQualityMode: document.querySelector('#advLbDefaultBulkQualityMode').value || 'singleProfile',
+                        AlreadyRequestedMode: document.querySelector('#advLbAlreadyRequestedMode').value || 'prompt',
+                        AlreadyRequestedStatusScope: document.querySelector('#advLbAlreadyRequestedStatusScope').value || 'anyMediaInfo',
+                        HttpTimeoutSeconds: parseInt(document.querySelector('#advLbHttpTimeoutSeconds').value, 10) || 60,
+                        SyncPagesProgressWeight: parseInt(document.querySelector('#advLbSyncPagesProgressWeight').value, 10) || 50
+                    }
+                };
+            }
+
             function loadDisplayCustomizationsFromConfig(config) {
                 let root = {};
 
@@ -932,6 +1703,18 @@
             document.querySelectorAll('.bst-customize-btn').forEach(function (button) {
                 button.addEventListener('click', function () {
                     openCustomizeModal(button.getAttribute('data-customize-key'));
+                });
+            });
+
+            document.querySelectorAll('.bst-subsection-toggle').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const subsection = button.closest('.bst-advanced-subsection');
+                    if (!subsection) {
+                        return;
+                    }
+
+                    const collapsed = subsection.classList.toggle('is-collapsed');
+                    button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
                 });
             });
 
@@ -1025,6 +1808,10 @@
                 document.querySelector('#discoverUsePosters').checked = config.DiscoverUsePosters !== false;
                 document.querySelector('#elegantFinFixes').checked = config.ElegantFinFixes === true;
                 document.querySelector('#qualityRecommendations').checked = config.QualityRecommendations !== false;
+                setAdvancedFormValues(loadAdvancedFromConfig(config));
+                document.querySelector('#advDeveloperMode').checked = config.DeveloperMode === true;
+                document.querySelector('#advCacheTimeoutSeconds').value = config.CacheTimeoutSeconds || 86400;
+                document.querySelector('#advMaxImageCacheEntries').value = config.MaxImageCacheEntries || 5000;
                 Dashboard.hideLoadingMsg();
             }).catch(function () {
                 displayCustomizations = createDefaultDisplayCustomizations();
@@ -1053,6 +1840,10 @@
                     config.DiscoverUsePosters = document.querySelector('#discoverUsePosters').checked;
                     config.ElegantFinFixes = document.querySelector('#elegantFinFixes').checked;
                     config.QualityRecommendations = document.querySelector('#qualityRecommendations').checked;
+                    config.Advanced = buildAdvancedPayload();
+                    config.DeveloperMode = document.querySelector('#advDeveloperMode').checked;
+                    config.CacheTimeoutSeconds = parseInt(document.querySelector('#advCacheTimeoutSeconds').value, 10) || 86400;
+                    config.MaxImageCacheEntries = parseInt(document.querySelector('#advMaxImageCacheEntries').value, 10) || 5000;
                     return ApiClient.updatePluginConfiguration(pluginId, config);
                 }).then(function (result) {
                     Dashboard.processPluginConfigurationUpdateResult(result);
