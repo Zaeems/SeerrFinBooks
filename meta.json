@@ -1,14 +1,14 @@
 {
   "category": "General",
-  "changelog": "Added advanced settings for all parts of the app to allow user to configure intricate functionality",
+  "changelog": "Tabs not working and erroring out on first install",
   "description": "The best way to discover and request Movies and TV Shows through Seerr directly in Jellyfin.",
   "guid": "c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c",
   "name": "SeerrFin",
   "overview": "This plugin lets you add two extra tabs to your top bar, allowing you to discover new Movies and TV Shows, and easily request them in any quality profile you want.",
   "owner": "varunaditya-plus",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-06-12T20:33:00.0000000Z",
-  "version": "1.5.3.0",
+  "timestamp": "2026-06-13T19:34:48.0000000Z",
+  "version": "1.5.4.0",
   "status": "Active",
   "autoUpdate": true,
   "assemblies": [
