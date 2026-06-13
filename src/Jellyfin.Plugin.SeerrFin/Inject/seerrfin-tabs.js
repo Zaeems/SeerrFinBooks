@@ -147,15 +147,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         setupCustomTabWatchers: function () {
             const self = this;
 
-            document.addEventListener('viewbeforeshow', function (event) {
-                if (!event.target || event.target.id !== 'indexPage') {
-                    return;
+            document.addEventListener('viewshow', function (event) {
+                if (event.target && event.target.id === 'indexPage') {
+                    self.attachCustomTabGuard(document.querySelector('.headerTabs [is="emby-tabs"]'));
                 }
-
-                self.attachCustomTabGuard(document.querySelector('.tabs-viewmenubar [is="emby-tabs"]'));
-            }, true);
-
-            document.addEventListener('viewshow', function () {
                 self.scheduleRender();
             });
 
@@ -167,7 +162,6 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 }
             });
 
-            self.attachCustomTabGuard(document.querySelector('.tabs-viewmenubar [is="emby-tabs"]'));
             self.scheduleRender();
         },
 
