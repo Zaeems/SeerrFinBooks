@@ -4,3 +4,13 @@
 - show progress/playability on cards in discover pages and let user play directly from there
 - add layout editor for modal
 - add layout editor for carousel pages
+
+- different people have different *arr quality profiles. remove hardcoded ones
+
+BOUNTIES
+- Swiftfin support
+- Infuse support
+- Streamyfin support
+- Findroid support !!
+- Wholphin support !!
+- Moonfin support !!
