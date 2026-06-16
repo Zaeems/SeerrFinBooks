@@ -43,6 +43,8 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public bool DiscoverUsePosters { get; set; } = true;
 
+    public List<int> DiscoverReleaseTypes { get; set; } = new();
+
     public bool ElegantFinFixes { get; set; }
 
     public bool QualityRecommendations { get; set; } = true;

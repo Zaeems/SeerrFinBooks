@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Net.Http.Headers;
 using Jellyfin.Plugin.SeerrFin.Configuration;
 using Jellyfin.Plugin.SeerrFin.Configuration.Advanced;
 using Jellyfin.Plugin.SeerrFin.Helpers;
@@ -50,6 +52,17 @@ public class JellyseerrDiscoveryService
 
         client.DefaultRequestHeaders.Add("X-Api-User", jellyseerrUserId.ToString());
 
+        string? tmdbApiKey = config.TmdbApiKey?.Trim();
+        bool hasReleaseTypeFilter = ShouldApplyReleaseTypeFilter(mediaTypeFilter, jellyseerrPath, config);
+        if (hasReleaseTypeFilter && string.IsNullOrWhiteSpace(tmdbApiKey))
+        {
+            _logger.LogWarning("Release type filters are configured but no tmdb api key set");
+            return EmptyResult();
+        }
+
+        bool useTmdbReleaseFilter = hasReleaseTypeFilter;
+        Dictionary<int, bool> releaseTypeCache = new();
+
         // Seerr mapping needs to be used for Anime discovery because of Seerr's default filters applied on their direct API.
         AdvancedDiscoverySettings discoverySettings = AdvancedSettingsHelper.Resolve(config).Discovery;
         DiscoverItemFilterOptions mapping = ResolveMapping(config, useSeerrMapping);
@@ -65,27 +78,57 @@ public class JellyseerrDiscoveryService
         // Paginate until we have enough items or hit the max pages
         while (items.Count < targetLimit && jellyseerrPage <= maxJellyseerrPages)
         {
-            string path = jellyseerrPath.Contains('?', StringComparison.Ordinal)
-                ? $"{jellyseerrPath}&page={jellyseerrPage}"
-                : $"{jellyseerrPath}?page={jellyseerrPage}";
-
             try
             {
-                HttpResponseMessage response = client.GetAsync(path).GetAwaiter().GetResult();
-                if (!response.IsSuccessStatusCode)
+                JObject? json;
+                if (useTmdbReleaseFilter)
+                {
+                    if (jellyseerrPath.Contains("/discover/trending", StringComparison.OrdinalIgnoreCase))
+                    {
+                        json = FetchTmdbTrendingMoviesJson(tmdbApiKey!, config, jellyseerrPage, releaseTypeCache);
+                    }
+                    else
+                    {
+                        string url = BuildTmdbDiscoverUrl(jellyseerrPath, config, jellyseerrPage);
+                        json = FetchTmdbDiscoverJson(url, tmdbApiKey!);
+                    }
+                }
+                else
+                {
+                    string path = jellyseerrPath.Contains('?', StringComparison.Ordinal)
+                        ? $"{jellyseerrPath}&page={jellyseerrPage}"
+                        : $"{jellyseerrPath}?page={jellyseerrPage}";
+
+                    HttpResponseMessage response = client.GetAsync(path).GetAwaiter().GetResult();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        break;
+                    }
+
+                    string jsonRaw = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    json = JObject.Parse(jsonRaw);
+                }
+
+                if (json == null)
                 {
                     break;
                 }
 
-                string jsonRaw = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                JObject? json = JObject.Parse(jsonRaw);
-                JArray? results = json?.Value<JArray>("results");
+                JArray? results = json.Value<JArray>("results");
                 if (results == null || results.Count == 0)
                 {
+                    if (useTmdbReleaseFilter
+                        && jellyseerrPath.Contains("/discover/trending", StringComparison.OrdinalIgnoreCase)
+                        && jellyseerrPage < maxJellyseerrPages)
+                    {
+                        jellyseerrPage++;
+                        continue;
+                    }
+
                     break;
                 }
 
-                totalResults = json?.Value<int?>("totalResults") ?? totalResults;
+                totalResults = json.Value<int?>("totalResults") ?? json.Value<int?>("total_results") ?? totalResults;
 
                 foreach (JObject item in results.OfType<JObject>())
                 {
@@ -116,7 +159,9 @@ public class JellyseerrDiscoveryService
                     items.Add(dto);
                 }
 
-                int totalPages = json?.Value<int?>("totalPages") ?? jellyseerrPage;
+                int totalPages = json.Value<int?>("totalPages")
+                    ?? json.Value<int?>("total_pages")
+                    ?? jellyseerrPage;
                 if (jellyseerrPage >= totalPages)
                 {
                     break;
@@ -124,7 +169,9 @@ public class JellyseerrDiscoveryService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch Jellyseerr path {Path}", path);
+                _logger.LogWarning(ex, useTmdbReleaseFilter
+                    ? "Failed to fetch TMDB discover movies for path {Path}"
+                    : "Failed to fetch Jellyseerr path {Path}", jellyseerrPath);
                 break;
             }
 
@@ -492,6 +539,264 @@ public class JellyseerrDiscoveryService
     {
         string? status = item.Value<JObject>("mediaInfo")?.Value<string>("status");
         return string.Equals(status, "AVAILABLE", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "PARTIALLY_AVAILABLE", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldApplyReleaseTypeFilter(string? mediaTypeFilter, string jellyseerrPath, PluginConfiguration config) =>
+        string.Equals(mediaTypeFilter, "movie", StringComparison.OrdinalIgnoreCase) && GetReleaseTypes(config).Count > 0 && !jellyseerrPath.Contains("/upcoming", StringComparison.OrdinalIgnoreCase);
+
+    private static List<int> GetReleaseTypes(PluginConfiguration config) =>
+        (config.DiscoverReleaseTypes ?? new List<int>())
+            .Where(type => type is >= 1 and <= 6)
+            .Distinct()
+            .OrderBy(type => type)
+            .ToList();
+
+    private static string GetWatchRegion(PluginConfiguration config) => string.IsNullOrWhiteSpace(config.WatchRegion) ? "US" : config.WatchRegion.Trim();
+
+    private static string GetDefaultFutureReleaseDate() => DateTime.UtcNow.AddDays((int)(365 * 1.5)).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static string BuildTmdbDiscoverUrl(string jellyseerrPath, PluginConfiguration config, int page)
+    {
+        AdvancedDiscoverySettings discovery = AdvancedSettingsHelper.Resolve(config).Discovery;
+        var query = new List<string>
+        {
+            "with_release_type=" + Uri.EscapeDataString(string.Join("|", GetReleaseTypes(config))),
+            "page=" + page.ToString(CultureInfo.InvariantCulture),
+            "include_adult=" + (discovery.HideAdultContent ? "false" : "true"),
+            "include_video=true",
+            "primary_release_date.gte=1900-01-01",
+            "primary_release_date.lte=" + GetDefaultFutureReleaseDate()
+        };
+
+        AppendLanguageFilter(query, config);
+        AppendPathParams(query, jellyseerrPath, GetWatchRegion(config));
+
+        if (!query.Exists(static part => part.StartsWith("sort_by=", StringComparison.Ordinal)))
+        {
+            query.Add("sort_by=popularity.desc");
+        }
+
+        return "https://api.themoviedb.org/3/discover/movie?" + string.Join("&", query);
+    }
+
+    private static void AppendLanguageFilter(List<string> query, PluginConfiguration config)
+    {
+        AdvancedDiscoverySettings discovery = AdvancedSettingsHelper.Resolve(config).Discovery;
+        if (!discovery.ApplyLanguageFilter || string.IsNullOrWhiteSpace(config.JellyseerrPreferredLanguages))
+        {
+            return;
+        }
+
+        string language = config.JellyseerrPreferredLanguages.Split(',')[0].Trim();
+        if (!string.IsNullOrEmpty(language))
+        {
+            query.Add("with_original_language=" + Uri.EscapeDataString(language));
+        }
+    }
+
+    private static void AppendPathParams(List<string> query, string jellyseerrPath, string defaultWatchRegion)
+    {
+        int queryStart = jellyseerrPath.IndexOf('?', StringComparison.Ordinal);
+        if (queryStart < 0)
+        {
+            return;
+        }
+
+        foreach (string pair in jellyseerrPath[(queryStart + 1)..].Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string[] parts = pair.Split('=', 2);
+            if (parts.Length != 2)
+            {
+                continue;
+            }
+
+            string key = Uri.UnescapeDataString(parts[0]);
+            string value = Uri.EscapeDataString(Uri.UnescapeDataString(parts[1]));
+            switch (key) // yes im elite i use switch case
+            {
+                case "sortBy":
+                    query.Add("sort_by=" + value);
+                    break;
+                case "genre":
+                    query.Add("with_genres=" + value);
+                    break;
+                case "studio":
+                    query.Add("with_companies=" + value);
+                    break;
+                case "watchProviders":
+                    query.Add("with_watch_providers=" + value);
+                    break;
+                case "watchRegion":
+                    query.Add("watch_region=" + value);
+                    break;
+                case "voteCountGte":
+                    query.Add("vote_count.gte=" + value);
+                    break;
+                case "voteAverageGte":
+                    query.Add("vote_average.gte=" + value);
+                    break;
+            }
+        }
+
+        if (query.Exists(static part => part.StartsWith("with_watch_providers=", StringComparison.Ordinal))
+            && !query.Exists(static part => part.StartsWith("watch_region=", StringComparison.Ordinal)))
+        {
+            query.Add("watch_region=" + Uri.EscapeDataString(defaultWatchRegion));
+        }
+    }
+
+    private JObject? FetchTmdbTrendingMoviesJson(string apiKey, PluginConfiguration config, int page, Dictionary<int, bool> releaseTypeCache)
+    {
+        string url = "https://api.themoviedb.org/3/trending/movie/week?page="
+            + page.ToString(CultureInfo.InvariantCulture);
+
+        using HttpRequestMessage request = CreateTmdbRequest(url, apiKey);
+        using HttpResponseMessage response = new HttpClient().SendAsync(request).GetAwaiter().GetResult();
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("TMDB trending request failed with status {StatusCode} for {Url}", (int)response.StatusCode, url);
+            return null;
+        }
+
+        string jsonRaw = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+        JObject tmdb = JObject.Parse(jsonRaw);
+        IReadOnlyList<int> releaseTypes = GetReleaseTypes(config);
+        JArray results = new();
+
+        foreach (JObject movie in tmdb.Value<JArray>("results")?.OfType<JObject>() ?? [])
+        {
+            int id = movie.Value<int>("id");
+            if (!MovieMatchesReleaseTypes(id, releaseTypes, apiKey, releaseTypeCache))
+            {
+                continue;
+            }
+
+            results.Add(MapTmdbMovie(movie));
+        }
+
+        return new JObject
+        {
+            ["results"] = results,
+            ["totalResults"] = tmdb.Value<int?>("total_results"),
+            ["totalPages"] = tmdb.Value<int?>("total_pages")
+        };
+    }
+
+    private bool MovieMatchesReleaseTypes(int movieId, IReadOnlyList<int> releaseTypes, string apiKey, Dictionary<int, bool> cache)
+    {
+        if (cache.TryGetValue(movieId, out bool cached))
+        {
+            return cached;
+        }
+
+        bool matches = false;
+        try
+        {
+            string url = "https://api.themoviedb.org/3/movie/" + movieId.ToString(CultureInfo.InvariantCulture) + "/release_dates";
+
+            using HttpRequestMessage request = CreateTmdbRequest(url, apiKey);
+            using HttpResponseMessage response = new HttpClient().SendAsync(request).GetAwaiter().GetResult();
+            if (response.IsSuccessStatusCode)
+            {
+                string jsonRaw = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                matches = HasMatchingReleaseTypeAnywhere(JObject.Parse(jsonRaw), releaseTypes);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to fetch TMDB release dates for movie {MovieId}", movieId);
+        }
+
+        cache[movieId] = matches;
+        return matches;
+    }
+
+    private static bool HasMatchingReleaseTypeAnywhere(JObject releaseDates, IReadOnlyList<int> releaseTypes)
+    {
+        foreach (JObject country in releaseDates.Value<JArray>("results")?.OfType<JObject>() ?? [])
+        {
+            foreach (JObject entry in country.Value<JArray>("release_dates")?.OfType<JObject>() ?? [])
+            {
+                int? type = entry.Value<int?>("type");
+                if (type != null && releaseTypes.Contains(type.Value))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static JObject MapTmdbMovie(JObject movie)
+    {
+        int id = movie.Value<int>("id");
+        return new JObject
+        {
+            ["id"] = id,
+            ["tmdbId"] = id,
+            ["mediaType"] = "movie",
+            ["title"] = movie.Value<string>("title"),
+            ["originalTitle"] = movie.Value<string>("original_title"),
+            ["releaseDate"] = movie.Value<string>("release_date"),
+            ["posterPath"] = NormalizeTmdbImagePath(movie.Value<string>("poster_path")),
+            ["backdropPath"] = NormalizeTmdbImagePath(movie.Value<string>("backdrop_path")),
+            ["voteAverage"] = movie.Value<float?>("vote_average"),
+            ["originalLanguage"] = movie.Value<string>("original_language"),
+            ["adult"] = movie.Value<bool?>("adult")
+        };
+    }
+
+    private JObject? FetchTmdbDiscoverJson(string url, string apiKey)
+    {
+        using HttpRequestMessage request = CreateTmdbRequest(url, apiKey);
+        using HttpResponseMessage response = new HttpClient().SendAsync(request).GetAwaiter().GetResult();
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("TMDB discover request failed with status {StatusCode} for {Url}", (int)response.StatusCode, url);
+            return null;
+        }
+
+        string jsonRaw = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+        JObject tmdb = JObject.Parse(jsonRaw);
+        JArray results = new();
+        
+        foreach (JObject movie in tmdb.Value<JArray>("results")?.OfType<JObject>() ?? [])
+        {
+            results.Add(MapTmdbMovie(movie));
+        }
+
+        return new JObject
+        {
+            ["results"] = results,
+            ["totalResults"] = tmdb.Value<int?>("total_results"),
+            ["totalPages"] = tmdb.Value<int?>("total_pages")
+        };
+    }
+
+    private static HttpRequestMessage CreateTmdbRequest(string url, string apiKey)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        if (apiKey.Split('.').Length == 3)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            return request;
+        }
+
+        request.RequestUri = new Uri(url + (url.Contains('?', StringComparison.Ordinal) ? "&" : "?") + "api_key=" + Uri.EscapeDataString(apiKey));
+        return request;
+    }
+
+    private static string? NormalizeTmdbImagePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return path;
+        }
+
+        return path.StartsWith('/') ? path : "/" + path;
     }
 
     private static DiscoverItemFilterOptions ResolveMapping(PluginConfiguration config, bool useSeerrMapping)

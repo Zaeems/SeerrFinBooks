@@ -239,7 +239,7 @@
 
         .bst-toggle-row {
             display: flex;
-            align-items: center;
+            align-items: start;
             justify-content: space-between;
             gap: 1.5em;
             margin-bottom: 1.25em;
@@ -385,6 +385,59 @@
         .bst-customize-btn:focus-visible {
             border-color: var(--accent, #00a4dc);
             outline: none;
+        }
+
+        .bst-chip-grid,
+        .bst-release-type-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5em;
+        }
+
+        .bst-release-type-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .bst-release-type-btn input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            pointer-events: none;
+        }
+
+        .bst-release-type-btn span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 26px;
+            padding: 0 0.75em;
+            border: 1px solid var(--divider, rgba(255, 255, 255, 0.25));
+            background: var(--cardBackground, rgba(255, 255, 255, 0.08));
+            color: inherit;
+            font-size: 0.85em;
+            line-height: 1;
+            white-space: nowrap;
+            box-sizing: border-box;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .bst-release-type-btn input:checked + span {
+            border-color: var(--accent, #00a4dc);
+            background: rgba(0, 164, 220, 0.18);
+            color: #fff;
+        }
+
+        .bst-release-type-btn input:focus-visible + span {
+            outline: 2px solid var(--accent, #00a4dc);
+            outline-offset: 2px;
         }
 
         .bst-modal-overlay {
@@ -755,6 +808,20 @@
                                     <input id="qualityRecommendations" name="qualityRecommendations" type="checkbox" checked />
                                     <span class="bst-toggle-slider"></span>
                                 </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row bst-toggle-row--release-types">
+                            <div class="bst-toggle-copy">
+                                <span class="bst-toggle-label">Upcoming release types</span>
+                                <div class="bst-field-desc">Filter movies/tv shows by release type. Leave all unselected to include all of them. (Needs a TMDB API key)</div>
+                            </div>
+                            <div class="bst-toggle-actions bst-release-type-actions" id="discoverReleaseTypes">
+                                <label class="bst-release-type-btn" title="Premiere"><input type="checkbox" value="1" data-release-type /><span>Premiere</span></label>
+                                <label class="bst-release-type-btn" title="Theatrical (limited)"><input type="checkbox" value="2" data-release-type /><span>Theatrical (limited)</span></label>
+                                <label class="bst-release-type-btn" title="Theatrical"><input type="checkbox" value="3" data-release-type /><span>Theatrical</span></label>
+                                <label class="bst-release-type-btn" title="Digital"><input type="checkbox" value="4" data-release-type /><span>Digital</span></label>
+                                <label class="bst-release-type-btn" title="Physical"><input type="checkbox" value="5" data-release-type /><span>Physical</span></label>
+                                <label class="bst-release-type-btn" title="TV"><input type="checkbox" value="6" data-release-type /><span>TV</span></label>
                             </div>
                         </div>
                         <div class="bst-toggle-row">
@@ -1390,6 +1457,30 @@
                 };
             }
 
+            function loadDiscoverReleaseTypes(types) {
+                const selected = new Set((types || []).map(function (value) {
+                    return parseInt(value, 10);
+                }).filter(function (value) {
+                    return !Number.isNaN(value);
+                }));
+                document.querySelectorAll('[data-release-type]').forEach(function (checkbox) {
+                    checkbox.checked = selected.has(parseInt(checkbox.value, 10));
+                });
+            }
+
+            function getDiscoverReleaseTypesPayload() {
+                return Array.from(document.querySelectorAll('[data-release-type]:checked'))
+                    .map(function (checkbox) {
+                        return parseInt(checkbox.value, 10);
+                    })
+                    .filter(function (value) {
+                        return value >= 1 && value <= 6;
+                    })
+                    .sort(function (a, b) {
+                        return a - b;
+                    });
+            }
+
             function buildDisplayCustomizationsPayload() {
                 const payload = {};
                 Object.keys(DISPLAY_STYLE_ITEMS).forEach(function (key) {
@@ -1814,6 +1905,7 @@
                 document.querySelector('#discoverUsePosters').checked = config.DiscoverUsePosters !== false;
                 document.querySelector('#elegantFinFixes').checked = config.ElegantFinFixes === true;
                 document.querySelector('#qualityRecommendations').checked = config.QualityRecommendations !== false;
+                loadDiscoverReleaseTypes(config.DiscoverReleaseTypes || config.discoverReleaseTypes || []);
                 setAdvancedFormValues(loadAdvancedFromConfig(config));
                 document.querySelector('#advDeveloperMode').checked = config.DeveloperMode === true;
                 document.querySelector('#advCacheTimeoutSeconds').value = config.CacheTimeoutSeconds || 86400;
@@ -1846,6 +1938,7 @@
                     config.DiscoverUsePosters = document.querySelector('#discoverUsePosters').checked;
                     config.ElegantFinFixes = document.querySelector('#elegantFinFixes').checked;
                     config.QualityRecommendations = document.querySelector('#qualityRecommendations').checked;
+                    config.DiscoverReleaseTypes = getDiscoverReleaseTypesPayload();
                     config.Advanced = buildAdvancedPayload();
                     config.DeveloperMode = document.querySelector('#advDeveloperMode').checked;
                     config.CacheTimeoutSeconds = parseInt(document.querySelector('#advCacheTimeoutSeconds').value, 10) || 86400;
