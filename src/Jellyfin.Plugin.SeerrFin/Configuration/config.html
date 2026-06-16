@@ -109,7 +109,7 @@
 
         .bst-tabs-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 1em;
         }
 
@@ -769,6 +769,33 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advHideRequestedMedia">Hide requested media</label>
+                                <div class="bst-field-desc">Hide movies/shows that already have been requested through Jellyseerr.</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle"><input id="advHideRequestedMedia" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advHideAvailableInLibrary">Hide available in library</label>
+                                <div class="bst-field-desc">Hide movies/shows that are "Available" or "Partially Available".</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle"><input id="advHideAvailableInLibrary" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advHideAdultContent">Hide adult content</label>
+                                <div class="bst-field-desc">Exclude adult movies/shows from discovery rows (porn).</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle"><input id="advHideAdultContent" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -796,8 +823,8 @@
                     <div class="bst-section-title">Advanced settings (this can break stuff)</div>
                     <div class="bst-card">
                         <div class="bst-advanced-subsections">
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">Discovery</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
@@ -808,27 +835,6 @@
                                 <div class="bst-field-desc">Filter discovery carousels by the preferred language from Jellyseerr settings.</div>
                             </div>
                             <label class="bst-toggle"><input id="advApplyLanguageFilter" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
-                        </div>
-                        <div class="bst-toggle-row">
-                            <div class="bst-toggle-copy">
-                                <label class="bst-toggle-label" for="advHideRequestedMedia">Hide requested media</label>
-                                <div class="bst-field-desc">Hide movies/shows that already have been requested through Jellyseerr.</div>
-                            </div>
-                            <label class="bst-toggle"><input id="advHideRequestedMedia" type="checkbox" /><span class="bst-toggle-slider"></span></label>
-                        </div>
-                        <div class="bst-toggle-row">
-                            <div class="bst-toggle-copy">
-                                <label class="bst-toggle-label" for="advHideAvailableInLibrary">Hide available in library</label>
-                                <div class="bst-field-desc">Hide movies/shows that are "Available" or "Partially Available".</div>
-                            </div>
-                            <label class="bst-toggle"><input id="advHideAvailableInLibrary" type="checkbox" /><span class="bst-toggle-slider"></span></label>
-                        </div>
-                        <div class="bst-toggle-row">
-                            <div class="bst-toggle-copy">
-                                <label class="bst-toggle-label" for="advHideAdultContent">Hide adult content</label>
-                                <div class="bst-field-desc">Exclude adult movies/shows from discovery rows (porn).</div>
-                            </div>
-                            <label class="bst-toggle"><input id="advHideAdultContent" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
                         </div>
                         <div class="bst-toggle-row">
                             <div class="bst-toggle-copy">
@@ -870,8 +876,8 @@
                             </div>
                         </div>
 
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">Carousel</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
@@ -923,8 +929,8 @@
                             </div>
                         </div>
 
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">Requests page</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
@@ -976,8 +982,8 @@
                             </div>
                         </div>
 
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">Request modal</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
@@ -1013,8 +1019,8 @@
                             </div>
                         </div>
 
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">Radarr / Sonarr progress</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
@@ -1036,8 +1042,8 @@
                             </div>
                         </div>
 
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">TMDB images</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
@@ -1099,8 +1105,8 @@
                             </div>
                         </div>
 
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">JustWatch</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
@@ -1159,8 +1165,8 @@
                             </div>
                         </div>
 
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">Letterboxd</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
@@ -1237,8 +1243,8 @@
                             </div>
                         </div>
 
-                        <div class="bst-advanced-subsection">
-                            <button type="button" class="bst-subsection-toggle" aria-expanded="true">
+                        <div class="bst-advanced-subsection is-collapsed">
+                            <button type="button" class="bst-subsection-toggle" aria-expanded="false">
                                 <span class="bst-subsection-title">Cache / developer</span>
                                 <span class="bst-subsection-chevron" aria-hidden="true">▼</span>
                             </button>
