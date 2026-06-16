@@ -232,7 +232,6 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             container.dataset.seerrfinLoading = 'true';
             container.dataset.seerrfinLoadId = loadId;
             delete container.dataset.seerrfinLoaded;
-            container.innerHTML = '<div class="seerrfin-loading-row">Loading...</div>';
 
             // Ignore results if user switched tabs or theres a newer load. Going back through chrome back button is still broken though
             const finishLoading = function () {
@@ -247,94 +246,104 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 return container.dataset.seerrfinLoadId !== loadId || !self.isContainerVisible(container);
             };
 
-            Promise.allSettled([
-                self.loadDisplaySettings(),
-                ...rows.map(function (row) {
-                    return self.fetchDiscover(row.path).then(function (result) {
-                        return { row: row, items: result.items, total: result.total };
-                    });
-                })
-            ]).then(function (results) {
+            const browseTitle = mediaType === 'movie' ? 'Browse by studio' : 'Browse by network';
+            const browseKind = mediaType === 'movie' ? 'studio' : 'network';
+            const carouselDefs = [
+                { title: 'Browse by genre', path: 'genres/' + mediaType, kind: 'genre' },
+                { title: 'Browse by streaming service', path: 'providers/' + mediaType, kind: 'provider' },
+                { title: browseTitle, path: mediaType === 'movie' ? 'studios/movie' : 'networks/tv', kind: browseKind }
+            ];
+
+            self.loadDisplaySettings().then(function () {
                 if (isStale()) {
-                    return null;
-                }
-
-                const loadedRows = [];
-                results.slice(1).forEach(function (result, index) {
-                    if (result.status === 'fulfilled') {
-                        loadedRows.push(result.value);
-                    } else {
-                        console.warn('SeerrFin: row failed', rows[index].path, result.reason);
-                    }
-                });
-
-                if (!loadedRows.length) {
-                    throw new Error('All discovery rows failed');
-                }
-
-                container.innerHTML = '';
-                loadedRows.forEach(function (result) {
-                    try {
-                        container.appendChild(self.buildPosterRow(result.row.title, result.items, result.row.path, {
-                            total: result.total
-                        }));
-                    } catch (err) {
-                        console.warn('SeerrFin: row render failed', result.row.title, err);
-                    }
-                });
-
-                self.refreshScrollers(container);
-
-                return Promise.allSettled([
-                    self.fetchJson('genres/' + mediaType),
-                    self.fetchJson('providers/' + mediaType),
-                    mediaType === 'movie'
-                        ? self.fetchJson('studios/movie')
-                        : self.fetchJson('networks/tv')
-                ]);
-            }).then(function (carouselResults) {
-                if (!carouselResults || isStale()) {
                     finishLoading();
                     return;
                 }
 
-                try {
-                    const genres = carouselResults[0].status === 'fulfilled'
-                        ? self.asArray(carouselResults[0].value)
-                        : [];
-                    const providers = carouselResults[1].status === 'fulfilled'
-                        ? self.asArray(carouselResults[1].value)
-                        : [];
-                    const browseItems = carouselResults[2].status === 'fulfilled'
-                        ? self.asArray(carouselResults[2].value)
-                        : [];
+                container.innerHTML = '';
 
-                    if (carouselResults[0].status === 'rejected') {
-                        console.warn('SeerrFin: genre carousel failed', carouselResults[0].reason);
-                    }
-                    if (carouselResults[1].status === 'rejected') {
-                        console.warn('SeerrFin: provider carousel failed', carouselResults[1].reason);
-                    }
-                    if (carouselResults[2].status === 'rejected') {
-                        console.warn('SeerrFin: browse carousel failed', carouselResults[2].reason);
-                    }
+                const rowSlots = rows.map(function (row) {
+                    const skeleton = self.buildRowSkeleton(row.title, 'poster');
+                    container.appendChild(skeleton);
+                    return { row: row, skeleton: skeleton };
+                });
 
-                    if (genres.length) {
-                        container.appendChild(self.buildCarouselSection('Browse by genre', genres, mediaType, 'genre'));
+                const carouselSlots = carouselDefs.map(function (def) {
+                    const skeleton = self.buildRowSkeleton(def.title, 'carousel');
+                    container.appendChild(skeleton);
+                    return { def: def, skeleton: skeleton };
+                });
+
+                const totalSlots = rowSlots.length + carouselSlots.length;
+                let completedSlots = 0;
+                let anySuccess = false;
+
+                const checkAllDone = function () {
+                    completedSlots++;
+                    if (completedSlots < totalSlots) {
+                        return;
                     }
-                    if (providers.length) {
-                        container.appendChild(self.buildCarouselSection('Browse by streaming service', providers, mediaType, 'provider'));
+                    if (!anySuccess && !isStale()) {
+                        container.innerHTML = '<div class="seerrfin-empty-row">Failed to load discovery rows. Check Jellyseerr settings and that your Jellyfin user is linked in Jellyseerr.</div>';
                     }
-                    if (browseItems.length) {
-                        const browseTitle = mediaType === 'movie' ? 'Browse by studio' : 'Browse by network';
-                        const browseKind = mediaType === 'movie' ? 'studio' : 'network';
-                        container.appendChild(self.buildCarouselSection(browseTitle, browseItems, mediaType, browseKind));
+                    finishLoading();
+                };
+
+                const replaceSkeleton = function (skeleton, node) {
+                    if (isStale() || !skeleton.parentNode) {
+                        return;
                     }
-                    self.refreshScrollers(container);
-                } catch (err) {
-                    console.warn('SeerrFin: carousel render failed', err);
-                }
-                finishLoading();
+                    if (node) {
+                        node.classList.add('seerrfin-section-fadein');
+                        skeleton.replaceWith(node);
+                        self.refreshScrollers(container);
+                    } else {
+                        skeleton.remove();
+                    }
+                };
+
+                rowSlots.forEach(function (slot) {
+                    self.fetchDiscover(slot.row.path).then(function (result) {
+                        if (isStale()) {
+                            return;
+                        }
+                        anySuccess = true;
+                        try {
+                            replaceSkeleton(slot.skeleton, self.buildPosterRow(slot.row.title, result.items, slot.row.path, {
+                                total: result.total
+                            }));
+                        } catch (err) {
+                            console.warn('SeerrFin: row render failed', slot.row.title, err);
+                            replaceSkeleton(slot.skeleton, null);
+                        }
+                    }).catch(function (err) {
+                        console.warn('SeerrFin: row failed', slot.row.path, err);
+                        replaceSkeleton(slot.skeleton, null);
+                    }).finally(checkAllDone);
+                });
+
+                carouselSlots.forEach(function (slot) {
+                    self.fetchJson(slot.def.path).then(function (data) {
+                        if (isStale()) {
+                            return;
+                        }
+                        const items = self.asArray(data);
+                        if (!items.length) {
+                            replaceSkeleton(slot.skeleton, null);
+                            return;
+                        }
+                        anySuccess = true;
+                        try {
+                            replaceSkeleton(slot.skeleton, self.buildCarouselSection(slot.def.title, items, mediaType, slot.def.kind));
+                        } catch (err) {
+                            console.warn('SeerrFin: carousel render failed', slot.def.title, err);
+                            replaceSkeleton(slot.skeleton, null);
+                        }
+                    }).catch(function (err) {
+                        console.warn('SeerrFin: carousel failed', slot.def.path, err);
+                        replaceSkeleton(slot.skeleton, null);
+                    }).finally(checkAllDone);
+                });
             }).catch(function (err) {
                 if (isStale()) {
                     return;
@@ -663,6 +672,40 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 return settings.StudioNetworkUseImages !== false;
             }
             return false;
+        },
+
+        buildRowSkeleton: function (title, kind) {
+            const section = document.createElement('div');
+            section.className = 'verticalSection seerrfin-skeleton-section';
+            section.setAttribute('aria-hidden', 'true');
+            section.dataset.seerrfinSkeleton = 'true';
+
+            const titleContainer = document.createElement('div');
+            titleContainer.className = 'sectionTitleContainer sectionTitleContainer-cards padded-left';
+
+            const titleBar = document.createElement('div');
+            titleBar.className = 'seerrfin-skeleton-title';
+            titleBar.setAttribute('aria-label', title || 'Loading');
+            titleContainer.appendChild(titleBar);
+            section.appendChild(titleContainer);
+
+            const track = document.createElement('div');
+            track.className = 'seerrfin-skeleton-track padded-left';
+
+            const useBackdrop = kind === 'poster' && this.shouldUseBackdropThumbnails();
+            const cardClass = kind === 'carousel'
+                ? 'seerrfin-skeleton-card seerrfin-skeleton-card--carousel'
+                : 'seerrfin-skeleton-card seerrfin-skeleton-card--poster' + (useBackdrop ? ' seerrfin-skeleton-card--backdrop' : '');
+            const count = kind === 'carousel' ? 6 : 8;
+
+            for (let i = 0; i < count; i++) {
+                const card = document.createElement('div');
+                card.className = cardClass;
+                track.appendChild(card);
+            }
+
+            section.appendChild(track);
+            return section;
         },
 
         buildPosterRow: function (title, items, path, options) {
