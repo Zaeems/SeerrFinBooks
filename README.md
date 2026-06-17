@@ -13,7 +13,7 @@
 [![GitHub Release](https://shieldcn.dev/github/release/varunaditya-plus/SeerrFin.svg?size=sm)](https://github.com/varunaditya-plus/SeerrFin/releases/latest)
 ![Please star this repo](https://shieldcn.dev/badge/★%20please%20star-22c55e.svg?theme=amber&color=eab308&size=sm&variant=outline)
 
-The best way to discover and request Movies and TV Shows by using Seerr directly in Jellyfin. This plugin lets you add two top bar tabs for Movies and TV discovery, with request modals powered by your Jellyseerr instance. The categories are gotten using TMDB.
+The best way to discover and request Movies and TV Shows by using Seerr directly in Jellyfin. This plugin lets you add two top bar tabs for Movies and TV discovery, with request modals powered by your Seerr instance. The categories are gotten using TMDB.
 
 </div>
 
@@ -38,7 +38,7 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 ## Installation
 
 ### First make sure you have these prerequisites:
-- A running Jellyfin **10.11.x** and Seerr (or Jellyseerr) instance
+- A running Jellyfin **10.11.x** and Seerr instance
 - [File Transformation](https://www.iamparadox.dev/jellyfin/plugins/manifest.json) plugin
 - [Custom Tabs](https://www.iamparadox.dev/jellyfin/plugins/manifest.json) plugin
 
@@ -52,7 +52,7 @@ https://raw.githubusercontent.com/varunaditya-plus/SeerrFin/main/manifest.json
 4. Now you have to restart your Jellyfin instance. Go to **Dashboard** and click the **Restart** button. You're done!
 
 ### Configuration
-After installation, now configure the extension so it will work with your Seerr instance. Go to **Dashboard → SeerrFin**, click settings, and follow the instructions. You're not stupid. You figured out how to get Jellyfin and Jellyseerr installed.
+After installation, now configure the extension so it will work with your Seerr instance. Go to **Dashboard → SeerrFin**, click settings, and follow the instructions. Also fill out all the configurations (TMDB is optional but recommended). You're not stupid. You figured out how to get Jellyfin and Seerr installed.
 
 ## Screenshots
 <table>
