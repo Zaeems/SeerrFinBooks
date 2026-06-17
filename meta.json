@@ -1,14 +1,14 @@
 {
   "category": "General",
-  "changelog": "Loading skeletons, and carousels load in in real time",
+  "changelog": "Updated config page to split everything into multiple pages and organize it more nicely",
   "description": "The best way to discover and request Movies and TV Shows through Seerr directly in Jellyfin.",
   "guid": "c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c",
   "name": "SeerrFin",
   "overview": "This plugin lets you add two extra tabs to your top bar, allowing you to discover new Movies and TV Shows, and easily request them in any quality profile you want.",
   "owner": "varunaditya-plus",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-06-16T22:02:25.0000000Z",
-  "version": "1.5.6.0",
+  "timestamp": "2026-06-17T20:09:25.0000000Z",
+  "version": "1.5.6.1",
   "status": "Active",
   "autoUpdate": true,
   "assemblies": [
