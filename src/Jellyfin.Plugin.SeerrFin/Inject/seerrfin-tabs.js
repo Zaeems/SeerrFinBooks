@@ -917,11 +917,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
 
             scroller.appendChild(itemsContainer);
-
-            const scrollerWrap = document.createElement('div');
-            scrollerWrap.className = 'seerrfin-scroller-wrap emby-scroller-container';
-            scrollerWrap.appendChild(scroller);
-            section.appendChild(scrollerWrap);
+            section.appendChild(scroller);
         },
 
         buildCarouselSection: function (title, items, mediaType, kind) {
@@ -973,7 +969,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             const logoUrl = showLogo && logoStyleKey && logoPath && logoPath !== 'not found'
                 ? this.buildTmdbImageUrl(logoPath, logoStyleKey)
                 : null;
-            let content = '';
+
+            let extraClass = ' seerrfin-discover-card--fallback';
+            let mediaHtml = '';
+            let overlayTitleHtml = '';
 
             if (kind === 'genre' && (this._displaySettings || {}).GenreUseBackdrops !== false) {
                 const backdrops = item.backdrops || [];
@@ -982,21 +981,30 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     const backdropPath = mode === 'first' ? backdrops[0] : backdrops[Math.floor(Math.random() * backdrops.length)];
                     const backdropUrl = this.buildTmdbImageUrl(backdropPath, 'genreBackdrop');
                     if (backdropUrl) {
-                        content += '<span class="seerrfin-box-backdrop" style="background-image: url(\'' + backdropUrl + '\')"></span>';
+                        mediaHtml = '<span class="seerrfin-discover-backdrop-media" style="background-image: url(\'' + this.escapeHtml(backdropUrl) + '\')"></span>';
                     }
                 }
             }
 
             if (logoUrl) {
+                extraClass = ' seerrfin-box-card--logo';
                 const logoClass = item.weirdSize ? 'seerrfin-box-logo-weird' : 'seerrfin-box-logo';
-                content += '<img class="' + logoClass + '" src="' + this.escapeHtml(logoUrl) + '" alt="' + safeName + '" loading="lazy" />';
+                mediaHtml = '<img class="' + logoClass + '" src="' + this.escapeHtml(logoUrl) + '" alt="' + safeName + '" loading="lazy" />';
             } else {
-                content += '<span class="seerrfin-box-label">' + safeName + '</span>';
+                overlayTitleHtml = '<span class="seerrfin-discover-overlay-title seerrfin-box-label">' + safeName + '</span>';
             }
 
-            return '<button type="button" class="seerrfin-box-card" data-kind="' + kind + '" data-media-type="' + mediaType + '" data-id="' + id + '" data-name="' + safeName + '">' +
-                content +
-                '</button>';
+            return '<div class="card seerrfin-discover-card seerrfin-discover-card--backdrop seerrfin-box-card seerrfin-discover-card--static' + extraClass + '"' +
+                ' data-kind="' + kind + '" data-media-type="' + mediaType + '" data-id="' + id + '" data-name="' + safeName + '"' + ' role="button" tabindex="0">' +
+                '   <div class="cardBox">' +
+                '       <div class="cardScalable seerrfin-discover-backdrop-scalable">' +
+                '           <div class="cardPadder seerrfin-discover-backdrop-padder"></div>' +
+                '           <div class="cardImageContainer coveredImage cardContent seerrfin-discover-backdrop-image" aria-label="' + safeName + '">' +
+                mediaHtml + overlayTitleHtml +
+                '           </div>' +
+                '       </div>' +
+                '   </div>' +
+                '</div>';
         },
 
         buildBrowseGridPath: function (kind, mediaType, id) {

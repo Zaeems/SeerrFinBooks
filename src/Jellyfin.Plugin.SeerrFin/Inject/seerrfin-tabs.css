@@ -5,55 +5,26 @@
     --seerrfin-discover-portrait-width: 13.333em;
 }
 
-.seerrfin-carousel-section .seerrfin-box-card {
-    flex: 0 0 auto;
-    width: var(--seerrfin-discover-backdrop-width);
-    aspect-ratio: 16 / 9;
-    margin: 0 0.6em 0 0;
+.seerrfin-box-card {
     cursor: pointer;
-    background: var(--cardBackground, rgba(255, 255, 255, 0.06));
-    border: none;
-    border-radius: 0.5em;
-    padding: 0 1em;
-    font: inherit;
-    color: inherit;
+}
+
+.seerrfin-box-card--logo .cardBox {
+    background: var(--cardBackground, rgba(255, 255, 255, 0.03));
+}
+
+.seerrfin-box-card--logo .seerrfin-discover-backdrop-image {
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
-}
-
-.seerrfin-box-backdrop {
-    position: absolute;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    opacity: 0.4;
-    pointer-events: none;
-    border-radius: inherit;
-    filter: saturate(1.25) brightness(1.05);
-}
-
-.seerrfin-box-card:has(.seerrfin-box-backdrop) .seerrfin-box-label {
-    position: relative;
-    z-index: 1;
-}
-
-.seerrfin-box-card .seerrfin-box-label {
-    text-align: center;
-    color: var(--primaryTextColor);
-    font-size: 1.5em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
 }
 
 .seerrfin-box-card .seerrfin-box-logo,
 .seerrfin-box-card .seerrfin-box-logo-weird {
     object-fit: contain;
     pointer-events: none;
+    position: relative;
+    z-index: 1;
     width: 200px;
     max-height: 65px;
 }
@@ -299,24 +270,22 @@
     max-width: var(--seerrfin-discover-backdrop-width);
 }
 
-.seerrfin-scroller-wrap {
-    position: relative;
-}
-
-.seerrfin-scroller-wrap > .emby-scrollbuttons {
-    top: 50%;
-    transform: translateY(-50%);
+.seerrfin-carousel-section.emby-scroller-container > .emby-scrollbuttons,
+.seerrfin-poster-section.emby-scroller-container > .emby-scrollbuttons {
+    top: 0;
+    transform: none;
     min-height: 0;
-    padding-top: 0;
 }
 
-.seerrfin-carousel-section .itemsContainer > .seerrfin-box-card:first-child {
+.seerrfin-carousel-section .itemsContainer > .card:first-child {
     margin-left: 0;
 }
 
 /* ElegantFin fixes */
 html.seerrfin-elegantfin .seerrfin-movies-sections .seerrfin-discover-card,
 html.seerrfin-elegantfin .seerrfin-tv-sections .seerrfin-discover-card,
+html.seerrfin-elegantfin .seerrfin-movies-sections .seerrfin-box-card,
+html.seerrfin-elegantfin .seerrfin-tv-sections .seerrfin-box-card,
 html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card {
     padding: 0 !important;
     flex: 0 0 auto !important;
