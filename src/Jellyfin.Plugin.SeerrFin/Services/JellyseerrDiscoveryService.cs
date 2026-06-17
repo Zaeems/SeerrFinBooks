@@ -171,7 +171,7 @@ public class JellyseerrDiscoveryService
             {
                 _logger.LogWarning(ex, useTmdbReleaseFilter
                     ? "Failed to fetch TMDB discover movies for path {Path}"
-                    : "Failed to fetch Jellyseerr path {Path}", jellyseerrPath);
+                    : "Failed to fetch Seerr path {Path}", jellyseerrPath);
                 break;
             }
 
@@ -390,7 +390,7 @@ public class JellyseerrDiscoveryService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch Jellyseerr details for {MediaType}/{MediaId}", mediaType, mediaId);
+            _logger.LogWarning(ex, "Failed to fetch Seerr details for {MediaType}/{MediaId}", mediaType, mediaId);
             return null;
         }
     }
@@ -418,7 +418,7 @@ public class JellyseerrDiscoveryService
             HttpResponseMessage response = client.GetAsync(path).GetAwaiter().GetResult();
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Jellyseerr request failed for {Path} with status {StatusCode}", path, response.StatusCode);
+                _logger.LogWarning("Seerr request failed for {Path} with status {StatusCode}", path, response.StatusCode);
                 return new JArray();
             }
 
@@ -434,7 +434,7 @@ public class JellyseerrDiscoveryService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch Jellyseerr array from {Path}", path);
+            _logger.LogWarning(ex, "Failed to fetch Seerr array from {Path}", path);
             return new JArray();
         }
     }
@@ -524,7 +524,7 @@ public class JellyseerrDiscoveryService
         return client;
     }
 
-    // Match Jellyfin username to linked Jellyseerr user for per-user X-Api-User header.
+    // Match Jellyfin username to linked Seerr user for per-user X-Api-User header.
     private static int? ResolveJellyseerrUserId(HttpClient client, string username)
     {
         HttpResponseMessage usersResponse = client.GetAsync($"/api/v1/user?q={Uri.EscapeDataString(username)}").GetAwaiter().GetResult();

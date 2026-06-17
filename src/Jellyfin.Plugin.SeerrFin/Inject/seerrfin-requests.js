@@ -297,7 +297,7 @@
             '</button>' +
             '<button type="button" class="seerrfin-request-action-btn seerrfin-request-seerr-btn" ' +
                 'data-tmdb-id="' + safeTmdbId + '" data-media-type="' + safeMediaType + '" ' +
-                'aria-label="Open ' + safeTitle + ' in Jellyseerr" title="Open in Jellyseerr">' +
+                'aria-label="Open ' + safeTitle + ' in Seerr" title="Open in Seerr">' +
                 SEERR_LOGO +
             '</button>';
 
@@ -735,7 +735,7 @@
                 state.allRequests = [];
                 state.rendered = false;
                 if (body) {
-                    body.innerHTML = '<div class="seerrfin-empty-row padded-left">Could not load requests. Check Jellyseerr settings.</div>';
+                    body.innerHTML = '<div class="seerrfin-empty-row padded-left">Could not load requests. Check Seerr settings.</div>';
                 }
             })
             .finally(function () {

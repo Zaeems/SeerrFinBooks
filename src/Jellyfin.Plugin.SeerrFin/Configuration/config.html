@@ -782,11 +782,11 @@
             <form class="seerrFinConfigurationForm">
                 <div class="bst-page-panel" data-bst-panel="configurations">
                 <div class="bst-section-container">
-                    <div class="bst-section-title">Jellyseerr configuration</div>
+                    <div class="bst-section-title">Seerr configuration</div>
                     <div class="bst-card">
                         <div class="bst-input-group">
                             <div class="bst-field-main">
-                                <label class="bst-label bst-label--side bst-label--required" for="jellyseerrUrl">Jellyseerr URL</label>
+                                <label class="bst-label bst-label--side bst-label--required" for="jellyseerrUrl">Seerr URL</label>
                                 <div class="bst-input-stack">
                                     <input id="jellyseerrUrl" name="jellyseerrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:5055" />
                                     <div class="bst-field-desc">Internal URL used by the server (e.g. http://localhost:5055)</div>
@@ -795,19 +795,19 @@
                         </div>
                         <div class="bst-input-group">
                             <div class="bst-field-main">
-                                <label class="bst-label bst-label--side" for="externalJellyseerrUrl">External Jellyseerr URL</label>
+                                <label class="bst-label bst-label--side" for="externalJellyseerrUrl">External Seerr URL</label>
                                 <div class="bst-input-stack">
                                     <input id="externalJellyseerrUrl" name="externalJellyseerrUrl" type="text" class="bst-input" placeholder="http://192.168.1.170:5055" />
-                                    <div class="bst-field-desc">The URL you usually use to access Jellyseerr (defaults to Jellyseerr URL above)</div>
+                                    <div class="bst-field-desc">The URL you usually use to access Seerr (defaults to Seerr URL above)</div>
                                 </div>
                             </div>
                         </div>
                         <div class="bst-input-group">
                             <div class="bst-field-main">
-                                <label class="bst-label bst-label--side bst-label--required" for="jellyseerrApiKey">Jellyseerr API Key</label>
+                                <label class="bst-label bst-label--side bst-label--required" for="jellyseerrApiKey">Seerr API Key</label>
                                 <div class="bst-input-stack">
                                     <input id="jellyseerrApiKey" name="jellyseerrApiKey" type="password" class="bst-input" />
-                                    <div class="bst-field-desc">Access Key for Jellyseerr which you can get by going to Jellyseerr → Settings → API Key</div>
+                                    <div class="bst-field-desc">Access Key for Seerr which you can get by going to Seerr → Settings → API Key</div>
                                 </div>
                             </div>
                         </div>
@@ -1007,7 +1007,7 @@
                         <div class="bst-toggle-row">
                             <div class="bst-toggle-copy">
                                 <label class="bst-toggle-label" for="advHideRequestedMedia">Hide requested media</label>
-                                <div class="bst-field-desc">Hide movies/shows that already have been requested through Jellyseerr.</div>
+                                <div class="bst-field-desc">Hide movies/shows that already have been requested through Seerr.</div>
                             </div>
                             <div class="bst-toggle-actions">
                                 <label class="bst-toggle"><input id="advHideRequestedMedia" type="checkbox" /><span class="bst-toggle-slider"></span></label>
@@ -1049,7 +1049,7 @@
                         <div class="bst-toggle-row">
                             <div class="bst-toggle-copy">
                                 <label class="bst-toggle-label" for="advApplyLanguageFilter">Apply language filter</label>
-                                <div class="bst-field-desc">Filter discovery carousels by the preferred language from Jellyseerr settings.</div>
+                                <div class="bst-field-desc">Filter discovery carousels by the preferred language from Seerr settings.</div>
                             </div>
                             <label class="bst-toggle"><input id="advApplyLanguageFilter" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
                         </div>
@@ -1064,7 +1064,7 @@
                             <label class="bst-label" for="advAnimeDiscoverPath">Anime discover path</label>
                             <div class="bst-input-stack">
                                 <input id="advAnimeDiscoverPath" type="text" class="bst-input" />
-                                <div class="bst-field-desc">Jellyseerr API path used for the anime carousel row.</div>
+                                <div class="bst-field-desc">Seerr API path used for the anime carousel row.</div>
                             </div>
                         </div>
                         <div class="bst-input-row">
@@ -1072,14 +1072,14 @@
                                 <label class="bst-label" for="advCarouselMaxPages">Maximum carousel length</label>
                                 <div class="bst-input-stack">
                                     <input id="advCarouselMaxPages" type="number" class="bst-input" min="1" max="50" />
-                                    <div class="bst-field-desc">Max Jellyseerr pages fetched per horizontal carousel row.</div>
+                                    <div class="bst-field-desc">Max Seerr pages fetched per horizontal carousel row.</div>
                                 </div>
                             </div>
                             <div class="bst-input-group">
                                 <label class="bst-label" for="advGridMaxPages">Maximum grid length</label>
                                 <div class="bst-input-stack">
                                     <input id="advGridMaxPages" type="number" class="bst-input" min="1" max="100" />
-                                    <div class="bst-field-desc">Max Jellyseerr pages fetched for grid views.</div>
+                                    <div class="bst-field-desc">Max Seerr pages fetched for grid views.</div>
                                 </div>
                             </div>
                             <div class="bst-input-group">
@@ -1164,7 +1164,7 @@
                                 <label class="bst-label" for="advRequestsFetchSize">Fetch size</label>
                                 <div class="bst-input-stack">
                                     <input id="advRequestsFetchSize" type="number" class="bst-input" min="1" max="500" />
-                                    <div class="bst-field-desc">How many requests to fetch from Jellyseerr per API call.</div>
+                                    <div class="bst-field-desc">How many requests to fetch from Seerr per API call.</div>
                                 </div>
                             </div>
                         </div>
@@ -1439,7 +1439,7 @@
                                         <option value="anyMediaInfo">Any media info</option>
                                         <option value="availableOnly">Available only</option>
                                     </select>
-                                    <div class="bst-field-desc">Which Jellyseerr statuses count as already requested.</div>
+                                    <div class="bst-field-desc">Which Seerr statuses count as already requested.</div>
                                 </div>
                             </div>
                         </div>

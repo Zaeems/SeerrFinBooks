@@ -284,7 +284,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         return;
                     }
                     if (!anySuccess && !isStale()) {
-                        container.innerHTML = '<div class="seerrfin-empty-row">Failed to load discovery rows. Check Jellyseerr settings and that your Jellyfin user is linked in Jellyseerr.</div>';
+                        container.innerHTML = '<div class="seerrfin-empty-row">Failed to load discovery rows. Check Seerr settings and that your Jellyfin user is linked in Seerr.</div>';
                     }
                     finishLoading();
                 };
@@ -351,7 +351,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 console.error('SeerrFin:', err);
                 container.dataset.seerrfinLoading = 'false';
                 container.dataset.seerrfinLoaded = 'true';
-                container.innerHTML = '<div class="seerrfin-empty-row">Failed to load discovery rows. Check Jellyseerr settings and that your Jellyfin user is linked in Jellyseerr.</div>';
+                container.innerHTML = '<div class="seerrfin-empty-row">Failed to load discovery rows. Check Seerr settings and that your Jellyfin user is linked in Seerr.</div>';
             });
         },
 

@@ -35,7 +35,7 @@ public class JellyseerrRequestsService
         PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
         if (string.IsNullOrWhiteSpace(config.JellyseerrUrl) || string.IsNullOrWhiteSpace(config.JellyseerrApiKey))
         {
-            return (400, "{\"error\":true,\"message\":\"Jellyseerr is not configured.\"}");
+            return (400, "{\"error\":true,\"message\":\"Seerr is not configured.\"}");
         }
 
         if (string.IsNullOrWhiteSpace(username))
@@ -50,7 +50,7 @@ public class JellyseerrRequestsService
         int? jellyseerrUserId = await ResolveJellyseerrUserIdAsync(client, username, cancellationToken).ConfigureAwait(false);
         if (jellyseerrUserId == null)
         {
-            return (404, "{\"error\":true,\"message\":\"Jellyseerr user not linked.\"}");
+            return (404, "{\"error\":true,\"message\":\"Seerr user not linked.\"}");
         }
 
         client.DefaultRequestHeaders.Add("X-Api-User", jellyseerrUserId.ToString());
@@ -113,8 +113,8 @@ public class JellyseerrRequestsService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch Jellyseerr requests");
-            return (502, "{\"error\":true,\"message\":\"Failed to reach Jellyseerr.\"}");
+            _logger.LogWarning(ex, "Failed to fetch Seerr requests");
+            return (502, "{\"error\":true,\"message\":\"Failed to reach Seerr.\"}");
         }
     }
 
@@ -172,7 +172,7 @@ public class JellyseerrRequestsService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to proxy Jellyseerr avatar");
+            _logger.LogDebug(ex, "Failed to proxy Seerr avatar");
             return (null, null);
         }
     }
