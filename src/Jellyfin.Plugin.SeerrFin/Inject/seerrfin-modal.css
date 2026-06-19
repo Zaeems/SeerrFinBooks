@@ -87,8 +87,8 @@
 
 .bst-aether-card {
     position: relative;
-    width: 95%;
-    height: 97%;
+    width: 70%;
+    height: 75%;
     max-width: 1200px;
     max-height: 850px;
     margin: -0.705em;
@@ -99,6 +99,13 @@
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
     overflow: hidden;
     pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+    .bst-aether-card {
+        width: 95%;
+        height: 97%;
+    }
 }
 
 .bst-aether-card-inner {

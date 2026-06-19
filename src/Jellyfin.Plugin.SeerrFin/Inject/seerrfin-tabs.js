@@ -284,7 +284,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         return;
                     }
                     if (!anySuccess && !isStale()) {
-                        container.innerHTML = '<div class="seerrfin-empty-row">Failed to load discovery rows. Check Seerr settings and that your Jellyfin user is linked in Seerr.</div>';
+                        container.innerHTML = `<div class="seerrfin-empty-row">Failed to load discovery rows. Check Seerr settings and that your Jellyfin user is linked in Seerr.</div>`;
                     }
                     finishLoading();
                 };
@@ -351,7 +351,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 console.error('SeerrFin:', err);
                 container.dataset.seerrfinLoading = 'false';
                 container.dataset.seerrfinLoaded = 'true';
-                container.innerHTML = '<div class="seerrfin-empty-row">Failed to load discovery rows. Check Seerr settings and that your Jellyfin user is linked in Seerr.</div>';
+                container.innerHTML = `<div class="seerrfin-empty-row">Failed to load discovery rows. Check Seerr settings and that your Jellyfin user is linked in Seerr.</div>`;
             });
         },
 
@@ -674,84 +674,86 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             return false;
         },
 
+        mountFromHtml: function (html) {
+            const mount = document.createElement('div');
+            mount.innerHTML = html.trim();
+            return mount.firstElementChild;
+        },
+
+        renderLetterboxdCardChrome: function () {
+            return `
+                <span class="seerrfin-letterboxd-select-indicator" aria-hidden="true">
+                    <span class="material-icons" aria-hidden="true">check</span>
+                </span>
+                <div class="seerrfin-request-card-actions">
+                    <button type="button" class="seerrfin-request-action-btn seerrfin-request-modal-btn"
+                        aria-label="Open request modal" title="Open request modal">
+                        <span class="material-icons" aria-hidden="true">download</span>
+                    </button>
+                </div>`;
+        },
+
+        wrapDiscoverCard: function (cardHtml, options) {
+            if (!options.letterboxdSlot) {
+                return cardHtml;
+            }
+            return `<div class="seerrfin-letterboxd-card-slot">${cardHtml}</div>`;
+        },
+
         buildRowSkeleton: function (title, kind) {
-            const section = document.createElement('div');
-            section.className = 'verticalSection seerrfin-skeleton-section';
-            section.setAttribute('aria-hidden', 'true');
-            section.dataset.seerrfinSkeleton = 'true';
-
-            const titleContainer = document.createElement('div');
-            titleContainer.className = 'sectionTitleContainer sectionTitleContainer-cards padded-left';
-
-            const titleBar = document.createElement('div');
-            titleBar.className = 'seerrfin-skeleton-title';
-            titleBar.setAttribute('aria-label', title || 'Loading');
-            titleContainer.appendChild(titleBar);
-            section.appendChild(titleContainer);
-
-            const track = document.createElement('div');
-            track.className = 'seerrfin-skeleton-track padded-left';
-
             const useBackdrop = kind === 'poster' && this.shouldUseBackdropThumbnails();
             const cardClass = kind === 'carousel'
                 ? 'seerrfin-skeleton-card seerrfin-skeleton-card--carousel'
-                : 'seerrfin-skeleton-card seerrfin-skeleton-card--poster' + (useBackdrop ? ' seerrfin-skeleton-card--backdrop' : '');
+                : `seerrfin-skeleton-card seerrfin-skeleton-card--poster${useBackdrop ? ' seerrfin-skeleton-card--backdrop' : ''}`;
             const count = kind === 'carousel' ? 6 : 8;
+            const cards = Array.from({ length: count }, function () {
+                return `<div class="${cardClass}"></div>`;
+            }).join('');
 
-            for (let i = 0; i < count; i++) {
-                const card = document.createElement('div');
-                card.className = cardClass;
-                track.appendChild(card);
-            }
-
-            section.appendChild(track);
-            return section;
+            return this.mountFromHtml(`
+                <div class="verticalSection seerrfin-skeleton-section" aria-hidden="true" data-seerrfin-skeleton="true">
+                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                        <div class="seerrfin-skeleton-title" aria-label="${this.escapeHtml(title || 'Loading')}"></div>
+                    </div>
+                    <div class="seerrfin-skeleton-track padded-left">${cards}</div>
+                </div>`);
         },
 
         buildPosterRow: function (title, items, path, options) {
             options = options || {};
-            const section = document.createElement('div');
-            section.className = 'verticalSection seerrfin-poster-section';
-
-            const titleContainer = document.createElement('div');
-            titleContainer.className = 'sectionTitleContainer sectionTitleContainer-cards padded-left';
-            const h2 = document.createElement('h2');
-            h2.className = 'sectionTitle sectionTitle-cards';
-            h2.textContent = title;
-            titleContainer.appendChild(h2);
-
-            if (path && items && items.length > 0) {
-                const viewMore = document.createElement('button');
-                viewMore.type = 'button';
-                viewMore.className = 'seerrfin-view-more';
-                viewMore.textContent = 'View more \u2192';
-                viewMore.setAttribute('data-path', path);
-                viewMore.setAttribute('data-title', title);
-                titleContainer.appendChild(viewMore);
-            }
-
-            section.appendChild(titleContainer);
-
-            const itemsContainer = document.createElement('div');
-            itemsContainer.setAttribute('is', 'emby-itemscontainer');
-            itemsContainer.className = 'itemsContainer scrollSlider focuscontainer-x';
+            const safeTitle = this.escapeHtml(title);
 
             if (!items || items.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'seerrfin-empty-row padded-left';
-                empty.textContent = 'No items to show';
-                section.appendChild(empty);
-                return section;
+                return this.mountFromHtml(`
+                    <div class="verticalSection seerrfin-poster-section">
+                        <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                            <h2 class="sectionTitle sectionTitle-cards">${safeTitle}</h2>
+                        </div>
+                        <div class="seerrfin-empty-row padded-left">No items to show</div>
+                    </div>`);
             }
 
+            const viewMoreBtn = path && items.length > 0 ? `
+                <button type="button" class="seerrfin-view-more" data-path="${this.escapeHtml(path)}" data-title="${safeTitle}">
+                    View more \u2192
+                </button>` : '';
+
+            let pathAttrs = '';
             if (path) {
                 const total = parseInt(options.total || '0', 10);
-                section.dataset.path = path;
-                section.dataset.loadedCount = String(items.length);
-                section.dataset.total = String(total);
-                section.dataset.hasMore = String(total === 0 || items.length < total);
+                pathAttrs = ` data-path="${this.escapeHtml(path)}" data-loaded-count="${items.length}" data-total="${total}" data-has-more="${total === 0 || items.length < total}"`;
             }
 
+            const section = this.mountFromHtml(`
+                <div class="verticalSection seerrfin-poster-section"${pathAttrs}>
+                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                        <h2 class="sectionTitle sectionTitle-cards">${safeTitle}</h2>
+                        ${viewMoreBtn}
+                    </div>
+                    <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x"></div>
+                </div>`);
+
+            const itemsContainer = section.querySelector('.itemsContainer');
             itemsContainer.innerHTML = this.createDiscoverCards(items);
             this.appendHorizontalScroller(section, itemsContainer, {
                 focusScale: this.getAdvancedCarouselSetting('discoverRowFocusScale', true),
@@ -921,36 +923,32 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         },
 
         buildCarouselSection: function (title, items, mediaType, kind) {
-            const section = document.createElement('div');
-            section.className = 'verticalSection seerrfin-carousel-section';
-
-            const titleContainer = document.createElement('div');
-            titleContainer.className = 'sectionTitleContainer sectionTitleContainer-cards padded-left';
-            const h2 = document.createElement('h2');
-            h2.className = 'sectionTitle sectionTitle-cards';
-            h2.textContent = title;
-            titleContainer.appendChild(h2);
-            section.appendChild(titleContainer);
-
-            const itemsContainer = document.createElement('div');
-            itemsContainer.setAttribute('is', 'emby-itemscontainer');
-            itemsContainer.className = 'itemsContainer scrollSlider focuscontainer-x';
-
-            let html = '';
             const self = this;
-            (items || []).forEach(function (item) {
-                html += self.createBoxCard(item, mediaType, kind);
-            });
+            const safeTitle = this.escapeHtml(title);
+            const cardsHtml = (items || []).map(function (item) {
+                return self.createBoxCard(item, mediaType, kind);
+            }).join('');
 
-            if (!html) {
-                const empty = document.createElement('div');
-                empty.className = 'seerrfin-empty-row padded-left';
-                empty.textContent = 'No items to show';
-                section.appendChild(empty);
-                return section;
+            if (!cardsHtml) {
+                return this.mountFromHtml(`
+                    <div class="verticalSection seerrfin-carousel-section">
+                        <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                            <h2 class="sectionTitle sectionTitle-cards">${safeTitle}</h2>
+                        </div>
+                        <div class="seerrfin-empty-row padded-left">No items to show</div>
+                    </div>`);
             }
 
-            itemsContainer.innerHTML = html;
+            const section = this.mountFromHtml(`
+                <div class="verticalSection seerrfin-carousel-section">
+                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                        <h2 class="sectionTitle sectionTitle-cards">${safeTitle}</h2>
+                    </div>
+                    <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x"></div>
+                </div>`);
+
+            const itemsContainer = section.querySelector('.itemsContainer');
+            itemsContainer.innerHTML = cardsHtml;
             this.appendHorizontalScroller(section, itemsContainer, {
                 focusScale: this.getAdvancedCarouselSetting('browseCarouselFocusScale', false)
             });
@@ -981,7 +979,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     const backdropPath = mode === 'first' ? backdrops[0] : backdrops[Math.floor(Math.random() * backdrops.length)];
                     const backdropUrl = this.buildTmdbImageUrl(backdropPath, 'genreBackdrop');
                     if (backdropUrl) {
-                        mediaHtml = '<span class="seerrfin-discover-backdrop-media" style="background-image: url(\'' + this.escapeHtml(backdropUrl) + '\')"></span>';
+                        mediaHtml = `<span class="seerrfin-discover-backdrop-media" style="background-image: url('${this.escapeHtml(backdropUrl)}')"></span>`;
                     }
                 }
             }
@@ -989,22 +987,23 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             if (logoUrl) {
                 extraClass = ' seerrfin-box-card--logo';
                 const logoClass = item.weirdSize ? 'seerrfin-box-logo-weird' : 'seerrfin-box-logo';
-                mediaHtml = '<img class="' + logoClass + '" src="' + this.escapeHtml(logoUrl) + '" alt="' + safeName + '" loading="lazy" />';
+                mediaHtml = `<img class="${logoClass}" src="${this.escapeHtml(logoUrl)}" alt="${safeName}" loading="lazy" />`;
             } else {
-                overlayTitleHtml = '<span class="seerrfin-discover-overlay-title seerrfin-box-label">' + safeName + '</span>';
+                overlayTitleHtml = `<span class="seerrfin-discover-overlay-title seerrfin-box-label">${safeName}</span>`;
             }
 
-            return '<div class="card seerrfin-discover-card seerrfin-discover-card--backdrop seerrfin-box-card seerrfin-discover-card--static' + extraClass + '"' +
-                ' data-kind="' + kind + '" data-media-type="' + mediaType + '" data-id="' + id + '" data-name="' + safeName + '"' + ' role="button" tabindex="0">' +
-                '   <div class="cardBox">' +
-                '       <div class="cardScalable seerrfin-discover-backdrop-scalable">' +
-                '           <div class="cardPadder seerrfin-discover-backdrop-padder"></div>' +
-                '           <div class="cardImageContainer coveredImage cardContent seerrfin-discover-backdrop-image" aria-label="' + safeName + '">' +
-                mediaHtml + overlayTitleHtml +
-                '           </div>' +
-                '       </div>' +
-                '   </div>' +
-                '</div>';
+            return `
+                <div class="card seerrfin-discover-card seerrfin-discover-card--backdrop seerrfin-box-card seerrfin-discover-card--static${extraClass}"
+                    data-kind="${kind}" data-media-type="${mediaType}" data-id="${id}" data-name="${safeName}" role="button" tabindex="0">
+                    <div class="cardBox">
+                        <div class="cardScalable seerrfin-discover-backdrop-scalable">
+                            <div class="cardPadder seerrfin-discover-backdrop-padder"></div>
+                            <div class="cardImageContainer coveredImage cardContent seerrfin-discover-backdrop-image" aria-label="${safeName}">
+                                ${mediaHtml}${overlayTitleHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
         },
 
         buildBrowseGridPath: function (kind, mediaType, id) {
@@ -1050,18 +1049,14 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             const date = new Date(self.getField(item, 'PremiereDate', 'premiereDate', 'releaseDate', 'firstAirDate') || '');
             const year = Number.isNaN(date.getFullYear()) ? '' : date.getFullYear();
             const rating = Number(self.getField(item, 'CommunityRating', 'communityRating') || 0);
-            let yearText = '';
-            if (rating) {
-                yearText += '<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span> ' + rating.toFixed(1) + ' • ';
-            } else {
-                yearText += '<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span> - • ';
-            }
-            yearText += year;
+            const starIcon = '<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span>';
+            const yearText = rating
+                ? `${starIcon} ${rating.toFixed(1)} • ${year}`
+                : `${starIcon} - • ${year}`;
             return { year: year, yearText: yearText };
         },
 
         createDiscoverPosterCards: function (items, forGrid, options) {
-            let html = '';
             const self = this;
             options = options || {};
             const interactive = options.interactive !== false;
@@ -1070,55 +1065,67 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             const padderType = forGrid ? 'cardPadder-portrait' : 'cardPadder-overflowPortrait';
             const staticClass = interactive ? '' : ' seerrfin-discover-card--static';
             const boxClass = includeMetaText ? 'cardBox cardBox-bottompadded' : 'cardBox';
+            const letterboxdSlot = options.letterboxdSlot === true;
 
-            items.forEach(function (item) {
+            return items.map(function (item) {
                 const mediaId = self.getProviderId(item, 'Tmdb') ||
                     self.getProviderId(item, 'Jellyseerr') ||
                     self.getField(item, 'id', 'Id');
                 const mediaType = self.normalizeDiscoverMediaType(
                     self.getField(item, 'SourceType', 'sourceType', 'mediaType', 'MediaType')
                 );
-                let posterUrl = self.buildDiscoverPosterUrl(item);
+                const posterUrl = self.buildDiscoverPosterUrl(item);
                 const safeName = self.escapeHtml(self.getField(item, 'Name', 'name', 'OriginalTitle', 'originalTitle') || 'Unknown');
                 if (!mediaId || !mediaType) {
                     return;
                 }
 
                 const safeUrl = self.escapeHtml(posterUrl || '');
-                const imageAttrs = posterUrl
-                    ? ' data-src="' + safeUrl + '"'
-                    : '';
-
-                html += '<div class="card ' + cardType + ' seerrfin-discover-card' + staticClass + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '">';
-                html += '   <div class="' + boxClass + '">';
-                html += '       <div class="cardScalable">';
-                html += '           <div class="cardPadder ' + padderType + ' lazy-hidden-children"></div>';
-                html += '           <div class="cardImageContainer coveredImage cardContent lazy lazy-hidden"' + imageAttrs + ' aria-label="' + safeName + '"></div>';
-                if (interactive) {
-                    html += '           <div class="cardOverlayContainer">';
-                    html += '               <div class="cardImageContainer"></div>';
-                    html += '               <div class="cardOverlayButton-br flex">';
-                    html += '                   <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="' + mediaId + '" data-media-type="' + mediaType + '">';
-                    html += '                       <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>';
-                    html += '                   </button>';
-                    html += '               </div>';
-                    html += '           </div>';
-                }
-                html += '       </div>';
-                if (includeMetaText) {
-                    html += '       <div class="cardText cardTextCentered cardText-first"><bdi><span title="' + safeName + '">' + safeName + '</span></bdi></div>';
+                const imageAttrs = posterUrl ? ` data-src="${safeUrl}"` : '';
+                const overlayHtml = interactive ? `
+                    <div class="cardOverlayContainer">
+                        <div class="cardImageContainer"></div>
+                        <div class="cardOverlayButton-br flex">
+                            <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="${mediaId}" data-media-type="${mediaType}">
+                                <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>` : '';
+                const metaHtml = includeMetaText ? (function () {
                     const meta = self.buildDiscoverYearText(item);
-                    html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + meta.year + '">' + meta.yearText + '</span></bdi></div>';
-                }
-                html += '   </div>';
-                html += '</div>';
-            }, this);
+                    return `
+                        <div class="cardText cardTextCentered cardText-first"><bdi><span title="${safeName}">${safeName}</span></bdi></div>
+                        <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="${meta.year}">${meta.yearText}</span></bdi></div>`;
+                })() : '';
+                const selected = letterboxdSlot && typeof options.getLetterboxdSelected === 'function'
+                    ? options.getLetterboxdSelected(parseInt(mediaId, 10))
+                    : false;
+                const letterboxdClass = letterboxdSlot
+                    ? ` seerrfin-letterboxd-card${selected ? ' is-selected' : ''}`
+                    : '';
+                const ariaSelected = letterboxdSlot
+                    ? ` aria-selected="${selected ? 'true' : 'false'}"`
+                    : '';
+                const chromeHtml = letterboxdSlot ? self.renderLetterboxdCardChrome() : '';
 
-            return html;
+                const cardHtml = `
+                    <div class="card ${cardType} seerrfin-discover-card${staticClass}${letterboxdClass}" data-tmdb-id="${mediaId}" data-media-type="${mediaType}"${ariaSelected}>
+                        <div class="${boxClass}">
+                            <div class="cardScalable">
+                                <div class="cardPadder ${padderType} lazy-hidden-children"></div>
+                                <div class="cardImageContainer coveredImage cardContent lazy lazy-hidden"${imageAttrs} aria-label="${safeName}"></div>
+                                ${overlayHtml}
+                                ${chromeHtml}
+                            </div>
+                            ${metaHtml}
+                        </div>
+                    </div>`;
+
+                return self.wrapDiscoverCard(cardHtml, options);
+            }).join('');
         },
 
         createDiscoverBackdropCards: function (items, forGrid, options) {
-            let html = '';
             const self = this;
             options = options || {};
             const interactive = options.interactive !== false;
@@ -1126,8 +1133,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             const gridClass = forGrid ? ' seerrfin-discover-card--grid' : '';
             const staticClass = interactive ? '' : ' seerrfin-discover-card--static';
             const boxClass = includeMetaText ? 'cardBox cardBox-bottompadded' : 'cardBox';
+            const letterboxdSlot = options.letterboxdSlot === true;
 
-            items.forEach(function (item) {
+            return items.map(function (item) {
                 const mediaId = self.getProviderId(item, 'Tmdb') ||
                     self.getProviderId(item, 'Jellyseerr') ||
                     self.getField(item, 'id', 'Id');
@@ -1144,38 +1152,48 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 const tmdbBackdropPath = self.getProviderId(item, 'TmdbBackdropPath') || '';
                 const safeFallback = self.escapeHtml(fallbackUrl || '');
                 const safeBackdropPath = self.escapeHtml(tmdbBackdropPath);
-                const fallbackAttr = safeFallback ? ' data-fallback-src="' + safeFallback + '"' : '';
-                const backdropPathAttr = safeBackdropPath ? ' data-tmdb-backdrop-path="' + safeBackdropPath + '"' : '';
-
-                html += '<div class="card seerrfin-discover-card seerrfin-discover-card--backdrop' + gridClass + staticClass + '" data-tmdb-id="' + mediaId + '" data-media-type="' + mediaType + '"' + fallbackAttr + backdropPathAttr + '>';
-                html += '   <div class="' + boxClass + '">';
-                html += '       <div class="cardScalable seerrfin-discover-backdrop-scalable">';
-                html += '           <div class="cardPadder seerrfin-discover-backdrop-padder"></div>';
-                html += '           <div class="cardImageContainer coveredImage cardContent seerrfin-discover-backdrop-image" aria-label="' + safeName + '">';
-                html += '               <span class="seerrfin-discover-backdrop-media"></span>';
-                html += '               <span class="seerrfin-discover-overlay-title seerrfin-box-label">' + safeName + '</span>';
-                html += '           </div>';
-                if (interactive) {
-                    html += '           <div class="cardOverlayContainer">';
-                    html += '               <div class="cardImageContainer"></div>';
-                    html += '               <div class="cardOverlayButton-br flex">';
-                    html += '                   <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="' + mediaId + '" data-media-type="' + mediaType + '">';
-                    html += '                       <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>';
-                    html += '                   </button>';
-                    html += '               </div>';
-                    html += '           </div>';
-                }
-                html += '       </div>';
-                if (includeMetaText) {
-                    html += '       <div class="cardText cardTextCentered cardText-first seerrfin-discover-title-below"><bdi><span title="' + safeName + '">' + safeName + '</span></bdi></div>';
+                const fallbackAttr = safeFallback ? ` data-fallback-src="${safeFallback}"` : '';
+                const backdropPathAttr = safeBackdropPath ? ` data-tmdb-backdrop-path="${safeBackdropPath}"` : '';
+                const overlayHtml = interactive ? `
+                    <div class="cardOverlayContainer">
+                        <div class="cardImageContainer"></div>
+                        <div class="cardOverlayButton-br flex">
+                            <button is="discover-requestbutton" type="button" class="discover-requestbutton cardOverlayButton cardOverlayButton-hover paper-icon-button-light emby-button" data-id="${mediaId}" data-media-type="${mediaType}">
+                                <span class="material-icons cardOverlayButtonIcon cardOverlayButtonIcon-hover add" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>` : '';
+                const metaHtml = includeMetaText ? (function () {
                     const meta = self.buildDiscoverYearText(item);
-                    html += '       <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="' + meta.year + '">' + meta.yearText + '</span></bdi></div>';
-                }
-                html += '   </div>';
-                html += '</div>';
-            }, this);
+                    return `
+                        <div class="cardText cardTextCentered cardText-first seerrfin-discover-title-below"><bdi><span title="${safeName}">${safeName}</span></bdi></div>
+                        <div class="cardText cardTextCentered cardText-secondary"><bdi><span title="${meta.year}">${meta.yearText}</span></bdi></div>`;
+                })() : '';
+                const selected = letterboxdSlot && typeof options.getLetterboxdSelected === 'function'
+                    ? options.getLetterboxdSelected(parseInt(mediaId, 10))
+                    : false;
+                const letterboxdClass = letterboxdSlot ? ` seerrfin-letterboxd-card${selected ? ' is-selected' : ''}` : '';
+                const ariaSelected = letterboxdSlot ? ` aria-selected="${selected ? 'true' : 'false'}"` : '';
+                const chromeHtml = letterboxdSlot ? self.renderLetterboxdCardChrome() : '';
 
-            return html;
+                const cardHtml = `
+                    <div class="card seerrfin-discover-card seerrfin-discover-card--backdrop${gridClass}${staticClass}${letterboxdClass}" data-tmdb-id="${mediaId}" data-media-type="${mediaType}"${fallbackAttr}${backdropPathAttr}${ariaSelected}>
+                        <div class="${boxClass}">
+                            <div class="cardScalable seerrfin-discover-backdrop-scalable">
+                                <div class="cardPadder seerrfin-discover-backdrop-padder"></div>
+                                <div class="cardImageContainer coveredImage cardContent seerrfin-discover-backdrop-image" aria-label="${safeName}">
+                                    <span class="seerrfin-discover-backdrop-media"></span>
+                                    <span class="seerrfin-discover-overlay-title seerrfin-box-label">${safeName}</span>
+                                </div>
+                                ${overlayHtml}
+                                ${chromeHtml}
+                            </div>
+                            ${metaHtml}
+                        </div>
+                    </div>`;
+
+                return self.wrapDiscoverCard(cardHtml, options);
+            }).join('');
         },
 
         setDiscoverBackdropImage: function (card, cachedUrl) {
@@ -1543,6 +1561,23 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             });
         },
 
+        renderGridViewShell: function () {
+            return `
+                <div class="seerrfin-grid-view">
+                    <div class="seerrfin-grid-header padded-left padded-right">
+                        <button type="button" class="seerrfin-grid-back paper-icon-button-light emby-button">
+                            <span class="material-icons" aria-hidden="true">arrow_back</span>
+                        </button>
+                        <h2 class="seerrfin-grid-title sectionTitle sectionTitle-cards"></h2>
+                    </div>
+                    <div class="itemsContainer vertical-wrap padded-left padded-right"></div>
+                    <div class="seerrfin-grid-loadmore" style="display:none">
+                        <button type="button" class="raised emby-button">Load more</button>
+                    </div>
+                    <div class="seerrfin-grid-status" style="display:none"></div>
+                </div>`;
+        },
+
         openGridView: function (container, title, path) {
             const self = this;
             self.clearJellyfinSelection();
@@ -1556,49 +1591,13 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             let gridView = container.querySelector('.seerrfin-grid-view');
             if (!gridView) {
-                gridView = document.createElement('div');
-                gridView.className = 'seerrfin-grid-view';
-
-                const header = document.createElement('div');
-                header.className = 'seerrfin-grid-header padded-left padded-right';
-
-                const backBtn = document.createElement('button');
-                backBtn.type = 'button';
-                backBtn.className = 'seerrfin-grid-back paper-icon-button-light emby-button';
-                backBtn.innerHTML = '<span class="material-icons" aria-hidden="true">arrow_back</span>';
-                backBtn.addEventListener('click', function () {
-                    self.closeGridView(container);
-                });
-
-                const heading = document.createElement('h2');
-                heading.className = 'seerrfin-grid-title sectionTitle sectionTitle-cards';
-
-                const itemsContainer = document.createElement('div');
-                itemsContainer.className = 'itemsContainer vertical-wrap padded-left padded-right';
-
-                const loadMore = document.createElement('div');
-                loadMore.className = 'seerrfin-grid-loadmore';
-                loadMore.style.display = 'none';
-
-                const loadMoreBtn = document.createElement('button');
-                loadMoreBtn.type = 'button';
-                loadMoreBtn.className = 'raised emby-button';
-                loadMoreBtn.textContent = 'Load more';
-                loadMore.appendChild(loadMoreBtn);
-
-                const status = document.createElement('div');
-                status.className = 'seerrfin-grid-status';
-                status.style.display = 'none';
-
-                header.appendChild(backBtn);
-                header.appendChild(heading);
-                gridView.appendChild(header);
-                gridView.appendChild(itemsContainer);
-                gridView.appendChild(loadMore);
-                gridView.appendChild(status);
+                gridView = self.mountFromHtml(self.renderGridViewShell());
                 container.appendChild(gridView);
 
-                loadMoreBtn.addEventListener('click', function () {
+                gridView.querySelector('.seerrfin-grid-back').addEventListener('click', function () {
+                    self.closeGridView(container);
+                });
+                gridView.querySelector('.seerrfin-grid-loadmore button').addEventListener('click', function () {
                     self.loadMoreGridItems(gridView);
                 });
             }
@@ -1658,7 +1657,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 status.style.display = 'none';
 
                 if (!result.items.length && loadedCount === 0) {
-                    itemsContainer.innerHTML = '<div class="seerrfin-empty-row">No items to show</div>';
+                    itemsContainer.innerHTML = `<div class="seerrfin-empty-row">No items to show</div>`;
                     loadMore.style.display = 'none';
                     return;
                 }
@@ -1695,7 +1694,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 loadMoreBtn.disabled = false;
                 console.error('SeerrFin grid load failed:', err);
                 if (loadedCount === 0) {
-                    itemsContainer.innerHTML = '<div class="seerrfin-empty-row">Failed to load items.</div>';
+                    itemsContainer.innerHTML = `<div class="seerrfin-empty-row">Failed to load items.</div>`;
                 }
             });
         },
@@ -1835,7 +1834,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         if (!icon || icon.dataset.bstMenuIcon) return;
 
         icon.dataset.bstMenuIcon = '1';
-        icon.innerHTML = '<span class="material-icons notranslate MuiIcon-root MuiIcon-fontSizeMedium" aria-hidden="true">preview</span>'; // eventually add logo svg
+        icon.innerHTML = `<span class="material-icons notranslate MuiIcon-root MuiIcon-fontSizeMedium" aria-hidden="true">preview</span>`;
     }
 
     new MutationObserver(patch).observe(document.body, { childList: true, subtree: true });

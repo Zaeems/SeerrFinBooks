@@ -270,64 +270,63 @@
 
     function renderCardActions(item) {
         if (!item.tmdbId) {
-            return '';
+            return;
         }
 
         const safeTitle = escapeHtml(item.title || 'content');
         const mediaType = item.type === 'tv' ? 'tv' : 'movie';
         const safeTmdbId = escapeHtml(String(item.tmdbId));
         const safeMediaType = escapeHtml(mediaType);
-        let html = '<div class="seerrfin-request-card-actions">';
 
-        if (isPlayableRequest(item)) {
-            const safeItemId = escapeHtml(String(item.jellyfinItemId));
-            html +=
-                '<button type="button" class="seerrfin-request-action-btn seerrfin-request-play-btn" ' +
-                    'data-jellyfin-item-id="' + safeItemId + '" ' +
-                    'aria-label="Open ' + safeTitle + ' in Jellyfin" title="Open in Jellyfin">' +
-                    '<span class="material-icons" aria-hidden="true">play_arrow</span>' +
-                '</button>';
-        }
+        const playBtn = isPlayableRequest(item) ? `
+            <button type="button" class="seerrfin-request-action-btn seerrfin-request-play-btn"
+                data-jellyfin-item-id="${escapeHtml(String(item.jellyfinItemId))}"
+                aria-label="Open ${safeTitle} in Jellyfin" title="Open in Jellyfin">
+                <span class="material-icons" aria-hidden="true">play_arrow</span>
+            </button>` : '';
 
-        html +=
-            '<button type="button" class="seerrfin-request-action-btn seerrfin-request-modal-btn" ' +
-                'data-tmdb-id="' + safeTmdbId + '" data-media-type="' + safeMediaType + '" ' +
-                'aria-label="View request details for ' + safeTitle + '" title="Request details">' +
-                '<span class="material-icons" aria-hidden="true">download</span>' +
-            '</button>' +
-            '<button type="button" class="seerrfin-request-action-btn seerrfin-request-seerr-btn" ' +
-                'data-tmdb-id="' + safeTmdbId + '" data-media-type="' + safeMediaType + '" ' +
-                'aria-label="Open ' + safeTitle + ' in Seerr" title="Open in Seerr">' +
-                SEERR_LOGO +
-            '</button>';
-
+        let radarrBtn = '';
         if (mediaType === 'movie' && state.clientSettings?.radarrUrl) {
             const radarrUrl = getServarrOpenUrl(item);
             if (radarrUrl) {
-                html +=
-                    '<button type="button" class="seerrfin-request-action-btn seerrfin-request-radarr-btn" ' +
-                        'data-open-url="' + escapeHtml(radarrUrl) + '" ' +
-                        'aria-label="Open ' + safeTitle + ' in Radarr" title="Open in Radarr">' +
-                        RADARR_LOGO +
-                    '</button>';
+                radarrBtn = `
+            <button type="button" class="seerrfin-request-action-btn seerrfin-request-radarr-btn"
+                data-open-url="${escapeHtml(radarrUrl)}"
+                aria-label="Open ${safeTitle} in Radarr" title="Open in Radarr">
+                ${RADARR_LOGO}
+            </button>`;
             }
         }
 
+        let sonarrBtn = '';
         if (mediaType === 'tv' && state.clientSettings?.sonarrUrl) {
             const sonarrUrl = getServarrOpenUrl(item);
             if (sonarrUrl) {
-                html +=
-                    '<button type="button" class="seerrfin-request-action-btn seerrfin-request-sonarr-btn" ' +
-                        'data-open-url="' + escapeHtml(sonarrUrl) + '" ' +
-                        'aria-label="Open ' + safeTitle + ' in Sonarr" title="Open in Sonarr">' +
-                        SONARR_LOGO +
-                    '</button>';
+                sonarrBtn = `
+            <button type="button" class="seerrfin-request-action-btn seerrfin-request-sonarr-btn"
+                data-open-url="${escapeHtml(sonarrUrl)}"
+                aria-label="Open ${safeTitle} in Sonarr" title="Open in Sonarr">
+                ${SONARR_LOGO}
+            </button>`;
             }
         }
 
-        html += '</div>';
-
-        return html;
+        return `
+            <div class="seerrfin-request-card-actions">
+                ${playBtn}
+                <button type="button" class="seerrfin-request-action-btn seerrfin-request-modal-btn"
+                    data-tmdb-id="${safeTmdbId}" data-media-type="${safeMediaType}"
+                    aria-label="View request details for ${safeTitle}" title="Request details">
+                    <span class="material-icons" aria-hidden="true">download</span>
+                </button>
+                <button type="button" class="seerrfin-request-action-btn seerrfin-request-seerr-btn"
+                    data-tmdb-id="${safeTmdbId}" data-media-type="${safeMediaType}"
+                    aria-label="Open ${safeTitle} in Seerr" title="Open in Seerr">
+                    ${SEERR_LOGO}
+                </button>
+                ${radarrBtn}
+                ${sonarrBtn}
+            </div>`;
     }
 
     function mapRequestToDiscoverItem(item) {
@@ -365,7 +364,7 @@
     function renderDiscoverCard(item) {
         const plugin = getPlugin();
         if (!plugin || !item.tmdbId || typeof plugin.createDiscoverCards !== 'function') {
-            return '';
+            return;
         }
 
         return plugin.createDiscoverCards([mapRequestToDiscoverItem(item)], false, getCardOptions());
@@ -411,7 +410,7 @@
     function renderProgressBlock(item) {
         const progress = getServarrProgress(item);
         if (!progress) {
-            return '';
+            return;
         }
 
         const isFailed = progress.statusKey === 'failed' || (item.mediaStatusLabel || '').toLowerCase() === 'failed';
@@ -421,24 +420,23 @@
             progress.statusKey === 'queued' || progress.statusKey.indexOf('downloaded-') === 0
         );
 
-        const percentText = isFailed ? 'Failed' : (isTransfer ? (percent + '%') : '0%');
+        const percentText = isFailed ? 'Failed' : (isTransfer ? `${percent}%` : '0%');
         const detailText = isFailed
             ? 'Failed to find content'
             : (isTransfer
-                ? formatBytes(progress.downloadedBytes) + '/' + formatBytes(progress.totalBytes)
+                ? `${formatBytes(progress.downloadedBytes)}/${formatBytes(progress.totalBytes)}`
                 : (progress.statusLabel || ''));
 
-        return (
-            '<div class="seerrfin-request-progress" data-status="' + statusKey + '">' +
-                '<div class="seerrfin-request-progress-bar" aria-hidden="true">' +
-                    '<div class="seerrfin-request-progress-fill" style="width:' + percent + '%"></div>' +
-                '</div>' +
-                '<div class="seerrfin-request-progress-meta">' +
-                    '<span class="seerrfin-request-progress-percent">' + escapeHtml(percentText) + '</span>' +
-                    '<span class="seerrfin-request-progress-detail">' + escapeHtml(detailText) + '</span>' +
-                '</div>' +
-            '</div>'
-        );
+        return `
+            <div class="seerrfin-request-progress" data-status="${statusKey}">
+                <div class="seerrfin-request-progress-bar" aria-hidden="true">
+                    <div class="seerrfin-request-progress-fill" style="width:${percent}%"></div>
+                </div>
+                <div class="seerrfin-request-progress-meta">
+                    <span class="seerrfin-request-progress-percent">${escapeHtml(percentText)}</span>
+                    <span class="seerrfin-request-progress-detail">${escapeHtml(detailText)}</span>
+                </div>
+            </div>`;
     }
 
     function renderContentBlock(item, isLandscape) {
@@ -447,11 +445,11 @@
         const timeAgo = item.createdAt ? escapeHtml(formatRelativeDate(item.createdAt)) : '';
         const avatarUrl = getAvatarUrl(item.requestedByAvatar);
         const avatarHtml = avatarUrl
-            ? '<img class="seerrfin-request-avatar" src="' + escapeHtml(avatarUrl) + '" alt="" loading="lazy" onerror="this.remove()">'
+            ? `<img class="seerrfin-request-avatar" src="${escapeHtml(avatarUrl)}" alt="" loading="lazy" onerror="this.remove()">`
             : '';
 
         const chips = [
-            '<span class="seerrfin-request-chip ' + chipClassForStatus(statusLabel) + '">' + escapeHtml(statusLabel) + '</span>'
+            `<span class="seerrfin-request-chip ${chipClassForStatus(statusLabel)}">${escapeHtml(statusLabel)}</span>`
         ];
 
         if (item.is4k) {
@@ -459,37 +457,33 @@
         }
 
         if (item.type) {
-            chips.push('<span class="seerrfin-request-chip seerrfin-request-chip--type">' + escapeHtml(item.type === 'tv' ? 'TV' : 'Movie') + '</span>');
+            chips.push(`<span class="seerrfin-request-chip seerrfin-request-chip--type">${escapeHtml(item.type === 'tv' ? 'TV' : 'Movie')}</span>`);
         }
 
-        let html =
-            '<div class="seerrfin-request-content">' +
-                '<div class="seerrfin-request-title">' +
-                    '<span title="' + safeTitle + '">' + safeTitle + '</span>' +
-                    (item.year ? ' <span class="seerrfin-request-year">(' + escapeHtml(String(item.year)) + ')</span>' : '') +
-                '</div>' +
-                '<div class="seerrfin-request-chips">' + chips.join('') + '</div>' +
-                '<div class="seerrfin-request-meta">' +
-                    '<span>Requested by</span> ' + avatarHtml +
-                    '<span class="seerrfin-request-meta-light">' + escapeHtml(item.requestedBy || 'Unknown') + '</span>' +
-                    (timeAgo ? ' &bull; <span>' + timeAgo + '</span>' : '') +
-                '</div>';
+        const yearHtml = item.year ? ` <span class="seerrfin-request-year">(${escapeHtml(String(item.year))})</span>` : '';
+        const timeAgoHtml = timeAgo ? ` &bull; <span>${timeAgo}</span>` : '';
 
         const seasonNumbers = Array.isArray(item.seasonNumbers) ? item.seasonNumbers : [];
-        if (item.type === 'tv' && seasonNumbers.length) {
-            html += '<div class="seerrfin-request-meta">Requested seasons: <span class="seerrfin-request-meta-light">' + escapeHtml(seasonNumbers.join(', ')) + '</span></div>';
-        }
+        const seasonsHtml = item.type === 'tv' && seasonNumbers.length ? `<div class="seerrfin-request-meta">Requested seasons: <span class="seerrfin-request-meta-light">${escapeHtml(seasonNumbers.join(', '))}</span></div>` : '';
 
         const progress = getServarrProgress(item);
-        if (progress) {
-            if (!isLandscape) {
-                html += '<div class="seerrfin-request-progress-spacer"></div>';
-            }
-            html += renderProgressBlock(item);
-        }
+        const progressSpacerHtml = progress && !isLandscape ? '<div class="seerrfin-request-progress-spacer"></div>' : '';
+        const progressHtml = progress ? renderProgressBlock(item) : '';
 
-        html += '</div>';
-        return html;
+        return `
+            <div class="seerrfin-request-content">
+                <div class="seerrfin-request-title">
+                    <span title="${safeTitle}">${safeTitle}</span>${yearHtml}
+                </div>
+                <div class="seerrfin-request-chips">${chips.join('')}</div>
+                <div class="seerrfin-request-meta">
+                    <span>Requested by</span> ${avatarHtml}
+                    <span class="seerrfin-request-meta-light">${escapeHtml(item.requestedBy || 'Unknown')}</span>${timeAgoHtml}
+                </div>
+                ${seasonsHtml}
+                ${progressSpacerHtml}
+                ${progressHtml}
+            </div>`;
     }
 
     function renderRequestCard(item) {
@@ -498,17 +492,16 @@
         const discoverCard = renderDiscoverCard(item);
 
         if (!discoverCard) {
-            return '';
+            return;
         }
 
-        return (
-            '<article class="seerrfin-request-box ' + layoutClass + '" data-request-id="' + escapeHtml(String(item.id || '')) + '" hidden>' +
-                '<div class="seerrfin-request-box-inner">' +
-                    '<div class="seerrfin-request-card-slot">' + discoverCard + renderCardActions(item) + '</div>' +
-                    renderContentBlock(item, isLandscape) +
-                '</div>' +
-            '</article>'
-        );
+        return `
+            <article class="seerrfin-request-box ${layoutClass}" data-request-id="${escapeHtml(String(item.id || ''))}" hidden>
+                <div class="seerrfin-request-box-inner">
+                    <div class="seerrfin-request-card-slot">${discoverCard}${renderCardActions(item) || ''}</div>
+                    ${renderContentBlock(item, isLandscape)}
+                </div>
+            </article>`;
     }
 
     function hydrateRequestCards(container) {
@@ -592,6 +585,13 @@
         });
     }
 
+    function renderPagination(page, totalPages) {
+        return `
+            <button type="button" class="raised emby-button seerrfin-requests-prev" ${page <= 1 ? 'disabled' : ''}>Previous</button>
+            <span class="seerrfin-requests-page-info">Page ${page} of ${totalPages}</span>
+            <button type="button" class="raised emby-button seerrfin-requests-next" ${page >= totalPages ? 'disabled' : ''}>Next</button>`;
+    }
+
     function updatePagination(container, totalPages) {
         let pagination = container.querySelector('.seerrfin-requests-pagination');
 
@@ -608,10 +608,7 @@
             container.appendChild(pagination);
         }
 
-        pagination.innerHTML =
-            '<button type="button" class="raised emby-button seerrfin-requests-prev" ' + (state.page <= 1 ? 'disabled' : '') + '>Previous</button>' +
-            '<span class="seerrfin-requests-page-info">Page ' + state.page + ' of ' + totalPages + '</span>' +
-            '<button type="button" class="raised emby-button seerrfin-requests-next" ' + (state.page >= totalPages ? 'disabled' : '') + '>Next</button>';
+        pagination.innerHTML = renderPagination(state.page, totalPages);
     }
 
     function renderAllCards(container) {
@@ -621,14 +618,14 @@
         }
 
         if (!state.allRequests.length) {
-            body.innerHTML = '<div class="seerrfin-empty-row padded-left">No requests found.</div>';
+            body.innerHTML = `<div class="seerrfin-empty-row padded-left">No requests found.</div>`;
             state.rendered = true;
             return;
         }
 
         const cards = state.allRequests.map(renderRequestCard).filter(Boolean).join('');
         if (!cards) {
-            body.innerHTML = '<div class="seerrfin-empty-row padded-left">No requests found.</div>';
+            body.innerHTML = `<div class="seerrfin-empty-row padded-left">No requests found.</div>`;
             state.rendered = true;
             return;
         }
@@ -637,9 +634,9 @@
             ? ' seerrfin-requests-grid--landscape'
             : ' seerrfin-requests-grid--portrait';
 
-        body.innerHTML =
-            '<div class="seerrfin-empty-row padded-left seerrfin-requests-empty" hidden>No requests found.</div>' +
-            '<div class="seerrfin-requests-grid' + gridClass + ' padded-left padded-right">' + cards + '</div>';
+        body.innerHTML = `
+            <div class="seerrfin-empty-row padded-left seerrfin-requests-empty" hidden>No requests found.</div>
+            <div class="seerrfin-requests-grid${gridClass} padded-left padded-right">${cards}</div>`;
 
         hydrateRequestCards(body);
         state.rendered = true;
@@ -724,7 +721,7 @@
 
         const body = container.querySelector('.seerrfin-requests-body');
         if (body && !body.children.length) {
-            body.innerHTML = '<div class="seerrfin-loading-row padded-left">Loading...</div>';
+            body.innerHTML = `<div class="seerrfin-loading-row padded-left">Loading...</div>`;
         }
 
         fetchAllRequests()
@@ -735,7 +732,7 @@
                 state.allRequests = [];
                 state.rendered = false;
                 if (body) {
-                    body.innerHTML = '<div class="seerrfin-empty-row padded-left">Could not load requests. Check Seerr settings.</div>';
+                    body.innerHTML = `<div class="seerrfin-empty-row padded-left">Could not load requests. Check Seerr settings.</div>`;
                 }
             })
             .finally(function () {
@@ -748,25 +745,33 @@
             });
     }
 
+    function renderRequestsPanel() {
+        const filterButtons = FILTERS.map(function (filter) {
+            const activeClass = state.filter === filter.id ? ' is-active' : '';
+            return `
+                <button type="button" class="seerrfin-requests-filter${activeClass}" data-filter="${filter.id}">
+                    ${escapeHtml(filter.label)}
+                </button>`;
+        }).join('');
+
+        return `
+            <div class="verticalSection seerrfin-requests-panel">
+                <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                    <h2 class="sectionTitle sectionTitle-cards">Requests</h2>
+                </div>
+                <div class="seerrfin-requests-filters padded-left padded-right">
+                    ${filterButtons}
+                </div>
+            </div>
+            <div class="seerrfin-requests-body"></div>`;
+    }
+
     function mount(container) {
         if (container.querySelector('.seerrfin-requests-panel')) {
             return;
         }
 
-        container.innerHTML =
-            '<div class="verticalSection seerrfin-requests-panel">' +
-                '<div class="sectionTitleContainer sectionTitleContainer-cards padded-left">' +
-                    '<h2 class="sectionTitle sectionTitle-cards">Requests</h2>' +
-                '</div>' +
-                '<div class="seerrfin-requests-filters padded-left padded-right">' +
-                    FILTERS.map(function (filter) {
-                        const activeClass = state.filter === filter.id ? ' is-active' : '';
-                        return '<button type="button" class="seerrfin-requests-filter' + activeClass + '" data-filter="' + filter.id + '">' +
-                            escapeHtml(filter.label) + '</button>';
-                    }).join('') +
-                '</div>' +
-            '</div>' +
-            '<div class="seerrfin-requests-body"></div>';
+        container.innerHTML = renderRequestsPanel();
 
         bindContainerEvents(container);
 

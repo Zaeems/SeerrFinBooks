@@ -29,6 +29,29 @@
         return div.innerHTML;
     }
 
+    function bindBulkModalEvents() {
+        const root = state.bulkRoot;
+        if (!root || root.dataset.seerrfinBulkBound === 'true') {
+            return;
+        }
+        root.dataset.seerrfinBulkBound = 'true';
+
+        root.addEventListener('click', function (event) {
+            if (event.target.closest('.bst-quality-backdrop') || event.target.closest('.bst-quality-close')) {
+                if (!state.requesting) {
+                    closeBulkModal();
+                }
+                return;
+            }
+
+            const doneBtn = event.target.closest('[data-bulk-done]');
+            if (doneBtn) {
+                closeBulkModal();
+                return;
+            }
+        });
+    }
+
     function getPlugin() {
         return window.seerrFinPlugin || null;
     }
@@ -278,32 +301,37 @@
             return;
         }
 
-        // Build the request view once so polling can update rows without rerendering page.
-        list.innerHTML =
-            (subtitle ? '<div class="bst-letterboxd-bulk-subtitle">' + escapeHtml(subtitle) + '</div>' : '') +
-            '<div class="bst-letterboxd-bulk-progress">' +
-                '<div class="bst-letterboxd-bulk-progress-track">' +
-                    '<div class="bst-letterboxd-bulk-progress-fill" data-bulk-progress-fill style="width:0%"></div>' +
-                '</div>' +
-                '<span class="bst-letterboxd-bulk-progress-count" data-bulk-progress-count>0 of ' + tmdbIds.length + '</span>' +
-            '</div>' +
-            '<div class="bst-letterboxd-bulk-items" data-bulk-items>' +
-                tmdbIds.map(function (id) {
-                    return '<div class="bst-letterboxd-bulk-item" data-bulk-item data-tmdb-id="' + id + '">' +
-                        '<div class="bst-letterboxd-bulk-item-main">' +
-                            '<span class="bst-letterboxd-bulk-item-title">' + escapeHtml(getItemTitle(id) || 'Movie') + '</span>' +
-                            '<span class="bst-letterboxd-bulk-item-quality" data-bulk-quality></span>' +
-                        '</div>' +
-                        '<span class="bst-letterboxd-bulk-item-status" data-bulk-status>Waiting</span>' +
-                    '</div>';
-                }).join('') +
-            '</div>' +
-            '<button type="button" class="bst-quality-option bst-letterboxd-bulk-done" data-bulk-footer data-bulk-done hidden>Done</button>';
+        list.innerHTML = renderBulkProgress(subtitle, tmdbIds);
 
         const doneBtn = list.querySelector('[data-bulk-done]');
         if (doneBtn) {
             doneBtn.addEventListener('click', closeBulkModal);
         }
+    }
+
+    function renderBulkProgress(subtitle, tmdbIds) {
+        const subtitleHtml = subtitle ? `<div class="bst-letterboxd-bulk-subtitle">${escapeHtml(subtitle)}</div>` : '';
+        const itemsHtml = tmdbIds.map(function (id) {
+            return `
+                <div class="bst-letterboxd-bulk-item" data-bulk-item data-tmdb-id="${id}">
+                    <div class="bst-letterboxd-bulk-item-main">
+                        <span class="bst-letterboxd-bulk-item-title">${escapeHtml(getItemTitle(id) || 'Movie')}</span>
+                        <span class="bst-letterboxd-bulk-item-quality" data-bulk-quality></span>
+                    </div>
+                    <span class="bst-letterboxd-bulk-item-status" data-bulk-status>Waiting</span>
+                </div>`;
+        }).join('');
+
+        return `
+            ${subtitleHtml}
+            <div class="bst-letterboxd-bulk-progress">
+                <div class="bst-letterboxd-bulk-progress-track">
+                    <div class="bst-letterboxd-bulk-progress-fill" data-bulk-progress-fill style="width:0%"></div>
+                </div>
+                <span class="bst-letterboxd-bulk-progress-count" data-bulk-progress-count>0 of ${tmdbIds.length}</span>
+            </div>
+            <div class="bst-letterboxd-bulk-items" data-bulk-items>${itemsHtml}</div>
+            <button type="button" class="bst-quality-option bst-letterboxd-bulk-done" data-bulk-footer data-bulk-done hidden>Done</button>`;
     }
 
     function updateBulkItemRow(panel, item) {
@@ -407,15 +435,16 @@
 
         let subtitle = panel.querySelector('.bst-letterboxd-bulk-subtitle');
         if (!subtitle) {
-            subtitle = document.createElement('div');
-            subtitle.className = 'bst-letterboxd-bulk-subtitle';
             const list = panel.querySelector('.bst-quality-list');
             if (list) {
-                list.insertBefore(subtitle, list.firstChild);
+                list.insertAdjacentHTML('afterbegin', `<div class="bst-letterboxd-bulk-subtitle"></div>`);
+                subtitle = list.querySelector('.bst-letterboxd-bulk-subtitle');
             }
         }
 
-        subtitle.textContent = 'Requested: ' + requested + ', skipped: ' + skipped + ', failed: ' + failed;
+        if (subtitle) {
+            subtitle.textContent = `Requested: ${requested}, skipped: ${skipped}, failed: ${failed}`;
+        }
 
         const footer = panel.querySelector('[data-bulk-footer]');
         if (footer) {
@@ -433,15 +462,16 @@
 
         let subtitle = panel.querySelector('.bst-letterboxd-bulk-subtitle');
         if (!subtitle) {
-            subtitle = document.createElement('div');
-            subtitle.className = 'bst-letterboxd-bulk-subtitle bst-letterboxd-bulk-subtitle--error';
             const list = panel.querySelector('.bst-quality-list');
             if (list) {
-                list.insertBefore(subtitle, list.firstChild);
+                list.insertAdjacentHTML('afterbegin', `<div class="bst-letterboxd-bulk-subtitle bst-letterboxd-bulk-subtitle--error"></div>`);
+                subtitle = list.querySelector('.bst-letterboxd-bulk-subtitle');
             }
         }
 
-        subtitle.textContent = message;
+        if (subtitle) {
+            subtitle.textContent = message;
+        }
 
         const footer = panel.querySelector('[data-bulk-footer]');
         if (footer) {
@@ -531,14 +561,15 @@
         let errorEl = container.querySelector('.seerrfin-letterboxd-error');
         if (message) {
             if (!errorEl) {
-                errorEl = document.createElement('div');
-                errorEl.className = 'seerrfin-letterboxd-error';
                 const help = container.querySelector('.seerrfin-letterboxd-help');
                 if (help) {
-                    help.insertAdjacentElement('afterend', errorEl);
+                    help.insertAdjacentHTML('afterend', `<div class="seerrfin-letterboxd-error"></div>`);
+                    errorEl = container.querySelector('.seerrfin-letterboxd-error');
                 }
             }
-            errorEl.textContent = message;
+            if (errorEl) {
+                errorEl.textContent = message;
+            }
             return;
         }
 
@@ -547,7 +578,7 @@
         }
     }
 
-    function renderPanel(container) {
+    function renderLetterboxdPanel() {
         const syncMeta = state.syncMeta || {};
         const resolvedCount = syncMeta.resolvedCount || 0;
         const unresolvedCount = syncMeta.unresolvedCount || 0;
@@ -556,69 +587,64 @@
         const hasWatchlist = state.items.length > 0;
         const showToolbar = hasWatchlist && !state.syncing;
         const selectedCount = state.selectedIds.size;
+        const disabledAttr = state.syncing || state.requesting ? ' disabled' : '';
 
-        let html =
-            '<div class="verticalSection seerrfin-letterboxd-panel padded-left padded-right">' +
-                '<div class="sectionTitleContainer sectionTitleContainer-cards">' +
-                    '<h2 class="sectionTitle sectionTitle-cards">Letterboxd Watchlist</h2>' +
-                '</div>' +
-                '<div class="seerrfin-letterboxd-header">' +
-                    '<form data-letterboxd-form>' +
-                        '<div>' +
-                            '<label for="seerrfin-letterboxd-username">Letterboxd username</label>' +
-                            '<input id="seerrfin-letterboxd-username" type="text" autocomplete="username" ' +
-                                'placeholder="your-letterboxd-username" value="' + escapeHtml(state.username) + '" ' +
-                                (state.syncing || state.requesting ? 'disabled' : '') + ' />' +
-                        '</div>' +
-                        '<button type="submit" data-sync-submit ' +
-                            (state.syncing || state.requesting ? 'disabled' : '') + '>' +
-                            escapeHtml(getSyncButtonLabel()) +
-                        '</button>' +
-                    '</form>' +
-                '</div>' +
-                '<div class="seerrfin-letterboxd-help">Public Letterboxd watchlists only. Enter your username, get watchlist, select movies, then request them in bulk.</div>';
+        const errorHtml = lastError ? `<div class="seerrfin-letterboxd-error">${escapeHtml(lastError)}</div>` : '';
 
-        if (lastError) {
-            html += '<div class="seerrfin-letterboxd-error">' + escapeHtml(lastError) + '</div>';
-        }
-
+        let metaHtml = '';
         if (state.syncing) {
-            html += '<div class="seerrfin-loading-row">Loading watchlist…</div>';
+            metaHtml = `<div class="seerrfin-loading-row">Loading watchlist…</div>`;
         } else if (lastSynced || hasWatchlist) {
-            html +=
-                '<div class="seerrfin-letterboxd-meta">' +
-                    '<span>Last synced: <strong>' + escapeHtml(formatDate(lastSynced)) + '</strong></span>' +
-                    '<span>Gotten: <strong>' + escapeHtml(String(resolvedCount)) + '</strong></span>' +
-                    (unresolvedCount ? '<span>Unresolved: <strong>' + escapeHtml(String(unresolvedCount)) + '</strong></span>' : '') +
-                '</div>';
+            const unresolvedHtml = unresolvedCount ? `<span>Unresolved: <strong>${escapeHtml(String(unresolvedCount))}</strong></span>` : '';
+            metaHtml = `
+                <div class="seerrfin-letterboxd-meta">
+                    <span>Last synced: <strong>${escapeHtml(formatDate(lastSynced))}</strong></span>
+                    <span>Gotten: <strong>${escapeHtml(String(resolvedCount))}</strong></span>
+                    ${unresolvedHtml}
+                </div>`;
         }
 
-        if (showToolbar) {
-            html +=
-                '<div class="seerrfin-letterboxd-toolbar">' +
-                    '<div class="seerrfin-letterboxd-toolbar-actions">' +
-                        '<button type="button" class="seerrfin-letterboxd-toolbar-btn" data-select-all>Select all</button>' +
-                        '<button type="button" class="seerrfin-letterboxd-toolbar-btn" data-select-none>Select none</button>' +
-                    '</div>' +
-                    '<span class="seerrfin-letterboxd-toolbar-separator" aria-hidden="true"></span>' +
-                    '<span class="seerrfin-letterboxd-selected-count" data-selected-count>' + selectedCount + ' selected</span>' +
-                '</div>';
-        }
+        const toolbarHtml = showToolbar ? `
+            <div class="seerrfin-letterboxd-toolbar">
+                <div class="seerrfin-letterboxd-toolbar-actions">
+                    <button type="button" class="seerrfin-letterboxd-toolbar-btn" data-select-all>Select all</button>
+                    <button type="button" class="seerrfin-letterboxd-toolbar-btn" data-select-none>Select none</button>
+                </div>
+                <span class="seerrfin-letterboxd-toolbar-separator" aria-hidden="true"></span>
+                <span class="seerrfin-letterboxd-selected-count" data-selected-count>${selectedCount} selected</span>
+            </div>` : '';
 
-        html += '<div class="seerrfin-letterboxd-body"></div>';
+        const actionbarHtml = showToolbar ? `
+            <div class="seerrfin-letterboxd-actionbar${state.requesting ? ' seerrfin-letterboxd-disabled' : ''}">
+                <button type="button" data-request-selected${selectedCount === 0 || state.requesting ? ' disabled' : ''}>Request selected</button>
+            </div>` : '';
 
-        if (showToolbar) {
-            html +=
-                '<div class="seerrfin-letterboxd-actionbar' +
-                    (state.requesting ? ' seerrfin-letterboxd-disabled' : '') + '">' +
-                    '<button type="button" data-request-selected ' +
-                        (selectedCount === 0 || state.requesting ? 'disabled' : '') + '>Request selected</button>' +
-                '</div>';
-        }
+        return `
+            <div class="verticalSection seerrfin-letterboxd-panel padded-left padded-right">
+                <div class="sectionTitleContainer sectionTitleContainer-cards">
+                    <h2 class="sectionTitle sectionTitle-cards">Letterboxd Watchlist</h2>
+                </div>
+                <div class="seerrfin-letterboxd-header">
+                    <form data-letterboxd-form>
+                        <div>
+                            <label for="seerrfin-letterboxd-username">Letterboxd username</label>
+                            <input id="seerrfin-letterboxd-username" type="text" autocomplete="username"
+                                placeholder="your-letterboxd-username" value="${escapeHtml(state.username)}"${disabledAttr} />
+                        </div>
+                        <button type="submit" data-sync-submit${disabledAttr}>${escapeHtml(getSyncButtonLabel())}</button>
+                    </form>
+                </div>
+                <div class="seerrfin-letterboxd-help">Public Letterboxd watchlists only. Enter your username, get watchlist, select movies, then request them in bulk.</div>
+                ${errorHtml}
+                ${metaHtml}
+                ${toolbarHtml}
+                <div class="seerrfin-letterboxd-body"></div>
+                ${actionbarHtml}
+            </div>`;
+    }
 
-        html += '</div>';
-
-        container.innerHTML = html;
+    function renderPanel(container) {
+        container.innerHTML = renderLetterboxdPanel();
         renderGrid(container);
 
         const form = container.querySelector('[data-letterboxd-form]');
@@ -660,72 +686,22 @@
                 ? plugin.shouldUseBackdropThumbnails()
                 : false;
             const cardOptions = Object.assign({}, getCardOptions(), {
-                forceBackdrop: useBackdrop
+                forceBackdrop: useBackdrop,
+                letterboxdSlot: true,
+                getLetterboxdSelected: function (tmdbId) {
+                    return state.selectedIds.has(tmdbId);
+                }
             });
             const discoverItems = state.items.map(mapItemToDiscover).filter(function (item) {
                 return item.Id;
             });
             const cardsHtml = plugin.createDiscoverCards(discoverItems, true, cardOptions);
-            body.innerHTML =
-                '<div class="seerrfin-grid-view">' +
-                    '<div class="seerrfin-letterboxd-grid seerrfin-letterboxd-grid--' +
-                        (useBackdrop ? 'landscape' : 'portrait') + '">' +
-                        cardsHtml +
-                    '</div>' +
-                '</div>';
-
-            // Wrap each card in a slot so selection chrome and request actions sit outside the poster.
-            body.querySelectorAll('.seerrfin-discover-card').forEach(function (card) {
-                const tmdbId = parseInt(card.getAttribute('data-tmdb-id'), 10);
-                if (Number.isNaN(tmdbId)) {
-                    return;
-                }
-
-                const slot = document.createElement('div');
-                slot.className = 'seerrfin-letterboxd-card-slot';
-                card.parentNode.insertBefore(slot, card);
-                slot.appendChild(card);
-
-                card.classList.add('seerrfin-letterboxd-card');
-                if (state.selectedIds.has(tmdbId)) {
-                    card.classList.add('is-selected');
-                }
-                card.setAttribute('aria-selected', state.selectedIds.has(tmdbId) ? 'true' : 'false');
-
-                const posterArea = card.querySelector('.cardScalable') || card;
-
-                const indicator = document.createElement('span');
-                indicator.className = 'seerrfin-letterboxd-select-indicator';
-                indicator.setAttribute('aria-hidden', 'true');
-                indicator.innerHTML = '<span class="material-icons" aria-hidden="true">check</span>';
-                posterArea.appendChild(indicator);
-
-                const actions = document.createElement('div');
-                actions.className = 'seerrfin-request-card-actions';
-                actions.innerHTML =
-                    '<button type="button" class="seerrfin-request-action-btn seerrfin-request-modal-btn" ' +
-                        'aria-label="Open request modal" title="Open request modal">' +
-                        '<span class="material-icons" aria-hidden="true">download</span>' +
-                    '</button>';
-                actions.querySelector('.seerrfin-request-modal-btn').addEventListener('click', function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (window.seerrFinModal && typeof window.seerrFinModal.open === 'function') {
-                        window.seerrFinModal.open(String(tmdbId), 'movie');
-                    }
-                });
-                posterArea.appendChild(actions);
-
-                card.addEventListener('click', function (event) {
-                    if (event.target.closest('.seerrfin-request-card-actions')) {
-                        return;
-                    }
-
-                    event.preventDefault();
-                    event.stopPropagation();
-                    toggleSelection(tmdbId, !state.selectedIds.has(tmdbId), container);
-                });
-            });
+            body.innerHTML = `
+                <div class="seerrfin-grid-view">
+                    <div class="seerrfin-letterboxd-grid seerrfin-letterboxd-grid--${useBackdrop ? 'landscape' : 'portrait'}">
+                        ${cardsHtml}
+                    </div>
+                </div>`;
 
             if (useBackdrop && typeof plugin.hydrateDiscoverBackdropCards === 'function') {
                 plugin.hydrateDiscoverBackdropCards(body);
@@ -847,35 +823,28 @@
         }
     }
 
+    function renderBulkModalShell(title) {
+        return `
+            <div class="bst-quality-wrapper">
+                <div class="bst-quality-backdrop"></div>
+                <div class="bst-quality-panel" role="dialog" aria-modal="true">
+                    <div class="bst-quality-header">
+                        <h3>${escapeHtml(title)}</h3>
+                        <button type="button" class="bst-quality-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="bst-quality-list"></div>
+                </div>
+            </div>`;
+    }
+
     function createBulkModalShell(title) {
         closeBulkModal();
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'bst-quality-wrapper';
+        document.body.insertAdjacentHTML('beforeend', renderBulkModalShell(title));
+        state.bulkRoot = document.body.lastElementChild;
+        bindBulkModalEvents();
 
-        const backdrop = document.createElement('div');
-        backdrop.className = 'bst-quality-backdrop';
-        backdrop.addEventListener('click', closeBulkModal);
-
-        const panel = document.createElement('div');
-        panel.className = 'bst-quality-panel';
-        panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-modal', 'true');
-        panel.innerHTML =
-            '<div class="bst-quality-header">' +
-                '<h3>' + escapeHtml(title) + '</h3>' +
-                '<button type="button" class="bst-quality-close" aria-label="Close">&times;</button>' +
-            '</div>' +
-            '<div class="bst-quality-list"></div>';
-
-        wrapper.appendChild(backdrop);
-        wrapper.appendChild(panel);
-        document.body.appendChild(wrapper);
-        state.bulkRoot = wrapper;
-
-        panel.querySelector('.bst-quality-close').addEventListener('click', closeBulkModal);
-
-        return panel;
+        return state.bulkRoot.querySelector('.bst-quality-panel');
     }
 
     function getSelectedTmdbIds() {
@@ -917,6 +886,23 @@
         });
     }
 
+    function renderQualitySelection() {
+        return `
+            <button type="button" class="bst-quality-option" data-quality-mode="singleProfile">
+                Use one quality profile for all
+                <span class="bst-quality-option-sub">Choose a single Radarr profile for every selected movie.</span>
+            </button>
+            <button type="button" class="bst-quality-option" data-quality-mode="highestAvailable">
+                Highest quality for each
+                <span class="bst-quality-option-sub">Use the highest released streaming quality recommendation per movie.</span>
+            </button>
+            <button type="button" class="bst-quality-option" data-quality-mode="mostCommon">
+                Most common quality for each
+                <span class="bst-quality-option-sub">Use the most common streaming quality recommendation per movie.</span>
+            </button>
+            <div data-profile-list hidden></div>`;
+    }
+
     function showQualitySelection(panel, container, tmdbIds) {
         if (!tmdbIds.length) {
             return;
@@ -933,36 +919,60 @@
             return;
         }
 
-        // Keep this batch fixed while user goes through modal.
-        list.innerHTML =
-            '<button type="button" class="bst-quality-option" data-quality-mode="singleProfile">' +
-                'Use one quality profile for all' +
-                '<span class="bst-quality-option-sub">Choose a single Radarr profile for every selected movie.</span>' +
-            '</button>' +
-            '<button type="button" class="bst-quality-option" data-quality-mode="highestAvailable">' +
-                'Highest quality for each' +
-                '<span class="bst-quality-option-sub">Use the highest released streaming quality recommendation per movie.</span>' +
-            '</button>' +
-            '<button type="button" class="bst-quality-option" data-quality-mode="mostCommon">' +
-                'Most common quality for each' +
-                '<span class="bst-quality-option-sub">Use the most common streaming quality recommendation per movie.</span>' +
-            '</button>' +
-            '<div data-profile-list hidden></div>';
+        list.innerHTML = renderQualitySelection();
 
-        panel.querySelectorAll('[data-quality-mode]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                const mode = button.getAttribute('data-quality-mode');
-                if (mode === 'singleProfile') {
-                    showProfilePicker(panel, container, tmdbIds);
-                    return;
-                }
+        list.addEventListener('click', function onQualityClick(event) {
+            const button = event.target.closest('[data-quality-mode]');
+            if (!button) {
+                return;
+            }
 
-                submitBulkRequest(container, {
-                    QualityMode: mode,
-                    TmdbIds: tmdbIds.slice()
-                }, panel);
-            });
+            const mode = button.getAttribute('data-quality-mode');
+            if (mode === 'singleProfile') {
+                list.removeEventListener('click', onQualityClick);
+                showProfilePicker(panel, container, tmdbIds);
+                return;
+            }
+
+            list.removeEventListener('click', onQualityClick);
+            submitBulkRequest(container, {
+                QualityMode: mode,
+                TmdbIds: tmdbIds.slice()
+            }, panel);
         });
+    }
+
+    function renderAlreadyRequestedPrompt(alreadyRequestedIds, selectedIds) {
+        const count = alreadyRequestedIds.length;
+        const total = selectedIds.length;
+        const movieWord = count === 1 ? 'movie already has a request' : 'movies already have requests';
+        const remaining = total - count;
+        const remainingWord = remaining === 1 ? 'movie' : 'movies';
+
+        const itemsHtml = alreadyRequestedIds.map(function (id) {
+            return `
+                <div class="bst-letterboxd-bulk-item is-skipped">
+                    <div class="bst-letterboxd-bulk-item-main">
+                        <span class="bst-letterboxd-bulk-item-title">${escapeHtml(getItemTitle(id) || 'Movie')}</span>
+                    </div>
+                    <span class="bst-letterboxd-bulk-item-status">Already requested</span>
+                </div>`;
+        }).join('');
+
+        return `
+            <div class="bst-letterboxd-bulk-subtitle">
+                ${escapeHtml(`${count} of ${total} selected ${movieWord}.`)}
+            </div>
+            <div class="bst-letterboxd-bulk-items bst-letterboxd-bulk-items--prompt">${itemsHtml}</div>
+            <button type="button" class="bst-quality-option" data-skip-requested>
+                Skip them and continue
+                <span class="bst-quality-option-sub">Request only the ${remaining} remaining ${remainingWord}.</span>
+            </button>
+            <button type="button" class="bst-quality-option" data-request-all>
+                Request all anyway
+                <span class="bst-quality-option-sub">Include already requested movies in this batch.</span>
+            </button>
+            <button type="button" class="bst-quality-option bst-letterboxd-bulk-cancel" data-cancel-request>Cancel</button>`;
     }
 
     function showAlreadyRequestedPrompt(panel, container, alreadyRequestedIds, selectedIds) {
@@ -976,58 +986,38 @@
             return;
         }
 
-        const count = alreadyRequestedIds.length;
-        const total = selectedIds.length;
-        list.innerHTML =
-            '<div class="bst-letterboxd-bulk-subtitle">' +
-                escapeHtml(count + ' of ' + total + ' selected ' +
-                    (count === 1 ? 'movie already has a request' : 'movies already have requests') + '.') +
-            '</div>' +
-            '<div class="bst-letterboxd-bulk-items bst-letterboxd-bulk-items--prompt">' +
-                alreadyRequestedIds.map(function (id) {
-                    return '<div class="bst-letterboxd-bulk-item is-skipped">' +
-                        '<div class="bst-letterboxd-bulk-item-main">' +
-                            '<span class="bst-letterboxd-bulk-item-title">' +
-                                escapeHtml(getItemTitle(id) || 'Movie') +
-                            '</span>' +
-                        '</div>' +
-                        '<span class="bst-letterboxd-bulk-item-status">Already requested</span>' +
-                    '</div>';
-                }).join('') +
-            '</div>' +
-            '<button type="button" class="bst-quality-option" data-skip-requested>' +
-                'Skip them and continue' +
-                '<span class="bst-quality-option-sub">Request only the ' +
-                    (total - count) + ' remaining ' +
-                    (total - count === 1 ? 'movie' : 'movies') + '.</span>' +
-            '</button>' +
-            '<button type="button" class="bst-quality-option" data-request-all>' +
-                'Request all anyway' +
-                '<span class="bst-quality-option-sub">Include already requested movies in this batch.</span>' +
-            '</button>' +
-            '<button type="button" class="bst-quality-option bst-letterboxd-bulk-cancel" data-cancel-request>Cancel</button>';
+        list.innerHTML = renderAlreadyRequestedPrompt(alreadyRequestedIds, selectedIds);
 
-        list.querySelector('[data-skip-requested]').addEventListener('click', function () {
-            const remaining = selectedIds.filter(function (id) {
-                return alreadyRequestedIds.indexOf(id) === -1;
-            });
+        list.addEventListener('click', function onPromptClick(event) {
+            if (event.target.closest('[data-skip-requested]')) {
+                list.removeEventListener('click', onPromptClick);
+                const remaining = selectedIds.filter(function (id) {
+                    return alreadyRequestedIds.indexOf(id) === -1;
+                });
 
-            removeSelectedIds(alreadyRequestedIds);
-            updateSelectionUi(container);
+                removeSelectedIds(alreadyRequestedIds);
+                updateSelectionUi(container);
 
-            if (!remaining.length) {
-                list.innerHTML = '<div class="bst-quality-empty">No movies left to request.</div>';
+                if (!remaining.length) {
+                    list.innerHTML = `<div class="bst-quality-empty">No movies left to request.</div>`;
+                    return;
+                }
+
+                continueBulkRequest(panel, container, remaining);
                 return;
             }
 
-            continueBulkRequest(panel, container, remaining);
-        });
+            if (event.target.closest('[data-request-all]')) {
+                list.removeEventListener('click', onPromptClick);
+                continueBulkRequest(panel, container, selectedIds.slice());
+                return;
+            }
 
-        list.querySelector('[data-request-all]').addEventListener('click', function () {
-            continueBulkRequest(panel, container, selectedIds.slice());
+            if (event.target.closest('[data-cancel-request]')) {
+                list.removeEventListener('click', onPromptClick);
+                closeBulkModal();
+            }
         });
-
-        list.querySelector('[data-cancel-request]').addEventListener('click', closeBulkModal);
     }
 
     function continueBulkRequest(panel, container, tmdbIds) {
@@ -1059,7 +1049,7 @@
             if (!remaining.length) {
                 const list = panel.querySelector('.bst-quality-list');
                 if (list) {
-                    list.innerHTML = '<div class="bst-quality-empty">No movies left to request.</div>';
+                    list.innerHTML = `<div class="bst-quality-empty">No movies left to request.</div>`;
                 }
                 return;
             }
@@ -1079,7 +1069,7 @@
         const panel = createBulkModalShell('Checking selections…');
         const list = panel.querySelector('.bst-quality-list');
         if (list) {
-            list.innerHTML = '<div class="bst-quality-loading">Checking for existing requests…</div>';
+            list.innerHTML = `<div class="bst-quality-loading">Checking for existing requests…</div>`;
         }
 
         checkAlreadyRequested(selectedIds)
@@ -1094,9 +1084,23 @@
             .catch(function (err) {
                 console.error('SeerrFin Letterboxd request check:', err);
                 if (list) {
-                    list.innerHTML = '<div class="bst-quality-empty">Could not check existing requests.</div>';
+                    list.innerHTML = `<div class="bst-quality-empty">Could not check existing requests.</div>`;
                 }
             });
+    }
+
+    function renderProfileOptions(options) {
+        return options.map(function (opt) {
+            const label = escapeHtml(opt.profileName || 'Default');
+            const subHtml = opt.serverName ? `<span class="bst-quality-option-sub">${escapeHtml(opt.serverName + (opt.is4k ? ' · 4K' : ''))}</span>` : '';
+            return `
+                <button type="button" class="bst-quality-option" data-profile-id="${opt.profileId}"
+                    data-server-id="${opt.serverId}" data-root-folder="${escapeHtml(opt.rootFolder || '')}"
+                    data-is-4k="${opt.is4k ? '1' : '0'}" data-profile-name="${label}">
+                    ${label}
+                    ${subHtml}
+                </button>`;
+        }).join('');
     }
 
     function showProfilePicker(panel, container, tmdbIds) {
@@ -1106,45 +1110,40 @@
         }
 
         list.hidden = false;
-        list.innerHTML = '<div class="bst-quality-loading">Loading profiles…</div>';
+        list.innerHTML = `<div class="bst-quality-loading">Loading profiles…</div>`;
 
         ApiClient.ajax({
             url: ApiClient.getUrl('SeerrFin/request-options/movie'),
             type: 'GET',
             dataType: 'json'
         }).then(function (options) {
-            list.innerHTML = '';
             if (!options || !options.length) {
-                list.innerHTML = '<div class="bst-quality-empty">No quality profiles available.</div>';
+                list.innerHTML = `<div class="bst-quality-empty">No quality profiles available.</div>`;
                 return;
             }
 
-            options.forEach(function (opt) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'bst-quality-option';
-                const label = opt.profileName || 'Default';
-                btn.innerHTML = escapeHtml(label) +
-                    (opt.serverName ? '<span class="bst-quality-option-sub">' +
-                        escapeHtml(opt.serverName + (opt.is4k ? ' · 4K' : '')) + '</span>' : '');
+            list.innerHTML = renderProfileOptions(options);
 
-                btn.addEventListener('click', function () {
-                    submitBulkRequest(container, {
-                        QualityMode: 'singleProfile',
-                        TmdbIds: tmdbIds.slice(),
-                        ServerId: opt.serverId,
-                        ProfileId: opt.profileId,
-                        RootFolder: opt.rootFolder || null,
-                        Is4k: !!opt.is4k,
-                        ProfileName: label
-                    }, panel);
-                });
+            list.addEventListener('click', function onProfileClick(event) {
+                const button = event.target.closest('[data-profile-id]');
+                if (!button) {
+                    return;
+                }
 
-                list.appendChild(btn);
+                list.removeEventListener('click', onProfileClick);
+                submitBulkRequest(container, {
+                    QualityMode: 'singleProfile',
+                    TmdbIds: tmdbIds.slice(),
+                    ServerId: parseInt(button.getAttribute('data-server-id'), 10),
+                    ProfileId: parseInt(button.getAttribute('data-profile-id'), 10),
+                    RootFolder: button.getAttribute('data-root-folder') || null,
+                    Is4k: button.getAttribute('data-is-4k') === '1',
+                    ProfileName: button.getAttribute('data-profile-name')
+                }, panel);
             });
         }).catch(function (err) {
             console.error('SeerrFin Letterboxd profiles:', err);
-            list.innerHTML = '<div class="bst-quality-empty">Failed to load quality profiles.</div>';
+            list.innerHTML = `<div class="bst-quality-empty">Failed to load quality profiles.</div>`;
         });
     }
 
@@ -1188,6 +1187,31 @@
         container.dataset.seerrfinLetterboxdBound = 'true';
 
         container.addEventListener('click', function (event) {
+            const card = event.target.closest('.seerrfin-letterboxd-body .seerrfin-discover-card.seerrfin-letterboxd-card');
+            if (card && !event.target.closest('.seerrfin-request-card-actions')) {
+                const tmdbId = parseInt(card.getAttribute('data-tmdb-id'), 10);
+                if (!Number.isNaN(tmdbId) && !state.requesting) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleSelection(tmdbId, !state.selectedIds.has(tmdbId), container);
+                }
+                return;
+            }
+
+            const modalBtn = event.target.closest('.seerrfin-letterboxd-body .seerrfin-request-modal-btn');
+            if (modalBtn) {
+                const cardEl = modalBtn.closest('.seerrfin-discover-card');
+                const tmdbId = cardEl ? cardEl.getAttribute('data-tmdb-id') : null;
+                if (tmdbId) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (window.seerrFinModal && typeof window.seerrFinModal.open === 'function') {
+                        window.seerrFinModal.open(String(tmdbId), 'movie');
+                    }
+                }
+                return;
+            }
+
             if (event.target.closest('[data-select-all]')) {
                 event.preventDefault();
                 selectAll(container);

@@ -16,6 +16,12 @@
         return div.innerHTML;
     }
 
+    function mountFromHtml(html) {
+        const mount = document.createElement('div');
+        mount.innerHTML = html.trim();
+        return mount.firstElementChild;
+    }
+
     function readAdvancedBool(value, fallback) {
         if (value === true || value === false) {
             return value;
@@ -277,17 +283,11 @@
     }
 
     function buildJustWatchQualityLines(mediaId, mediaType) {
-        const qualityLines = document.createElement('div');
-        qualityLines.className = 'bst-sidebar-lines bst-sidebar-lines--qualities';
-        qualityLines.hidden = true;
-
-        const highestLine = document.createElement('div');
-        highestLine.innerHTML = '<span class="bst-label">Highest released quality:</span> <span class="bst-quality-value">…</span>';
-        qualityLines.appendChild(highestLine);
-
-        const commonLine = document.createElement('div');
-        commonLine.innerHTML = '<span class="bst-label">Most common quality:</span> <span class="bst-quality-value">…</span>';
-        qualityLines.appendChild(commonLine);
+        const qualityLines = mountFromHtml(`
+            <div class="bst-sidebar-lines bst-sidebar-lines--qualities" hidden>
+                <div><span class="bst-label">Highest released quality:</span> <span class="bst-quality-value">…</span></div>
+                <div><span class="bst-label">Most common quality:</span> <span class="bst-quality-value">…</span></div>
+            </div>`);
 
         fetchJustWatchQualities(mediaId, mediaType).then(function (result) {
             if (!result) {
@@ -295,11 +295,10 @@
                 return;
             }
 
-            const highestValue = highestLine.querySelector('.bst-quality-value');
-            const commonValue = commonLine.querySelector('.bst-quality-value');
-            highestValue.textContent =
+            const values = qualityLines.querySelectorAll('.bst-quality-value');
+            values[0].textContent =
                 result.highestReleasedQuality || result.HighestReleasedQuality || 'Unknown';
-            commonValue.textContent =
+            values[1].textContent =
                 result.mostCommonQuality || result.MostCommonQuality || 'Unknown';
             qualityLines.hidden = false;
         });
@@ -528,160 +527,173 @@
         });
     }
 
+    function renderSeasonModalShell() {
+        return `
+            <div class="bst-quality-wrapper">
+                <div class="bst-quality-backdrop"></div>
+                <div class="bst-quality-panel" role="dialog" aria-modal="true">
+                    <div class="bst-quality-header">
+                        <h3 id="bst-season-title">Select seasons</h3>
+                        <button type="button" class="bst-quality-close" aria-label="Close">${CLOSE_ICON}</button>
+                    </div>
+                    <div class="bst-quality-list"><div class="bst-quality-loading">Loading seasons…</div></div>
+                    <div class="bst-quality-footer">
+                        <button type="button" class="bst-quality-continue" disabled>Continue</button>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    function renderSeasonList(seasons) {
+        const rowsHtml = seasons.map(function (season) {
+            const seasonNumber = season.seasonNumber;
+            const displayName = season.name && season.name !== `Season ${seasonNumber}`
+                ? escapeHtml(season.name)
+                : `Season ${seasonNumber}`;
+            const episodesHtml = season.episodeCount
+                ? `<span class="bst-season-episodes"> (${season.episodeCount}${season.episodeCount === 1 ? ' episode' : ' episodes'})</span>`
+                : '';
+            return `
+                <label class="bst-season-option">
+                    <input type="checkbox" class="bst-season-checkbox bst-season-row-input" value="${seasonNumber}" />
+                    <span class="bst-season-label">${displayName}${episodesHtml}</span>
+                </label>`;
+        }).join('');
+
+        return `
+            <label class="bst-season-option bst-season-select-all">
+                <input type="checkbox" class="bst-season-checkbox" data-select-all-seasons />
+                <span class="bst-season-label">Select all</span>
+            </label>
+            ${rowsHtml}`;
+    }
+
+    function bindSeasonList(root, seasons, ctx) {
+        const list = root.querySelector('.bst-quality-list');
+        const continueBtn = root.querySelector('.bst-quality-continue');
+        const selectedSeasons = ctx.selectedSeasons;
+
+        function syncSelectAll() {
+            const seasonNumbers = seasons.map(function (s) { return s.seasonNumber; });
+            const selectAllInput = list.querySelector('[data-select-all-seasons]');
+            if (!selectAllInput) {
+                return;
+            }
+            selectAllInput.checked = seasonNumbers.every(function (num) {
+                return selectedSeasons.indexOf(num) !== -1;
+            });
+            selectAllInput.indeterminate = selectedSeasons.length > 0 && !selectAllInput.checked;
+            const requireExplicit = getRequestModalAdvanced().requireExplicitSeasonSelection === true;
+            continueBtn.disabled = requireExplicit && selectedSeasons.length === 0;
+        }
+
+        list.addEventListener('change', function (event) {
+            const selectAllInput = event.target.closest('[data-select-all-seasons]');
+            if (selectAllInput) {
+                if (selectAllInput.checked) {
+                    ctx.selectedSeasons.length = 0;
+                    seasons.forEach(function (s) {
+                        ctx.selectedSeasons.push(s.seasonNumber);
+                    });
+                } else {
+                    ctx.selectedSeasons.length = 0;
+                }
+                list.querySelectorAll('.bst-season-row-input').forEach(function (input) {
+                    input.checked = ctx.selectedSeasons.indexOf(parseInt(input.value, 10)) !== -1;
+                });
+                syncSelectAll();
+                return;
+            }
+
+            const rowInput = event.target.closest('.bst-season-row-input');
+            if (!rowInput) {
+                return;
+            }
+
+            const seasonNumber = parseInt(rowInput.value, 10);
+            if (rowInput.checked) {
+                if (ctx.selectedSeasons.indexOf(seasonNumber) === -1) {
+                    ctx.selectedSeasons.push(seasonNumber);
+                }
+            } else {
+                const idx = ctx.selectedSeasons.indexOf(seasonNumber);
+                if (idx !== -1) {
+                    ctx.selectedSeasons.splice(idx, 1);
+                }
+            }
+            syncSelectAll();
+        });
+
+        syncSelectAll();
+    }
+
     function openSeasonModal(mediaId, mediaType, title, onSuccess, is4k) {
         closeSeasonModal();
         is4k = !!is4k;
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'bst-quality-wrapper';
+        document.body.insertAdjacentHTML('beforeend', renderSeasonModalShell());
+        activeSeasonRoot = document.body.lastElementChild;
 
-        const backdrop = document.createElement('div');
-        backdrop.className = 'bst-quality-backdrop';
-        backdrop.addEventListener('click', closeSeasonModal);
+        const ctx = { selectedSeasons: [] };
+        const continueBtn = activeSeasonRoot.querySelector('.bst-quality-continue');
+        const list = activeSeasonRoot.querySelector('.bst-quality-list');
 
-        const panel = document.createElement('div');
-        panel.className = 'bst-quality-panel';
-        panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-modal', 'true');
-
-        const header = document.createElement('div');
-        header.className = 'bst-quality-header';
-        header.innerHTML = '<h3 id="bst-season-title">Select seasons</h3>';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'bst-quality-close';
-        closeBtn.setAttribute('aria-label', 'Close');
-        closeBtn.innerHTML = CLOSE_ICON;
-        closeBtn.addEventListener('click', closeSeasonModal);
-        header.appendChild(closeBtn);
-
-        const list = document.createElement('div');
-        list.className = 'bst-quality-list';
-        list.innerHTML = '<div class="bst-quality-loading">Loading seasons…</div>';
-
-        const footer = document.createElement('div');
-        footer.className = 'bst-quality-footer';
-
-        const continueBtn = document.createElement('button');
-        continueBtn.type = 'button';
-        continueBtn.className = 'bst-quality-continue';
-        continueBtn.textContent = 'Continue';
-        continueBtn.disabled = true;
-        footer.appendChild(continueBtn);
-
-        panel.appendChild(header);
-        panel.appendChild(list);
-        panel.appendChild(footer);
-        wrapper.appendChild(backdrop);
-        wrapper.appendChild(panel);
-        document.body.appendChild(wrapper);
-        activeSeasonRoot = wrapper;
-
-        let selectedSeasons = [];
+        activeSeasonRoot.querySelector('.bst-quality-backdrop').addEventListener('click', closeSeasonModal);
+        activeSeasonRoot.querySelector('.bst-quality-close').addEventListener('click', closeSeasonModal);
 
         continueBtn.addEventListener('click', function () {
-            const seasons = selectedSeasons.slice();
+            const seasons = ctx.selectedSeasons.slice();
             closeSeasonModal();
             openQualityModal(mediaId, mediaType, title, onSuccess, is4k, seasons);
         });
 
         fetchJellyseerrDetails(mediaId, mediaType).then(function (details) {
-            list.innerHTML = '';
             const seasons = getRequestableSeasons(details);
 
             if (!seasons.length) {
-                list.innerHTML = '<div class="bst-quality-empty">No seasons available.</div>';
+                list.innerHTML = `<div class="bst-quality-empty">No seasons available.</div>`;
                 continueBtn.disabled = true;
                 return;
             }
 
-            const selectAllRow = document.createElement('label');
-            selectAllRow.className = 'bst-season-option bst-season-select-all';
-            const selectAllInput = document.createElement('input');
-            selectAllInput.type = 'checkbox';
-            selectAllInput.className = 'bst-season-checkbox';
-            const selectAllText = document.createElement('span');
-            selectAllText.className = 'bst-season-label';
-            selectAllText.textContent = 'Select all';
-            selectAllRow.appendChild(selectAllInput);
-            selectAllRow.appendChild(selectAllText);
-
-            function syncSelectAll() {
-                const seasonNumbers = seasons.map(function (s) { return s.seasonNumber; });
-                selectAllInput.checked = seasonNumbers.every(function (num) {
-                    return selectedSeasons.indexOf(num) !== -1;
-                });
-                selectAllInput.indeterminate = selectedSeasons.length > 0 && !selectAllInput.checked;
-                const requireExplicit = getRequestModalAdvanced().requireExplicitSeasonSelection === true;
-                continueBtn.disabled = requireExplicit && selectedSeasons.length === 0;
-            }
-
-            selectAllInput.addEventListener('change', function () {
-                if (selectAllInput.checked) {
-                    selectedSeasons = seasons.map(function (s) { return s.seasonNumber; });
-                } else {
-                    selectedSeasons = [];
-                }
-                list.querySelectorAll('.bst-season-row-input').forEach(function (input) {
-                    input.checked = selectedSeasons.indexOf(parseInt(input.value, 10)) !== -1;
-                });
-                syncSelectAll();
-            });
-
-            list.appendChild(selectAllRow);
-
-            seasons.forEach(function (season) {
-                const seasonNumber = season.seasonNumber;
-
-                const row = document.createElement('label');
-                row.className = 'bst-season-option';
-
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.className = 'bst-season-checkbox bst-season-row-input';
-                input.value = String(seasonNumber);
-
-                const label = document.createElement('span');
-                label.className = 'bst-season-label';
-                const displayName = season.name && season.name !== 'Season ' + seasonNumber
-                    ? season.name
-                    : 'Season ' + seasonNumber;
-                label.appendChild(document.createTextNode(displayName));
-
-                if (season.episodeCount) {
-                    const episodes = document.createElement('span');
-                    episodes.className = 'bst-season-episodes';
-                    episodes.textContent = ' (' + season.episodeCount +
-                        (season.episodeCount === 1 ? ' episode' : ' episodes') + ')';
-                    label.appendChild(episodes);
-                }
-
-                row.appendChild(input);
-                row.appendChild(label);
-
-                input.addEventListener('change', function () {
-                    if (input.checked) {
-                        if (selectedSeasons.indexOf(seasonNumber) === -1) {
-                            selectedSeasons.push(seasonNumber);
-                        }
-                    } else {
-                        selectedSeasons = selectedSeasons.filter(function (n) {
-                            return n !== seasonNumber;
-                        });
-                    }
-                    syncSelectAll();
-                });
-
-                list.appendChild(row);
-            });
-
-            syncSelectAll();
+            list.innerHTML = renderSeasonList(seasons);
+            bindSeasonList(activeSeasonRoot, seasons, ctx);
         }).catch(function (err) {
             console.error('SeerrFin seasons:', err);
-            list.innerHTML = '<div class="bst-quality-empty">Failed to load seasons.</div>';
+            list.innerHTML = `<div class="bst-quality-empty">Failed to load seasons.</div>`;
             continueBtn.disabled = true;
         });
+    }
+
+    function renderQualityModalShell(is4k) {
+        const title = is4k ? 'Choose 4K quality profile' : 'Choose quality profile';
+        return `
+            <div class="bst-quality-wrapper">
+                <div class="bst-quality-backdrop"></div>
+                <div class="bst-quality-panel" role="dialog" aria-modal="true">
+                    <div class="bst-quality-header">
+                        <h3 id="bst-quality-title">${title}</h3>
+                        <button type="button" class="bst-quality-close" aria-label="Close">${CLOSE_ICON}</button>
+                    </div>
+                    <div class="bst-quality-list"><div class="bst-quality-loading">Loading profiles…</div></div>
+                </div>
+            </div>`;
+    }
+
+    function renderQualityOptions(options) {
+        return options.map(function (opt) {
+            const label = escapeHtml(opt.serverName && opt.serverName !== opt.profileName
+                ? opt.profileName
+                : (opt.profileName || 'Default'));
+            const subHtml = opt.serverName ? `<span class="bst-quality-option-sub">${escapeHtml(opt.serverName + (opt.is4k ? ' · 4K' : ''))}</span>` : '';
+            return `
+                <button type="button" class="bst-quality-option"
+                    data-server-id="${opt.serverId}" data-profile-id="${opt.profileId}"
+                    data-root-folder="${escapeHtml(opt.rootFolder || '')}" data-is-4k="${opt.is4k ? '1' : '0'}">
+                    ${label}
+                    ${subHtml}
+                </button>`;
+        }).join('');
     }
 
     function openQualityModal(mediaId, mediaType, title, onSuccess, is4k, selectedSeasons) {
@@ -696,49 +708,20 @@
         closeQualityModal();
         is4k = !!is4k;
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'bst-quality-wrapper';
+        document.body.insertAdjacentHTML('beforeend', renderQualityModalShell(is4k));
+        activeQualityRoot = document.body.lastElementChild;
 
-        const backdrop = document.createElement('div');
-        backdrop.className = 'bst-quality-backdrop';
-        backdrop.addEventListener('click', closeQualityModal);
-
-        const panel = document.createElement('div');
-        panel.className = 'bst-quality-panel';
-        panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-modal', 'true');
-
-        const header = document.createElement('div');
-        header.className = 'bst-quality-header';
-        header.innerHTML = '<h3 id="bst-quality-title">' + (is4k ? 'Choose 4K quality profile' : 'Choose quality profile') + '</h3>';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'bst-quality-close';
-        closeBtn.setAttribute('aria-label', 'Close');
-        closeBtn.innerHTML = CLOSE_ICON;
-        closeBtn.addEventListener('click', closeQualityModal);
-        header.appendChild(closeBtn);
-
-        const list = document.createElement('div');
-        list.className = 'bst-quality-list';
-        list.innerHTML = '<div class="bst-quality-loading">Loading profiles…</div>';
-
-        panel.appendChild(header);
-        panel.appendChild(list);
-        wrapper.appendChild(backdrop);
-        wrapper.appendChild(panel);
-        document.body.appendChild(wrapper);
-        activeQualityRoot = wrapper;
+        const list = activeQualityRoot.querySelector('.bst-quality-list');
+        activeQualityRoot.querySelector('.bst-quality-backdrop').addEventListener('click', closeQualityModal);
+        activeQualityRoot.querySelector('.bst-quality-close').addEventListener('click', closeQualityModal);
 
         ApiClient.ajax({
             url: ApiClient.getUrl('SeerrFin/request-options/' + mediaType),
             type: 'GET',
             dataType: 'json'
         }).then(function (options) {
-            list.innerHTML = '';
             if (!options || !options.length) {
-                list.innerHTML = '<div class="bst-quality-empty">No quality profiles available.</div>';
+                list.innerHTML = `<div class="bst-quality-empty">No quality profiles available.</div>`;
                 return;
             }
 
@@ -749,46 +732,66 @@
                 filteredOptions = options;
             }
 
-            filteredOptions.forEach(function (opt) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'bst-quality-option';
-                const label = opt.serverName && opt.serverName !== opt.profileName
-                    ? opt.profileName
-                    : (opt.profileName || 'Default');
-                btn.innerHTML = escapeHtml(label) +
-                    (opt.serverName ? '<span class="bst-quality-option-sub">' + escapeHtml(opt.serverName + (opt.is4k ? ' · 4K' : '')) + '</span>' : '');
+            list.innerHTML = renderQualityOptions(filteredOptions);
 
-                btn.addEventListener('click', function () {
-                    btn.disabled = true;
-                    const request = submitRequest(mediaId, mediaType, {
-                        serverId: opt.serverId,
-                        profileId: opt.profileId,
-                        rootFolder: opt.rootFolder,
-                        is4k: is4k,
-                        seasons: selectedSeasons
-                    }, function () {
-                        closeQualityModal();
-                        if (typeof onSuccess === 'function') {
-                            onSuccess();
-                        }
-                    });
+            list.addEventListener('click', function (event) {
+                const btn = event.target.closest('.bst-quality-option');
+                if (!btn || btn.disabled) {
+                    return;
+                }
 
-                    request.then(function () {
-                        btn.disabled = false;
-                    }, function () {
-                        btn.disabled = false;
-                    });
+                btn.disabled = true;
+                const request = submitRequest(mediaId, mediaType, {
+                    serverId: parseInt(btn.getAttribute('data-server-id'), 10),
+                    profileId: parseInt(btn.getAttribute('data-profile-id'), 10),
+                    rootFolder: btn.getAttribute('data-root-folder') || null,
+                    is4k: btn.getAttribute('data-is-4k') === '1',
+                    seasons: selectedSeasons
+                }, function () {
+                    closeQualityModal();
+                    if (typeof onSuccess === 'function') {
+                        onSuccess();
+                    }
                 });
-                list.appendChild(btn);
+
+                request.then(function () {
+                    btn.disabled = false;
+                }, function () {
+                    btn.disabled = false;
+                });
             });
         }).catch(function (err) {
             console.error('SeerrFin profiles:', err);
-            list.innerHTML = '<div class="bst-quality-empty">Failed to load quality profiles.</div>';
+            list.innerHTML = `<div class="bst-quality-empty">Failed to load quality profiles.</div>`;
         });
     }
 
-    function buildDetailsDom(data, mediaId, mediaType) {
+    function renderCast(cast) {
+        if (!cast.length) {
+            return;
+        }
+
+        const cardsHtml = cast.map(function (person) {
+            const imgSrc = person.profile_path
+                ? tmdbImage(person.profile_path, 'w185')
+                : `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect fill="#333" width="128" height="128"/></svg>')}`;
+            return `
+                <a class="bst-cast-card" href="https://www.themoviedb.org/person/${person.id}" target="_blank" rel="noopener noreferrer">
+                    <div class="bst-cast-avatar">
+                        <img alt="${escapeHtml(person.name)}" src="${imgSrc}" />
+                    </div>
+                    <span class="bst-cast-name">${escapeHtml(person.name)}</span>
+                    <span class="bst-cast-role">${escapeHtml(person.role)}</span>
+                </a>`;
+        }).join('');
+
+        return `
+            <div class="bst-cast-section">
+                <div class="bst-cast-scroll">${cardsHtml}</div>
+            </div>`;
+    }
+
+    function renderDetails(data, mediaId, mediaType) {
         const title = data.title || data.name || 'Details';
         const overview = data.overview || '';
         const year = (data.releaseDate || data.firstAirDate || '').substring(0, 4);
@@ -806,296 +809,159 @@
         const trailerKey = getTrailerKey(data);
         const tmdbId = data.id;
         const imdbId = data.externalIds && (data.externalIds.imdbId || data.externalIds.imdb_id);
-        const root = document.createElement('div');
-        root.className = 'bst-popout-wrapper';
-
-        const bg = document.createElement('div');
-        bg.className = 'bst-popout-backdrop';
-        bg.addEventListener('click', closeDetailsModal);
-
-        const center = document.createElement('div');
-        center.className = 'bst-popout-center';
-
-        const card = document.createElement('div');
-        card.className = 'bst-aether-card';
-
-        const inner = document.createElement('div');
-        inner.className = 'bst-aether-card-inner';
-
-        const closeWrap = document.createElement('button');
-        closeWrap.type = 'button';
-        closeWrap.className = 'bst-modal-close';
-        closeWrap.setAttribute('aria-label', 'Close');
-        closeWrap.innerHTML = CLOSE_ICON;
-        closeWrap.addEventListener('click', closeDetailsModal);
-
-        const scroll = document.createElement('div');
-        scroll.className = 'bst-modal-scroll';
-
-        const layout = document.createElement('div');
-        layout.className = 'bst-modal-layout';
-
-        const hero = document.createElement('div');
-        hero.className = 'bst-hero';
-        if (backdrop) {
-            const heroBg = document.createElement('div');
-            heroBg.className = 'bst-hero-backdrop';
-            heroBg.style.backgroundImage = 'url("' + backdrop + '")';
-            hero.appendChild(heroBg);
-        }
-
-        const heroWrap = document.createElement('div');
-        heroWrap.className = 'bst-hero-title-wrap';
-
-        const titleEl = document.createElement('h1');
-        titleEl.className = 'bst-hero-title-fallback';
-        titleEl.textContent = title;
-
         const logoUrl = getLogoImageUrl(data);
-        if (logoUrl) {
-            const logoImg = document.createElement('img');
-            logoImg.className = 'bst-hero-logo';
-            logoImg.alt = title;
-            logoImg.src = logoUrl;
-            logoImg.onerror = function () {
+
+        return `
+            <div class="bst-popout-wrapper">
+                <div class="bst-popout-backdrop"></div>
+                <div class="bst-popout-center">
+                    <div class="bst-aether-card">
+                        <div class="bst-aether-card-inner">
+                            <button type="button" class="bst-modal-close" aria-label="Close">${CLOSE_ICON}</button>
+                            <div class="bst-modal-scroll">
+                                <div class="bst-modal-layout">
+                                    <div class="bst-hero">
+                                        ${backdrop ? `<div class="bst-hero-backdrop" style="background-image: url(&quot;${backdrop}&quot;)"></div>` : ''}
+                                        <div class="bst-hero-title-wrap">
+                                            ${logoUrl
+                                                ? `<img class="bst-hero-logo" alt="${escapeHtml(title)}" src="${logoUrl}" data-fallback-title="${escapeHtml(title)}" />`
+                                                : `<h1 class="bst-hero-title-fallback">${escapeHtml(title)}</h1>`}
+                                            ${rating || year ? `
+                                                <div class="bst-hero-meta">
+                                                    ${rating ? `
+                                                        <div class="bst-tmdb-rating">
+                                                            ${TMDB_LOGO_SVG}
+                                                            <span class="bst-meta-emphasis">${Number(rating).toFixed(1)}</span>
+                                                            ${voteCount ? `<span class="bst-vote-muted">(${Number(voteCount).toLocaleString()})</span>` : ''}
+                                                        </div>` : ''}
+                                                    ${year ? `${rating ? '<span class="bst-dot">•</span>' : ''}<span class="bst-meta-emphasis">${escapeHtml(year)}</span>` : ''}
+                                                </div>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="bst-content">
+                                        <div class="bst-actions-row">
+                                            <div class="bst-actions-left">
+                                                <button type="button" class="bst-btn-request" data-action="request">Request</button>
+                                                ${getRequestModalAdvanced().showRequest4kButton !== false
+                                                    ? `<button type="button" class="bst-btn-request-4k" data-action="request-4k">Request 4K</button>`
+                                                    : ''}
+                                                ${trailerKey
+                                                    ? `<button type="button" class="bst-btn-trailer" data-action="trailer" data-trailer-key="${escapeHtml(trailerKey)}">Trailer</button>`
+                                                    : ''}
+                                            </div>
+                                        </div>
+                                        <div class="bst-details-layout">
+                                            <div class="bst-details-main">
+                                                <p class="bst-overview">${escapeHtml(overview)}</p>
+                                                <div class="bst-genres">${genres.map(function (g, i) {
+                                                    return `<span class="bst-genre-pill" style="animation-delay:${i * 60}ms">${escapeHtml(g.name || g)}</span>`;
+                                                }).join('')}</div>
+                                            </div>
+                                            <div class="bst-sidebar" data-quality-slot>
+                                                <div class="bst-sidebar-lines">
+                                                    ${runtime ? `<div><span class="bst-label">Runtime:</span> ${escapeHtml(runtime)}${endsAt ? ` <span class="bst-runtime-sep">•</span> Ends at ${escapeHtml(endsAt)}` : ''}</div>` : ''}
+                                                    ${language ? `<div><span class="bst-label">Language:</span> ${escapeHtml(language)}</div>` : ''}
+                                                    ${releaseLabel ? `<div><span class="bst-label">Release Date:</span> ${escapeHtml(releaseLabel)}</div>` : ''}
+                                                    ${certification ? `<div><span class="bst-label">Rating:</span> ${escapeHtml(certification)}</div>` : ''}
+                                                    ${tmdbId ? `<div><span class="bst-label">ID:</span> ${escapeHtml(String(tmdbId))}</div>` : ''}
+                                                </div>
+                                                ${tmdbId || imdbId ? `
+                                                    <div class="bst-external-links">
+                                                        ${tmdbId ? `
+                                                            <a class="bst-external-link tmdb" href="https://www.themoviedb.org/${mediaType === 'tv' ? 'tv' : 'movie'}/${tmdbId}"
+                                                                target="_blank" rel="noopener noreferrer" title="View on TMDB" style="animation-delay:60ms">
+                                                                ${TMDB_LOGO_SVG}
+                                                            </a>` : ''}
+                                                        ${imdbId ? `
+                                                            <a class="bst-external-link imdb" href="https://www.imdb.com/title/${imdbId}"
+                                                                target="_blank" rel="noopener noreferrer" title="View on IMDb" style="animation-delay:120ms">
+                                                                ${IMDB_ICON}
+                                                            </a>` : ''}
+                                                    </div>` : ''}
+                                            </div>
+                                        </div>
+                                        ${cast.length ? renderCast(cast) : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    function bindDetailsModal(root, data, mediaId, mediaType) {
+        const title = data.title || data.name || 'Details';
+        const trailerKey = getTrailerKey(data);
+        const tmdbId = data.id;
+
+        root.querySelector('.bst-popout-backdrop').addEventListener('click', closeDetailsModal);
+        root.querySelector('.bst-modal-close').addEventListener('click', closeDetailsModal);
+
+        const logoImg = root.querySelector('.bst-hero-logo');
+        if (logoImg) {
+            logoImg.addEventListener('error', function () {
+                const fallbackTitle = logoImg.getAttribute('data-fallback-title') || title;
+                logoImg.insertAdjacentHTML('afterend', `<h1 class="bst-hero-title-fallback">${escapeHtml(fallbackTitle)}</h1>`);
                 logoImg.remove();
-                heroWrap.insertBefore(titleEl, heroWrap.firstChild);
-            };
-            heroWrap.appendChild(logoImg);
-        } else {
-            heroWrap.appendChild(titleEl);
+            });
         }
 
-        const content = document.createElement('div');
-        content.className = 'bst-content';
-
-        const heroMeta = document.createElement('div');
-        heroMeta.className = 'bst-hero-meta';
-        if (rating) {
-            const ratingEl = document.createElement('div');
-            ratingEl.className = 'bst-tmdb-rating';
-            ratingEl.innerHTML = TMDB_LOGO_SVG +
-                '<span class="bst-meta-emphasis">' + Number(rating).toFixed(1) + '</span>' +
-                (voteCount ? '<span class="bst-vote-muted">(' + Number(voteCount).toLocaleString() + ')</span>' : '');
-            heroMeta.appendChild(ratingEl);
-        }
-        if (year) {
-            if (heroMeta.childElementCount) {
-                const dot = document.createElement('span');
-                dot.className = 'bst-dot';
-                dot.textContent = '•';
-                heroMeta.appendChild(dot);
-            }
-            const yearEl = document.createElement('span');
-            yearEl.className = 'bst-meta-emphasis';
-            yearEl.textContent = year;
-            heroMeta.appendChild(yearEl);
-        }
-        if (heroMeta.childElementCount) {
-            heroWrap.appendChild(heroMeta);
-        }
-        hero.appendChild(heroWrap);
-
-        const actionsRow = document.createElement('div');
-        actionsRow.className = 'bst-actions-row';
-
-        const actionsLeft = document.createElement('div');
-        actionsLeft.className = 'bst-actions-left';
-
-        const requestBtn = document.createElement('button');
-        requestBtn.type = 'button';
-        requestBtn.className = 'bst-btn-request';
-        requestBtn.textContent = 'Request';
-        requestBtn.addEventListener('click', function () {
+        root.querySelector('[data-action="request"]').addEventListener('click', function () {
             openQualityModal(mediaId, mediaType, title);
         });
-        actionsLeft.appendChild(requestBtn);
 
-        if (getRequestModalAdvanced().showRequest4kButton !== false) {
-            const request4kBtn = document.createElement('button');
-            request4kBtn.type = 'button';
-            request4kBtn.className = 'bst-btn-request-4k';
-            request4kBtn.textContent = 'Request 4K';
+        const request4kBtn = root.querySelector('[data-action="request-4k"]');
+        if (request4kBtn) {
             request4kBtn.addEventListener('click', function () {
                 openQualityModal(mediaId, mediaType, title, undefined, true);
             });
-            actionsLeft.appendChild(request4kBtn);
         }
 
-        if (trailerKey) {
-            const trailerBtn = document.createElement('button');
-            trailerBtn.type = 'button';
-            trailerBtn.className = 'bst-btn-trailer';
-            trailerBtn.textContent = 'Trailer';
+        const trailerBtn = root.querySelector('[data-action="trailer"]');
+        if (trailerBtn && trailerKey) {
             trailerBtn.addEventListener('click', function () {
-                window.open('https://www.youtube.com/watch?v=' + trailerKey, '_blank', 'noopener,noreferrer');
+                window.open(`https://www.youtube.com/watch?v=${trailerKey}`, '_blank', 'noopener,noreferrer');
             });
-            actionsLeft.appendChild(trailerBtn);
         }
 
-        actionsRow.appendChild(actionsLeft);
-
-        const detailsLayout = document.createElement('div');
-        detailsLayout.className = 'bst-details-layout';
-
-        const mainCol = document.createElement('div');
-        mainCol.className = 'bst-details-main';
-        const overviewEl = document.createElement('p');
-        overviewEl.className = 'bst-overview';
-        overviewEl.textContent = overview;
-
-        const genresEl = document.createElement('div');
-        genresEl.className = 'bst-genres';
-        genres.forEach(function (g, i) {
-            const pill = document.createElement('span');
-            pill.className = 'bst-genre-pill';
-            pill.textContent = g.name || g;
-            pill.style.animationDelay = (i * 60) + 'ms';
-            genresEl.appendChild(pill);
-        });
-
-        mainCol.appendChild(overviewEl);
-        mainCol.appendChild(genresEl);
-
-        const sidebar = document.createElement('div');
-        sidebar.className = 'bst-sidebar';
         const settings = window.seerrFinPlugin && window.seerrFinPlugin._displaySettings;
         const showQualityRecommendations = !settings || settings.QualityRecommendations !== false;
-        const qualityLines = showQualityRecommendations ? buildJustWatchQualityLines(tmdbId, mediaType) : null;
-        const lines = document.createElement('div');
-        lines.className = 'bst-sidebar-lines';
+        if (showQualityRecommendations && tmdbId) {
+            const qualitySlot = root.querySelector('[data-quality-slot]');
+            const qualityLines = buildJustWatchQualityLines(tmdbId, mediaType);
+            qualitySlot.insertBefore(qualityLines, qualitySlot.firstChild);
+        }
+    }
 
-        if (runtime) {
-            const line = document.createElement('div');
-            let runtimeHtml = '<span class="bst-label">Runtime:</span> ' + escapeHtml(runtime);
-            if (endsAt) {
-                runtimeHtml += ' <span class="bst-runtime-sep">•</span> Ends at ' + escapeHtml(endsAt);
-            }
-            line.innerHTML = runtimeHtml;
-            lines.appendChild(line);
-        }
-        if (language) {
-            const line = document.createElement('div');
-            line.innerHTML = '<span class="bst-label">Language:</span> ' + escapeHtml(language);
-            lines.appendChild(line);
-        }
-        if (releaseLabel) {
-            const line = document.createElement('div');
-            line.innerHTML = '<span class="bst-label">Release Date:</span> ' + escapeHtml(releaseLabel);
-            lines.appendChild(line);
-        }
-        if (certification) {
-            const line = document.createElement('div');
-            line.innerHTML = '<span class="bst-label">Rating:</span> ' + escapeHtml(certification);
-            lines.appendChild(line);
-        }
-        if (tmdbId) {
-            const line = document.createElement('div');
-            line.innerHTML = '<span class="bst-label">ID:</span> ' + escapeHtml(String(tmdbId));
-            lines.appendChild(line);
-        }
-
-        const links = document.createElement('div');
-        links.className = 'bst-external-links';
-        if (tmdbId) {
-            const a = document.createElement('a');
-            a.className = 'bst-external-link tmdb';
-            a.href = 'https://www.themoviedb.org/' + (mediaType === 'tv' ? 'tv' : 'movie') + '/' + tmdbId;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            a.title = 'View on TMDB';
-            a.innerHTML = TMDB_LOGO_SVG;
-            a.style.animationDelay = '60ms';
-            links.appendChild(a);
-        }
-        if (imdbId) {
-            const a = document.createElement('a');
-            a.className = 'bst-external-link imdb';
-            a.href = 'https://www.imdb.com/title/' + imdbId;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            a.title = 'View on IMDb';
-            a.innerHTML = IMDB_ICON;
-            a.style.animationDelay = '120ms';
-            links.appendChild(a);
-        }
-        if (qualityLines) {
-            sidebar.appendChild(qualityLines);
-        }
-        sidebar.appendChild(lines);
-        if (links.childElementCount) {
-            sidebar.appendChild(links);
-        }
-
-        detailsLayout.appendChild(mainCol);
-        detailsLayout.appendChild(sidebar);
-
-        content.appendChild(actionsRow);
-        content.appendChild(detailsLayout);
-
-        if (cast.length) {
-            const castSection = document.createElement('div');
-            castSection.className = 'bst-cast-section';
-            const castScroll = document.createElement('div');
-            castScroll.className = 'bst-cast-scroll';
-            cast.forEach(function (person) {
-                const cardEl = document.createElement('a');
-                cardEl.className = 'bst-cast-card';
-                cardEl.href = 'https://www.themoviedb.org/person/' + person.id;
-                cardEl.target = '_blank';
-                cardEl.rel = 'noopener noreferrer';
-                const avatar = document.createElement('div');
-                avatar.className = 'bst-cast-avatar';
-                const img = document.createElement('img');
-                img.alt = person.name;
-                img.src = person.profile_path
-                    ? tmdbImage(person.profile_path, 'w185')
-                    : 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect fill="#333" width="128" height="128"/></svg>');
-                avatar.appendChild(img);
-                const name = document.createElement('span');
-                name.className = 'bst-cast-name';
-                name.textContent = person.name;
-                const role = document.createElement('span');
-                role.className = 'bst-cast-role';
-                role.textContent = person.role;
-                cardEl.appendChild(avatar);
-                cardEl.appendChild(name);
-                cardEl.appendChild(role);
-                castScroll.appendChild(cardEl);
-            });
-            castSection.appendChild(castScroll);
-            content.appendChild(castSection);
-        }
-
-        layout.appendChild(hero);
-        layout.appendChild(content);
-        scroll.appendChild(layout);
-        inner.appendChild(closeWrap);
-        inner.appendChild(scroll);
-        card.appendChild(inner);
-        center.appendChild(card);
-        root.appendChild(bg);
-        root.appendChild(center);
-
+    function buildDetailsDom(data, mediaId, mediaType) {
+        const root = mountFromHtml(renderDetails(data, mediaId, mediaType));
+        bindDetailsModal(root, data, mediaId, mediaType);
         return root;
+    }
+
+    function renderDetailsLoading() {
+        return `
+            <div class="bst-popout-wrapper">
+                <div class="bst-popout-backdrop"></div>
+                <div class="bst-popout-center">
+                    <div class="bst-aether-card">
+                        <div class="bst-modal-loading">Loading…</div>
+                    </div>
+                </div>
+            </div>`;
     }
 
     function openDetailsModal(mediaId, mediaType) {
         closeDetailsModal();
 
-        const loading = document.createElement('div');
-        loading.className = 'bst-popout-wrapper';
-        loading.innerHTML =
-            '<div class="bst-popout-backdrop"></div>' +
-            '<div class="bst-popout-center"><div class="bst-aether-card">' +
-            '<div class="bst-modal-loading">Loading…</div></div></div>';
-        document.body.appendChild(loading);
-        activeDetailsRoot = loading;
+        document.body.insertAdjacentHTML('beforeend', renderDetailsLoading());
+        activeDetailsRoot = document.body.lastElementChild;
         document.body.style.overflow = 'hidden';
 
         loadModalDetails(mediaId, mediaType).then(function (data) {
             const dom = buildDetailsDom(data, mediaId, mediaType);
-            loading.replaceWith(dom);
+            activeDetailsRoot.replaceWith(dom);
             activeDetailsRoot = dom;
 
             escapeHandler = function (e) {

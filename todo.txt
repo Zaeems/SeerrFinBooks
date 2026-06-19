@@ -7,7 +7,7 @@
 - different people have different *arr quality profiles. remove hardcoded ones
 
 BOUNTIES
-- Swiftfin support
+- Swiftfin support - not actually current possible without changed to Swiftfin (they don't support dynamic tabs)
 - Infuse support
 - Streamyfin support
 - Findroid support !!
