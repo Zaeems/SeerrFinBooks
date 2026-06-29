@@ -30,6 +30,93 @@ public class JellyseerrDiscoveryService
         return GetDiscoverRow(username, discovery.AnimeDiscoverPath, "tv", startIndex, limit, useSeerrMapping: discovery.UseSeerrMappingForAnime);
     }
 
+    public QueryResult<BaseItemDto> Search(string username, string query, string? language = null)
+    {
+        PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
+        if (string.IsNullOrWhiteSpace(config.JellyseerrUrl) ||
+            string.IsNullOrWhiteSpace(config.JellyseerrApiKey) ||
+            string.IsNullOrWhiteSpace(username) ||
+            string.IsNullOrWhiteSpace(query))
+        {
+            return EmptyResult();
+        }
+
+        query = query.Trim();
+        if (query.Length > 256)
+        {
+            int cut = 256;
+            if (cut > 0 && char.IsHighSurrogate(query[cut - 1]))
+            {
+                cut--;
+            }
+
+            query = query[..cut];
+        }
+
+        using HttpClient client = CreateClient(config);
+        int? jellyseerrUserId = ResolveJellyseerrUserId(client, username);
+        if (jellyseerrUserId == null)
+        {
+            return EmptyResult();
+        }
+
+        client.DefaultRequestHeaders.Add("X-Api-User", jellyseerrUserId.ToString());
+
+        try
+        {
+            string path = $"/api/v1/search?query={Uri.EscapeDataString(query)}";
+            if (!string.IsNullOrWhiteSpace(language))
+            {
+                path += $"&language={Uri.EscapeDataString(language.Trim())}";
+            }
+
+            HttpResponseMessage response = client.GetAsync(path).GetAwaiter().GetResult();
+            if (!response.IsSuccessStatusCode)
+            {
+                return EmptyResult();
+            }
+
+            string jsonRaw = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            JObject json = JObject.Parse(jsonRaw);
+            JArray? results = json.Value<JArray>("results");
+            if (results == null || results.Count == 0)
+            {
+                return EmptyResult();
+            }
+
+            DiscoverItemFilterOptions mapping = ResolveSearchMapping();
+            List<BaseItemDto> items = new();
+            foreach (JObject item in results.OfType<JObject>())
+            {
+                string? mediaType = item.Value<string>("mediaType");
+                if (!string.Equals(mediaType, "movie", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(mediaType, "tv", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                BaseItemDto? dto = MapDiscoverItem(item, mapping);
+                if (dto != null)
+                {
+                    items.Add(dto);
+                }
+            }
+
+            int totalResults = json.Value<int?>("totalResults") ?? items.Count;
+            return new QueryResult<BaseItemDto>
+            {
+                Items = items.ToArray(),
+                StartIndex = 0,
+                TotalRecordCount = totalResults
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to search Seerr for {Query}", query);
+            return EmptyResult();
+        }
+    }
+
     public QueryResult<BaseItemDto> GetDiscoverRow(string username, string jellyseerrPath, string? mediaTypeFilter = null, int startIndex = 0, int? limit = null, bool useSeerrMapping = false)
     {
         PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
@@ -497,6 +584,7 @@ public class JellyseerrDiscoveryService
 
         float rating = item.Value<float?>("vote_average") ?? item.Value<float?>("voteAverage") ?? 0f;
         string? mediaType = item.Value<string>("mediaType");
+        int? tmdbId = item.Value<int?>("tmdbId") ?? item.Value<int?>("id");
 
         return new BaseItemDto
         {
@@ -511,7 +599,7 @@ public class JellyseerrDiscoveryService
                 { "JellyseerrBackdrop", backdropUrl },
                 { "TmdbPosterPath", posterPath },
                 { "TmdbBackdropPath", backdropPath },
-                { "Tmdb", item.Value<int?>("tmdbId")?.ToString() ?? string.Empty }
+                { "Tmdb", tmdbId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty }
             },
             PremiereDate = DateTime.TryParse(dateTimeString, out DateTime dt) ? dt : DateTime.Parse("1970-01-01")
         };
@@ -799,6 +887,13 @@ public class JellyseerrDiscoveryService
         return path.StartsWith('/') ? path : "/" + path;
     }
 
+    private static DiscoverItemFilterOptions ResolveSearchMapping() => new()
+    {
+        ApplyLanguageFilter = false,
+        HideRequestedMedia = false,
+        HideAvailableInLibrary = false
+    };
+
     private static DiscoverItemFilterOptions ResolveMapping(PluginConfiguration config, bool useSeerrMapping)
     {
         AdvancedDiscoverySettings discovery = AdvancedSettingsHelper.Resolve(config).Discovery;
@@ -835,4 +930,5 @@ public class JellyseerrDiscoveryService
         StartIndex = 0,
         TotalRecordCount = 0
     };
+
 }

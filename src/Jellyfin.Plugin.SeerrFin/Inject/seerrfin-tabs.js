@@ -35,6 +35,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 this.bindCardClickHandler();
                 this.bindViewMoreHandler();
                 this.loadDisplaySettings();
+                this.setupSearchIntegration();
             }
 
             if (!this._watchersReady) {
@@ -427,6 +428,12 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         'qualityRecommendations',
                         true
                     ),
+                    AddSeerrResultsInSearch: self.readConfigBool(
+                        data,
+                        'AddSeerrResultsInSearch',
+                        'addSeerrResultsInSearch',
+                        true
+                    ),
                     DisplayCustomizations: self.parseDisplayCustomizations(data),
                     Advanced: self.parseAdvancedSettings(data)
                 };
@@ -441,6 +448,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     DiscoverUsePosters: true,
                     ElegantFinFixes: false,
                     QualityRecommendations: true,
+                    AddSeerrResultsInSearch: true,
                     DisplayCustomizations: self.parseDisplayCustomizations(null),
                     Advanced: self.parseAdvancedSettings(null)
                 };
@@ -541,6 +549,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 settings.GenreUseBackdrops,
                 settings.DiscoverUsePosters,
                 settings.ElegantFinFixes,
+                settings.AddSeerrResultsInSearch,
                 JSON.stringify(settings.DisplayCustomizations || {}),
                 JSON.stringify(settings.Advanced || {})
             ].join(':');
@@ -642,11 +651,12 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         invalidateDisplaySettings: function () {
             const self = this;
             this._displaySettings = null;
-            document.querySelectorAll('.seerrfin-movies-sections, .seerrfin-tv-sections').forEach(function (section) {
+            document.querySelectorAll('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-search-section').forEach(function (section) {
                 delete section.dataset.seerrfinDisplaySettings;
             });
             this.loadDisplaySettings().then(function () {
                 self.scheduleRender();
+                self.handleJellyfinSearchPage();
             });
         },
 
@@ -1441,7 +1451,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             // Capturing runs before card navigation handlers
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('.discover-requestbutton');
-                if (!btn || !btn.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-grid-view')) {
+                if (!btn || !btn.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-grid-view, .seerrfin-search-section')) {
                     return;
                 }
 
@@ -1466,7 +1476,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
                 const card = e.target.closest('.seerrfin-discover-card');
                 if (!card || card.classList.contains('seerrfin-discover-card--static') ||
-                    !card.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-grid-view')) {
+                    !card.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-grid-view, .seerrfin-search-section')) {
                     return;
                 }
 
@@ -1697,6 +1707,241 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     itemsContainer.innerHTML = `<div class="seerrfin-empty-row">Failed to load items.</div>`;
                 }
             });
+        },
+
+        setupSearchIntegration: function () {
+            if (this._searchIntegrationBound) {
+                return;
+            }
+
+            this._searchIntegrationBound = true;
+            const self = this;
+            const schedule = function () {
+                clearTimeout(self._searchAttachTimer);
+                self._searchAttachTimer = setTimeout(function () {
+                    self.attachJellyfinSearchInput();
+                    self.handleJellyfinSearchPage();
+                }, 100);
+            };
+
+            document.addEventListener('viewshow', schedule);
+            window.addEventListener('hashchange', schedule);
+
+            if (document.body) {
+                this._searchMutationObserver = new MutationObserver(schedule);
+                this._searchMutationObserver.observe(document.body, { childList: true, subtree: true });
+            }
+
+            schedule();
+        },
+
+        isSearchSettingEnabled: function () {
+            const settings = this._displaySettings;
+            return !settings || settings.AddSeerrResultsInSearch !== false;
+        },
+
+        findSearchPage: function () {
+            const pages = document.querySelectorAll('#searchPage');
+            for (let i = pages.length - 1; i >= 0; i--) {
+                if (this.isContainerVisible(pages[i])) {
+                    return pages[i];
+                }
+            }
+            return null;
+        },
+
+        findSearchInput: function (searchPage) {
+            if (!searchPage) {
+                return null;
+            }
+
+            return searchPage.querySelector('#searchTextInput, input[type="search"], input.searchfields-txt');
+        },
+
+        findSearchResultsContainer: function (searchPage) {
+            if (!searchPage) {
+                return null;
+            }
+
+            // Match Jellyfin's results area, not the search input fields container.
+            return searchPage.querySelector('.searchResults.padded-top.padded-bottom-page') ||
+                searchPage.querySelector('.searchResults') ||
+                searchPage.querySelector('[class*="searchResults"]');
+        },
+
+        insertSearchSection: function (searchPage, section) {
+            const resultsContainer = this.findSearchResultsContainer(searchPage);
+            if (resultsContainer) {
+                resultsContainer.appendChild(section);
+                return true;
+            }
+
+            const noResultsMessage = searchPage.querySelector('.noItemsMessage');
+            if (noResultsMessage && noResultsMessage.parentNode) {
+                noResultsMessage.parentNode.insertBefore(section, noResultsMessage.nextSibling);
+                return true;
+            }
+
+            return false;
+        },
+
+        attachJellyfinSearchInput: function () {
+            const self = this;
+            const searchPage = self.findSearchPage();
+            const input = self.findSearchInput(searchPage);
+            if (!input || input.dataset.seerrfinSearchListener === 'true') {
+                return;
+            }
+
+            input.dataset.seerrfinSearchListener = 'true';
+            input.addEventListener('input', function () {
+                self.handleJellyfinSearchPage();
+            });
+        },
+
+        handleJellyfinSearchPage: function () {
+            const self = this;
+            const searchPage = self.findSearchPage();
+            const input = self.findSearchInput(searchPage);
+            const query = (input && input.value ? input.value : '').trim();
+
+            if (!searchPage || !input || !query || !self.isSearchSettingEnabled()) {
+                self.removeSearchSection();
+                self._lastSearchQuery = null;
+                return;
+            }
+
+            clearTimeout(self._searchDebounceTimer);
+            self._searchDebounceTimer = setTimeout(function () {
+                self.runJellyfinSearch(query);
+            }, 300);
+        },
+
+        removeSearchSection: function () {
+            document.querySelectorAll('.seerrfin-search-section').forEach(function (section) {
+                section.remove();
+            });
+        },
+
+        showSearchSkeleton: function (searchPage) {
+            this.removeSearchSection();
+            const skeleton = this.buildRowSkeleton('Seerr results', 'poster');
+            skeleton.classList.add('seerrfin-search-section');
+            this.insertSearchSection(searchPage, skeleton);
+        },
+
+        fetchSeerrSearch: function (query) {
+            const language = ((navigator.language || 'en').split('-')[0] || 'en');
+            const url = ApiClient.getUrl('SeerrFin/search') +
+                '?query=' + encodeURIComponent(query) +
+                '&language=' + encodeURIComponent(language) +
+                '&_=' + Date.now();
+
+            return ApiClient.ajax({
+                url: url,
+                type: 'GET',
+                dataType: 'json',
+                cache: false
+            }).then(function (data) {
+                const items = data && (data.Items || data.items || data.Results || data.results);
+                const total = data && (data.TotalRecordCount ?? data.totalRecordCount ?? 0);
+                return {
+                    items: Array.isArray(items) ? items : [],
+                    total: total
+                };
+            });
+        },
+
+        getSearchItemMediaRefs: function (item) {
+            const mediaType = this.normalizeDiscoverMediaType(
+                this.getField(item, 'SourceType', 'sourceType', 'mediaType', 'MediaType')
+            );
+            const tmdbId = parseInt(this.getProviderId(item, 'Tmdb') || '0', 10);
+            return {
+                mediaType: mediaType,
+                tmdbId: tmdbId
+            };
+        },
+
+        runJellyfinSearch: function (query) {
+            const self = this;
+            const searchPage = self.findSearchPage();
+            const input = self.findSearchInput(searchPage);
+            if (!searchPage || !input || input.value.trim() !== query || !self.isSearchSettingEnabled()) {
+                return;
+            }
+
+            if (self._lastSearchQuery === query && document.querySelector('.seerrfin-search-section')) {
+                return;
+            }
+
+            self._lastSearchQuery = query;
+            const token = Date.now().toString(36) + Math.random().toString(36).slice(2);
+            self._activeSearchToken = token;
+
+            self.showSearchSkeleton(searchPage);
+
+            self.loadDisplaySettings().then(function () {
+                if (self._activeSearchToken !== token || !self.isSearchSettingEnabled()) {
+                    return;
+                }
+
+                return self.fetchSeerrSearch(query);
+            }).then(function (result) {
+                if (!result || self._activeSearchToken !== token) {
+                    return;
+                }
+
+                const currentPage = self.findSearchPage();
+                const currentInput = self.findSearchInput(currentPage);
+                if (!currentPage || !currentInput || currentInput.value.trim() !== query) {
+                    return;
+                }
+
+                self.renderSearchSection(currentPage, query, result.items);
+            }).catch(function (err) {
+                if (self._activeSearchToken === token) {
+                    console.warn('SeerrFin search failed:', err);
+                    self.removeSearchSection();
+                }
+            });
+        },
+
+        renderSearchSection: function (searchPage, query, items) {
+            this.removeSearchSection();
+            if (!items || !items.length) {
+                return;
+            }
+
+            const safeQuery = this.escapeHtml(query);
+            const section = this.mountFromHtml(`
+                <div class="verticalSection seerrfin-poster-section seerrfin-search-section seerrfin-section-fadein" data-query="${safeQuery}">
+                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                        <h2 class="sectionTitle sectionTitle-cards">Seerr results</h2>
+                    </div>
+                    <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x"></div>
+                </div>`);
+
+            const itemsContainer = section.querySelector('.itemsContainer');
+            itemsContainer.innerHTML = this.createDiscoverCards(items, false, {
+                interactive: true,
+                includeMetaText: true
+            });
+            this.appendHorizontalScroller(section, itemsContainer, {
+                focusScale: this.getAdvancedCarouselSetting('discoverRowFocusScale', true),
+                scrollEvent: false
+            });
+
+            if (!this.insertSearchSection(searchPage, section)) {
+                return;
+            }
+
+            if (this.shouldUseBackdropThumbnails()) {
+                this.hydrateDiscoverBackdropCards(itemsContainer);
+            } else {
+                this.initLazyImages(itemsContainer);
+            }
+            this.refreshScrollers(section);
         },
 
         refreshScrollers: function (container) {

@@ -180,6 +180,7 @@ public class SeerrFinController : ControllerBase
             config.DiscoverUsePosters,
             config.ElegantFinFixes,
             config.QualityRecommendations,
+            config.AddSeerrResultsInSearch,
             displayCustomizations = DisplayCustomizationsHelper.Resolve(config),
             advanced = AdvancedSettingsHelper.BuildFrontendPayload(config)
         });
@@ -420,6 +421,26 @@ public class SeerrFinController : ControllerBase
         int startIndex,
         int? limit) =>
         _discoveryService.GetDiscoverRow(GetUsername(userManager) ?? string.Empty, jellyseerrPath, mediaType, startIndex, limit);
+
+    [HttpGet("search")]
+    [Authorize]
+    public ActionResult<QueryResult<BaseItemDto>> Search(
+        [FromServices] IUserManager userManager,
+        [FromQuery] string? query,
+        [FromQuery] string? language = null)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return BadRequest(new
+            {
+                error = true,
+                code = "missing_query",
+                message = "Search query is required."
+            });
+        }
+
+        return _discoveryService.Search(GetUsername(userManager) ?? string.Empty, query, language);
+    }
 
     [HttpGet("genres/movie")]
     [Authorize]

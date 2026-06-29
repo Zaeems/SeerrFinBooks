@@ -49,6 +49,8 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public bool QualityRecommendations { get; set; } = true;
 
+    public bool AddSeerrResultsInSearch { get; set; } = true;
+
     public string DisplayCustomizationsJson { get; set; } = string.Empty;
 
     public AdvancedSettings? Advanced { get; set; }

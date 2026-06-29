@@ -1,6 +1,7 @@
 .seerrfin-movies-sections,
 .seerrfin-tv-sections,
-.seerrfin-requests-sections {
+.seerrfin-requests-sections,
+.seerrfin-search-section {
     --seerrfin-discover-backdrop-width: 20em;
     --seerrfin-discover-portrait-width: 13.333em;
 }
@@ -114,6 +115,15 @@
     gap: 0.75em;
 }
 
+.seerrfin-search-section {
+    margin-bottom: 1.5em;
+}
+
+.seerrfin-search-subtitle {
+    color: var(--secondaryTextColor);
+    font-size: 0.85em;
+}
+
 .seerrfin-view-more {
     background: none;
     border: none;
@@ -181,7 +191,8 @@
 }
 
 .seerrfin-poster-section .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop),
-.seerrfin-grid-view .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop) {
+.seerrfin-grid-view .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop),
+.seerrfin-search-section .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop) {
     width: var(--seerrfin-discover-portrait-width);
 }
 
@@ -284,6 +295,7 @@
 /* ElegantFin fixes */
 html.seerrfin-elegantfin .seerrfin-movies-sections .seerrfin-discover-card,
 html.seerrfin-elegantfin .seerrfin-tv-sections .seerrfin-discover-card,
+html.seerrfin-elegantfin .seerrfin-search-section .seerrfin-discover-card,
 html.seerrfin-elegantfin .seerrfin-movies-sections .seerrfin-box-card,
 html.seerrfin-elegantfin .seerrfin-tv-sections .seerrfin-box-card,
 html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card {
@@ -296,7 +308,8 @@ html.seerrfin-elegantfin .seerrfin-discover-card--backdrop {
 }
 
 html.seerrfin-elegantfin .seerrfin-poster-section .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop),
-html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop) {
+html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop),
+html.seerrfin-elegantfin .seerrfin-search-section .seerrfin-discover-card:not(.seerrfin-discover-card--backdrop) {
     width: var(--seerrfin-discover-portrait-width) !important;
 }
 
