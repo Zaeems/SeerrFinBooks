@@ -1,14 +1,14 @@
 {
   "category": "General",
-  "changelog": "Add search integration to show Seerr results in Jellyfin search, updated config page slightly to organize settings more intuitively",
+  "changelog": "Added the option for native Jellyfin-style UI for carousels, grid pages, and search results, with better backdrop hydration and grid navigation",
   "description": "The best way to discover and request Movies and TV Shows through Seerr directly in Jellyfin.",
   "guid": "c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c",
   "name": "SeerrFin",
   "overview": "This plugin lets you add two extra tabs to your top bar, allowing you to discover new Movies and TV Shows, and easily request them in any quality profile you want.",
   "owner": "varunaditya-plus",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-06-29T00:31:24.0000000Z",
-  "version": "1.6.0.0",
+  "timestamp": "2026-07-14T07:51:41.0000000Z",
+  "version": "1.6.1.0",
   "status": "Active",
   "autoUpdate": true,
   "assemblies": [
