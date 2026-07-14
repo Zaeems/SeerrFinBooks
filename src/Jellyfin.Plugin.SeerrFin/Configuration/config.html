@@ -966,6 +966,42 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="nativeCarousels">Native carousels</label>
+                                <div class="bst-field-desc">Use Jellyfin's default carousel styles for cards in carousels (in discovery tabs).</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle">
+                                    <input id="nativeCarousels" name="nativeCarousels" type="checkbox" />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="nativeGridPages">Native grid pages</label>
+                                <div class="bst-field-desc">Use Jellyfin's default carousel styles for cards in grid pages.</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle">
+                                    <input id="nativeGridPages" name="nativeGridPages" type="checkbox" />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="nativeSearchResults">Native search results</label>
+                                <div class="bst-field-desc">Use Jellyfin's default carousel styles for cards in Seerr search results.</div>
+                            </div>
+                            <div class="bst-toggle-actions">
+                                <label class="bst-toggle">
+                                    <input id="nativeSearchResults" name="nativeSearchResults" type="checkbox" />
+                                    <span class="bst-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2210,6 +2246,9 @@
                 document.querySelector('#studioNetworkUseImages').checked = config.StudioNetworkUseImages !== false;
                 document.querySelector('#genreUseBackdrops').checked = config.GenreUseBackdrops !== false;
                 document.querySelector('#discoverUsePosters').checked = config.DiscoverUsePosters !== false;
+                document.querySelector('#nativeCarousels').checked = config.NativeCarousels === true;
+                document.querySelector('#nativeGridPages').checked = config.NativeGridPages === true;
+                document.querySelector('#nativeSearchResults').checked = config.NativeSearchResults === true;
                 document.querySelector('#elegantFinFixes').checked = config.ElegantFinFixes === true;
                 document.querySelector('#qualityRecommendations').checked = config.QualityRecommendations !== false;
                 document.querySelector('#addSeerrResultsInSearch').checked = config.AddSeerrResultsInSearch !== false;
@@ -2245,6 +2284,9 @@
                     config.StudioNetworkUseImages = document.querySelector('#studioNetworkUseImages').checked;
                     config.GenreUseBackdrops = document.querySelector('#genreUseBackdrops').checked;
                     config.DiscoverUsePosters = document.querySelector('#discoverUsePosters').checked;
+                    config.NativeCarousels = document.querySelector('#nativeCarousels').checked;
+                    config.NativeGridPages = document.querySelector('#nativeGridPages').checked;
+                    config.NativeSearchResults = document.querySelector('#nativeSearchResults').checked;
                     config.ElegantFinFixes = document.querySelector('#elegantFinFixes').checked;
                     config.QualityRecommendations = document.querySelector('#qualityRecommendations').checked;
                     config.AddSeerrResultsInSearch = document.querySelector('#addSeerrResultsInSearch').checked;

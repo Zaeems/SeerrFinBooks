@@ -51,6 +51,12 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public bool AddSeerrResultsInSearch { get; set; } = true;
 
+    public bool NativeCarousels { get; set; }
+
+    public bool NativeGridPages { get; set; }
+
+    public bool NativeSearchResults { get; set; }
+
     public string DisplayCustomizationsJson { get; set; } = string.Empty;
 
     public AdvancedSettings? Advanced { get; set; }

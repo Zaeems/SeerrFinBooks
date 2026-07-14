@@ -174,6 +174,39 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             return container.querySelector('.seerrfin-poster-section') !== null;
         },
 
+        isGridViewOpen: function (container) {
+            if (!container) {
+                return false;
+            }
+
+            const children = Array.from(container.children);
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                if (child.hasAttribute('data-seerrfin-grid-view') && child.style.display !== 'none') {
+                    return true;
+                }
+            }
+            return false;
+        },
+
+        cancelContainerLoad: function (container) {
+            if (!container) {
+                return;
+            }
+
+            container.dataset.seerrfinLoadId = 'cancelled-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+            container.dataset.seerrfinLoading = 'false';
+            if (!this.isContainerPopulated(container)) {
+                delete container.dataset.seerrfinLoaded;
+            }
+
+            Array.from(container.childNodes).forEach(function (node) {
+                if (node.nodeType === Node.COMMENT_NODE && /seerrfin-(row|carousel)-slot/.test(node.nodeValue || '')) {
+                    node.remove();
+                }
+            });
+        },
+
         renderIfContainerVisible: function (type) {
             const selector = type === 'movies' ? '.seerrfin-movies-sections' : '.seerrfin-tv-sections';
             const container = this.findActiveContainer(selector);
@@ -217,7 +250,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     type === 'movies' ? '.seerrfin-movies-sections' : '.seerrfin-tv-sections'
                 );
             }
-            if (!container || !this.isContainerVisible(container)) {
+            if (!container || !this.isContainerVisible(container) || this.isGridViewOpen(container)) {
                 return;
             }
 
@@ -234,7 +267,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             container.dataset.seerrfinLoadId = loadId;
             delete container.dataset.seerrfinLoaded;
 
-            // Ignore results if user switched tabs or theres a newer load. Going back through chrome back button is still broken though
+            // Ignore results if user switched tabs or theres a newer load.
             const finishLoading = function () {
                 if (container.dataset.seerrfinLoadId !== loadId) {
                     return;
@@ -244,7 +277,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             };
 
             const isStale = function () {
-                return container.dataset.seerrfinLoadId !== loadId || !self.isContainerVisible(container);
+                return container.dataset.seerrfinLoadId !== loadId || !self.isContainerVisible(container) || self.isGridViewOpen(container);
             };
 
             const browseTitle = mediaType === 'movie' ? 'Browse by studio' : 'Browse by network';
@@ -262,14 +295,27 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 }
 
                 container.innerHTML = '';
+                const useNativeCarousels = self.shouldUseNativeCarousels();
 
                 const rowSlots = rows.map(function (row) {
+                    if (useNativeCarousels) {
+                        const marker = document.createComment('seerrfin-row-slot');
+                        container.appendChild(marker);
+                        return { row: row, skeleton: marker };
+                    }
+
                     const skeleton = self.buildRowSkeleton(row.title, 'poster');
                     container.appendChild(skeleton);
                     return { row: row, skeleton: skeleton };
                 });
 
                 const carouselSlots = carouselDefs.map(function (def) {
+                    if (useNativeCarousels) {
+                        const marker = document.createComment('seerrfin-carousel-slot');
+                        container.appendChild(marker);
+                        return { def: def, skeleton: marker };
+                    }
+
                     const skeleton = self.buildRowSkeleton(def.title, 'carousel');
                     container.appendChild(skeleton);
                     return { def: def, skeleton: skeleton };
@@ -291,15 +337,22 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 };
 
                 const replaceSkeleton = function (skeleton, node) {
-                    if (isStale() || !skeleton.parentNode) {
+                    if (isStale()) {
                         return;
                     }
+
                     if (node) {
                         node.classList.add('seerrfin-section-fadein');
-                        skeleton.replaceWith(node);
+                        if (skeleton && skeleton.parentNode) {
+                            skeleton.replaceWith(node);
+                        } else {
+                            container.appendChild(node);
+                        }
                         self.refreshScrollers(container);
-                    } else {
+                    } else if (skeleton && skeleton.parentNode) {
                         skeleton.remove();
+                    } else {
+                        return;
                     }
                 };
 
@@ -434,6 +487,24 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         'addSeerrResultsInSearch',
                         true
                     ),
+                    NativeCarousels: self.readConfigBool(
+                        data,
+                        'NativeCarousels',
+                        'nativeCarousels',
+                        false
+                    ),
+                    NativeGridPages: self.readConfigBool(
+                        data,
+                        'NativeGridPages',
+                        'nativeGridPages',
+                        false
+                    ),
+                    NativeSearchResults: self.readConfigBool(
+                        data,
+                        'NativeSearchResults',
+                        'nativeSearchResults',
+                        false
+                    ),
                     DisplayCustomizations: self.parseDisplayCustomizations(data),
                     Advanced: self.parseAdvancedSettings(data)
                 };
@@ -449,6 +520,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     ElegantFinFixes: false,
                     QualityRecommendations: true,
                     AddSeerrResultsInSearch: true,
+                    NativeCarousels: false,
+                    NativeGridPages: false,
+                    NativeSearchResults: false,
                     DisplayCustomizations: self.parseDisplayCustomizations(null),
                     Advanced: self.parseAdvancedSettings(null)
                 };
@@ -550,6 +624,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 settings.DiscoverUsePosters,
                 settings.ElegantFinFixes,
                 settings.AddSeerrResultsInSearch,
+                settings.NativeCarousels,
+                settings.NativeGridPages,
+                settings.NativeSearchResults,
                 JSON.stringify(settings.DisplayCustomizations || {}),
                 JSON.stringify(settings.Advanced || {})
             ].join(':');
@@ -636,6 +713,25 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         shouldUseBackdropThumbnails: function () {
             return (this._displaySettings || {}).DiscoverUsePosters === false;
+        },
+
+        isNativeUiAvailable: function () {
+            return !!(window.seerrFinNativeUi &&
+                typeof window.seerrFinNativeUi.createDiscoverCards === 'function' &&
+                typeof window.seerrFinNativeUi.createBoxCard === 'function' &&
+                typeof window.seerrFinNativeUi.renderGridViewShell === 'function');
+        },
+
+        shouldUseNativeCarousels: function () {
+            return (this._displaySettings || {}).NativeCarousels === true && this.isNativeUiAvailable();
+        },
+
+        shouldUseNativeGridPages: function () {
+            return (this._displaySettings || {}).NativeGridPages === true && this.isNativeUiAvailable();
+        },
+
+        shouldUseNativeSearchResults: function () {
+            return (this._displaySettings || {}).NativeSearchResults === true && this.isNativeUiAvailable();
         },
 
         resolveImageUrl: function (url) {
@@ -732,6 +828,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         buildPosterRow: function (title, items, path, options) {
             options = options || {};
             const safeTitle = this.escapeHtml(title);
+            const useNativeCards = this.shouldUseNativeCarousels();
 
             if (!items || items.length === 0) {
                 return this.mountFromHtml(`
@@ -751,8 +848,11 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             let pathAttrs = '';
             if (path) {
                 const total = parseInt(options.total || '0', 10);
-                pathAttrs = ` data-path="${this.escapeHtml(path)}" data-loaded-count="${items.length}" data-total="${total}" data-has-more="${total === 0 || items.length < total}"`;
+                pathAttrs = ` data-path="${this.escapeHtml(path)}" data-loaded-count="${items.length}" data-total="${total}" data-has-more="${total === 0 || items.length < total}" data-native-cards="${useNativeCards ? 'true' : 'false'}"`;
             }
+            const containerClass = useNativeCards
+                ? 'itemsContainer scrollSlider focuscontainer-x animatedScrollX'
+                : 'itemsContainer scrollSlider focuscontainer-x';
 
             const section = this.mountFromHtml(`
                 <div class="verticalSection seerrfin-poster-section"${pathAttrs}>
@@ -760,16 +860,21 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         <h2 class="sectionTitle sectionTitle-cards">${safeTitle}</h2>
                         ${viewMoreBtn}
                     </div>
-                    <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x"></div>
+                    <div is="emby-itemscontainer" class="${containerClass}" data-monitor="videoplayback,markplayed"></div>
                 </div>`);
 
             const itemsContainer = section.querySelector('.itemsContainer');
-            itemsContainer.innerHTML = this.createDiscoverCards(items);
+            itemsContainer.innerHTML = this.createDiscoverCards(items, false, {
+                nativeCards: useNativeCards
+            });
             this.appendHorizontalScroller(section, itemsContainer, {
                 focusScale: this.getAdvancedCarouselSetting('discoverRowFocusScale', true),
                 scrollEvent: this.getAdvancedCarouselSetting('enableRowInfiniteScroll', true)
             });
-            if (this.shouldUseBackdropThumbnails()) {
+            if (useNativeCards) {
+                this.hydrateNativeBackdropCards(itemsContainer);
+                this.initLazyImages(itemsContainer);
+            } else if (this.shouldUseBackdropThumbnails()) {
                 this.hydrateDiscoverBackdropCards(itemsContainer);
             } else {
                 this.initLazyImages(itemsContainer);
@@ -863,6 +968,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             const loadedCount = parseInt(section.dataset.loadedCount || '0', 10);
             const pageSize = self._gridPageSize;
+            const useNativeCards = section.dataset.nativeCards === 'true';
             section.dataset.loading = 'true';
 
             self.fetchDiscover(path, '?startIndex=' + encodeURIComponent(loadedCount) + '&limit=' + encodeURIComponent(pageSize)).then(function (result) {
@@ -879,7 +985,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 }
 
                 const existingIds = new Set();
-                itemsContainer.querySelectorAll('.seerrfin-discover-card[data-tmdb-id]').forEach(function (card) {
+                itemsContainer.querySelectorAll('[data-tmdb-id]').forEach(function (card) {
                     existingIds.add(card.getAttribute('data-tmdb-id'));
                 });
                 const newItems = result.items.filter(function (item) {
@@ -890,8 +996,13 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 });
 
                 if (newItems.length) {
-                    itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(newItems));
-                    if (self.shouldUseBackdropThumbnails()) {
+                    itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(newItems, false, {
+                        nativeCards: useNativeCards
+                    }));
+                    if (useNativeCards) {
+                        self.hydrateNativeBackdropCards(itemsContainer);
+                        self.initLazyImages(itemsContainer);
+                    } else if (self.shouldUseBackdropThumbnails()) {
                         self.hydrateDiscoverBackdropCards(itemsContainer);
                     } else {
                         self.initLazyImages(itemsContainer);
@@ -935,8 +1046,11 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         buildCarouselSection: function (title, items, mediaType, kind) {
             const self = this;
             const safeTitle = this.escapeHtml(title);
+            const useNativeCards = this.shouldUseNativeCarousels();
             const cardsHtml = (items || []).map(function (item) {
-                return self.createBoxCard(item, mediaType, kind);
+                return useNativeCards
+                    ? window.seerrFinNativeUi.createBoxCard(self, item, mediaType, kind)
+                    : self.createBoxCard(item, mediaType, kind);
             }).join('');
 
             if (!cardsHtml) {
@@ -949,12 +1063,15 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     </div>`);
             }
 
+            const containerClass = useNativeCards
+                ? 'itemsContainer scrollSlider focuscontainer-x animatedScrollX'
+                : 'itemsContainer scrollSlider focuscontainer-x';
             const section = this.mountFromHtml(`
                 <div class="verticalSection seerrfin-carousel-section">
                     <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
                         <h2 class="sectionTitle sectionTitle-cards">${safeTitle}</h2>
                     </div>
-                    <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x"></div>
+                    <div is="emby-itemscontainer" class="${containerClass}" data-monitor="videoplayback,markplayed"></div>
                 </div>`);
 
             const itemsContainer = section.querySelector('.itemsContainer');
@@ -962,6 +1079,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             this.appendHorizontalScroller(section, itemsContainer, {
                 focusScale: this.getAdvancedCarouselSetting('browseCarouselFocusScale', false)
             });
+            if (useNativeCards) {
+                this.initLazyImages(itemsContainer);
+            }
             return section;
         },
 
@@ -1035,6 +1155,13 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         createDiscoverCards: function (items, forGrid, options) {
             options = options || {};
+            if (options.nativeCards === true) {
+                return window.seerrFinNativeUi.createDiscoverCards(this, items, Object.assign({}, options, {
+                    forGrid: forGrid === true,
+                    preferEnglishBackdrop: true
+                }));
+            }
+
             const useBackdrop = options.forceBackdrop === true ||
                 (options.forceBackdrop !== false && this.shouldUseBackdropThumbnails());
             if (useBackdrop) {
@@ -1257,6 +1384,27 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             return String(mediaType || '').toLowerCase() + ':' + String(tmdbId || '');
         },
 
+        // Use English backdrops when merging batch responses into the cache
+        cacheBackdropResult: function (cacheKey, incoming) {
+            if (!cacheKey || !incoming || !incoming.url) {
+                return;
+            }
+
+            if (!this._backdropResultCache) {
+                this._backdropResultCache = {};
+            }
+
+            const existing = this._backdropResultCache[cacheKey];
+            if (!existing || !existing.url) {
+                this._backdropResultCache[cacheKey] = incoming;
+                return;
+            }
+
+            if (incoming.hasEnglishBackdrop && !existing.hasEnglishBackdrop) {
+                this._backdropResultCache[cacheKey] = incoming;
+            }
+        },
+
         normalizeBackdropBatchItem: function (item) {
             if (!item) {
                 return null;
@@ -1342,7 +1490,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     }
 
                     const cacheKey = self.getBackdropCacheKey(normalized.mediaType, normalized.tmdbId);
-                    self._backdropResultCache[cacheKey] = normalized;
+                    self.cacheBackdropResult(cacheKey, normalized);
                 });
                 return self._backdropResultCache;
             }).catch(function () {
@@ -1359,6 +1507,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             const self = this;
             const url = result && result.url;
             const hasEnglish = result && result.hasEnglishBackdrop;
+            const alreadyEnglish = card.classList.contains('seerrfin-discover-card--english');
 
             if (result && result.path) {
                 card.setAttribute('data-tmdb-backdrop-path', result.path);
@@ -1367,6 +1516,11 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             if (url && hasEnglish) {
                 self.setDiscoverBackdropPresentation(card, 'english');
                 self.setDiscoverBackdropImage(card, url);
+                return;
+            }
+
+            // Dont downgrade a card that already resolved to English backdrop.
+            if (alreadyEnglish) {
                 return;
             }
 
@@ -1401,7 +1555,6 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 const seerrFallback = card.getAttribute('data-fallback-src') || '';
                 const mediaId = card.dataset.tmdbId;
                 const mediaType = card.dataset.mediaType;
-                const backdropPath = card.getAttribute('data-tmdb-backdrop-path') || '';
                 const cacheKey = mediaType && mediaId ? self.getBackdropCacheKey(mediaType, mediaId) : '';
                 const cachedResult = cacheKey ? self._backdropResultCache[cacheKey] : null;
 
@@ -1409,11 +1562,6 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     self.applyDiscoverBackdropResult(card, cachedResult, seerrFallback);
                     card.dataset.backdropLoaded = 'true';
                     return;
-                }
-
-                if (backdropPath || seerrFallback) {
-                    self.setDiscoverBackdropPresentation(card, 'fallback');
-                    self.setDiscoverBackdropImage(card, seerrFallback);
                 }
 
                 if (!mediaId || !mediaType) {
@@ -1438,11 +1586,179 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
 
             self.fetchTmdbBackdropBatch(batchItems).then(function () {
+                let retryPending = false;
                 cardEntries.forEach(function (entry) {
                     const cacheKey = self.getBackdropCacheKey(entry.mediaType, entry.mediaId);
                     const result = self._backdropResultCache[cacheKey] || null;
+
+                    if (entry.card.classList.contains('seerrfin-discover-card--english') &&
+                        !(result && result.hasEnglishBackdrop)) {
+                        entry.card.dataset.backdropLoaded = 'true';
+                        delete entry.card.dataset.backdropAttempts;
+                        return;
+                    }
+
                     self.applyDiscoverBackdropResult(entry.card, result, entry.seerrFallback);
-                    entry.card.dataset.backdropLoaded = 'true';
+
+                    // Missing results mean TMDB lookup failed (rate limit).
+                    // Leave the card un-hydrated so it retries a few times to avoid retrying items that truly have no backdrop.
+                    if (result && result.url) {
+                        entry.card.dataset.backdropLoaded = 'true';
+                        delete entry.card.dataset.backdropAttempts;
+                        return;
+                    }
+
+                    const attempts = (parseInt(entry.card.dataset.backdropAttempts || '0', 10) || 0) + 1;
+                    if (attempts >= 3) {
+                        entry.card.dataset.backdropLoaded = 'true';
+                        return;
+                    }
+                    entry.card.dataset.backdropAttempts = String(attempts);
+                    delete entry.card.dataset.backdropHydrateQueued;
+                    retryPending = true;
+                });
+
+                if (retryPending && container.isConnected) {
+                    setTimeout(function () {
+                        self.hydrateDiscoverBackdropCards(container);
+                    }, 2000);
+                }
+            });
+        },
+
+        setNativeBackdropImage: function (card, url, fallbackUrl) {
+            if (!card || !url) {
+                return;
+            }
+
+            const image = card.querySelector('.cardImageContainer.cardContent');
+            if (!image) {
+                return;
+            }
+
+            const requestId = String((parseInt(card.dataset.nativeBackdropRequest || '0', 10) || 0) + 1);
+            card.dataset.nativeBackdropRequest = requestId;
+
+            const applyLoadedImage = function (loadedUrl) {
+                if (!card.isConnected || card.dataset.nativeBackdropRequest !== requestId) {
+                    return;
+                }
+
+                image.removeAttribute('data-src');
+                card.setAttribute('data-native-backdrop-src', loadedUrl);
+                image.style.backgroundImage = "url('" + loadedUrl.replace(/'/g, "\\'") + "')";
+                image.classList.add('lazy-image-fadein-fast');
+                image.classList.remove('lazy-hidden');
+
+                const canvas = card.querySelector('.blurhash-canvas');
+                if (canvas) {
+                    canvas.classList.add('lazy-hidden');
+                }
+            };
+
+            const preloader = new Image();
+            preloader.onload = function () {
+                applyLoadedImage(url);
+            };
+            preloader.onerror = function () {
+                if (!fallbackUrl || fallbackUrl === url) {
+                    return;
+                }
+
+                const fallback = new Image();
+                fallback.onload = function () {
+                    applyLoadedImage(fallbackUrl);
+                };
+                fallback.src = fallbackUrl;
+            };
+            preloader.src = url;
+        },
+
+        applyNativeBackdropResult: function (card, result) {
+            if (!card) {
+                return;
+            }
+
+            if (result && result.path) {
+                card.setAttribute('data-tmdb-backdrop-path', result.path);
+            }
+
+            if (card.dataset.nativeBackdropEnglish === 'true' && !(result && result.hasEnglishBackdrop)) {
+                return;
+            }
+
+            const englishUrl = result && result.hasEnglishBackdrop && result.url ? result.url : '';
+            const fallbackUrl = (result && result.url) ||
+                card.getAttribute('data-fallback-src') ||
+                '';
+
+            if (englishUrl) {
+                card.dataset.nativeBackdropEnglish = 'true';
+                this.setNativeBackdropImage(card, englishUrl, fallbackUrl);
+                return;
+            }
+
+            if (card.dataset.nativeBackdropEnglish === 'true') {
+                return;
+            }
+
+            this.setNativeBackdropImage(card, fallbackUrl);
+        },
+
+        hydrateNativeBackdropCards: function (container) {
+            const self = this;
+            if (!container) {
+                return;
+            }
+
+            const cards = container.querySelectorAll('[data-seerrfin-native-card="true"]:not([data-native-backdrop-hydrate-queued]):not([data-native-backdrop-loaded])');
+            if (!cards.length) {
+                return;
+            }
+
+            const batchItems = [];
+            const cardEntries = [];
+
+            cards.forEach(function (card) {
+                card.dataset.nativeBackdropHydrateQueued = 'true';
+
+                const mediaId = card.dataset.tmdbId;
+                const mediaType = card.dataset.mediaType;
+                const cacheKey = mediaType && mediaId ? self.getBackdropCacheKey(mediaType, mediaId) : '';
+                const cachedResult = cacheKey && self._backdropResultCache ? self._backdropResultCache[cacheKey] : null;
+
+                if (cachedResult) {
+                    self.applyNativeBackdropResult(card, cachedResult);
+                    card.dataset.nativeBackdropLoaded = 'true';
+                    return;
+                }
+
+                if (!mediaId || !mediaType) {
+                    card.dataset.nativeBackdropLoaded = 'true';
+                    return;
+                }
+
+                batchItems.push({
+                    mediaType: mediaType,
+                    tmdbId: parseInt(mediaId, 10)
+                });
+                cardEntries.push({
+                    card: card,
+                    mediaType: mediaType,
+                    mediaId: mediaId
+                });
+            });
+
+            if (!cardEntries.length) {
+                return;
+            }
+
+            self.fetchTmdbBackdropBatch(batchItems).then(function () {
+                cardEntries.forEach(function (entry) {
+                    const cacheKey = self.getBackdropCacheKey(entry.mediaType, entry.mediaId);
+                    const result = self._backdropResultCache && self._backdropResultCache[cacheKey] || null;
+                    self.applyNativeBackdropResult(entry.card, result);
+                    entry.card.dataset.nativeBackdropLoaded = 'true';
                 });
             });
         },
@@ -1451,7 +1767,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             // Capturing runs before card navigation handlers
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('.discover-requestbutton');
-                if (!btn || !btn.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-grid-view, .seerrfin-search-section')) {
+                if (!btn || !btn.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, [data-seerrfin-grid-view], .seerrfin-search-section')) {
                     return;
                 }
 
@@ -1474,9 +1790,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     return;
                 }
 
-                const card = e.target.closest('.seerrfin-discover-card');
+                const card = e.target.closest('.seerrfin-discover-card, [data-seerrfin-native-card="true"]');
                 if (!card || card.classList.contains('seerrfin-discover-card--static') ||
-                    !card.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-grid-view, .seerrfin-search-section')) {
+                    !card.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, [data-seerrfin-grid-view], .seerrfin-search-section')) {
                     return;
                 }
 
@@ -1500,7 +1816,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             const self = this;
 
             document.addEventListener('contextmenu', function (e) {
-                if (e.target.closest('.seerrfin-grid-view')) {
+                if (e.target.closest('[data-seerrfin-grid-view]')) {
                     e.preventDefault();
                     e.stopPropagation();
                 }
@@ -1525,7 +1841,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     return;
                 }
 
-                const boxCard = e.target.closest('.seerrfin-box-card');
+                const boxCard = e.target.closest('[data-seerrfin-box-card="true"]');
                 if (!boxCard) {
                     return;
                 }
@@ -1537,6 +1853,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
                 e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
 
                 const kind = boxCard.getAttribute('data-kind');
                 const mediaType = boxCard.getAttribute('data-media-type');
@@ -1546,7 +1863,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 if (browsePath && name) {
                     self.openGridView(boxContainer, name, browsePath);
                 }
-            });
+            }, true);
         },
 
         clearJellyfinSelection: function () {
@@ -1571,54 +1888,168 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             });
         },
 
-        renderGridViewShell: function () {
+        renderLegacyGridViewShell: function () {
             return `
-                <div class="seerrfin-grid-view">
+                <div class="seerrfin-grid-view" data-seerrfin-grid-view="true" data-grid-shell="legacy">
                     <div class="seerrfin-grid-header padded-left padded-right">
-                        <button type="button" class="seerrfin-grid-back paper-icon-button-light emby-button">
+                        <button type="button" class="seerrfin-grid-back paper-icon-button-light emby-button" title="Back" aria-label="Back" data-grid-nav="back">
                             <span class="material-icons" aria-hidden="true">arrow_back</span>
                         </button>
                         <h2 class="seerrfin-grid-title sectionTitle sectionTitle-cards"></h2>
                     </div>
-                    <div class="itemsContainer vertical-wrap padded-left padded-right"></div>
-                    <div class="seerrfin-grid-loadmore" style="display:none">
+                    <div>
+                        <div is="emby-itemscontainer" class="itemsContainer padded-left padded-right vertical-wrap focuscontainer-x" data-monitor="videoplayback,markplayed"></div>
+                    </div>
+                    <div data-seerrfin-loadmore style="display:none" class="seerrfin-grid-loadmore">
                         <button type="button" class="raised emby-button">Load more</button>
                     </div>
-                    <div class="seerrfin-grid-status" style="display:none"></div>
+                    <div data-seerrfin-status style="display:none" class="seerrfin-grid-status"></div>
                 </div>`;
+        },
+
+        renderGridViewShell: function (useNativeGrid) {
+            return useNativeGrid
+                ? window.seerrFinNativeUi.renderGridViewShell()
+                : this.renderLegacyGridViewShell();
+        },
+
+        applyGridViewMode: function (gridView) {
+            const mode = gridView.dataset.gridViewMode || 'ThumbCard';
+            const usePoster = mode === 'Poster' || mode === 'PosterCard';
+            const showCardText = mode === 'PosterCard' || mode === 'ThumbCard';
+            const cards = gridView.querySelectorAll('[data-seerrfin-native-card="true"]');
+
+            cards.forEach(function (card) {
+                const image = card.querySelector('.cardImageContainer.cardContent');
+                const padder = card.querySelector('.cardPadder');
+                if (!image || !padder) {
+                    return;
+                }
+
+                card.classList.remove('overflowBackdropCard', 'overflowPortraitCard', 'backdropCard', 'portraitCard');
+                card.classList.add(usePoster ? 'portraitCard' : 'backdropCard');
+                padder.classList.remove(
+                    'cardPadder-overflowBackdrop',
+                    'cardPadder-overflowPortrait',
+                    'cardPadder-backdrop',
+                    'cardPadder-portrait'
+                );
+                padder.classList.add(usePoster ? 'cardPadder-portrait' : 'cardPadder-backdrop');
+                image.classList.add('coveredImage');
+
+                const cardBox = card.querySelector('.cardBox');
+                if (cardBox) {
+                    cardBox.classList.add('cardBox-bottompadded');
+                }
+
+                card.querySelectorAll('.cardText').forEach(function (textEl) {
+                    textEl.classList.toggle('hide', !showCardText);
+                });
+
+                const nextUrl = usePoster
+                    ? (card.getAttribute('data-poster-src') || card.getAttribute('data-fallback-src') || '')
+                    : (card.getAttribute('data-native-backdrop-src') || card.getAttribute('data-fallback-src') || '');
+                if (nextUrl) {
+                    image.style.backgroundImage = "url('" + nextUrl.replace(/'/g, "\\'") + "')";
+                    image.removeAttribute('data-src');
+                    image.classList.remove('lazy-hidden');
+                }
+            });
+        },
+
+        applyGridSort: function (gridView) {
+            const itemsContainer = gridView.querySelector('.itemsContainer');
+            if (!itemsContainer) {
+                return;
+            }
+
+            const sort = gridView.dataset.gridSort || 'title';
+            const sortOrder = gridView.dataset.gridSortOrder || (sort === 'title' ? 'Ascending' : 'Descending');
+            const cards = Array.from(itemsContainer.querySelectorAll('.card'));
+            cards.sort(function (a, b) {
+                let result;
+                if (sort === 'year') {
+                    result = (parseInt(b.dataset.year || '0', 10) || 0) - (parseInt(a.dataset.year || '0', 10) || 0);
+                } else if (sort === 'rating') {
+                    result = (Number(b.dataset.rating || 0) || 0) - (Number(a.dataset.rating || 0) || 0);
+                } else {
+                    result = (a.dataset.name || '').localeCompare(b.dataset.name || '');
+                }
+                if (sort === 'title') {
+                    return sortOrder === 'Descending' ? -result : result;
+                }
+                return sortOrder === 'Ascending' ? -result : result;
+            });
+            cards.forEach(function (card) {
+                itemsContainer.appendChild(card);
+            });
+        },
+
+        applyGridPresentation: function (gridView) {
+            this.applyGridViewMode(gridView);
+            this.applyGridSort(gridView);
         },
 
         openGridView: function (container, title, path) {
             const self = this;
             self.clearJellyfinSelection();
+            self.cancelContainerLoad(container);
 
             Array.from(container.children).forEach(function (child) {
-                if (!child.classList.contains('seerrfin-grid-view')) {
+                if (!child.hasAttribute('data-seerrfin-grid-view')) {
                     child.style.display = 'none';
                     child.dataset.seerrfinHidden = 'true';
                 }
             });
 
-            let gridView = container.querySelector('.seerrfin-grid-view');
+            const useNativeGrid = self.shouldUseNativeGridPages();
+            const shellMode = useNativeGrid ? 'native' : 'legacy';
+            let gridView = container.querySelector('[data-seerrfin-grid-view]');
+            if (gridView && gridView.dataset.gridShell !== shellMode) {
+                gridView.remove();
+                gridView = null;
+            }
             if (!gridView) {
-                gridView = self.mountFromHtml(self.renderGridViewShell());
+                gridView = self.mountFromHtml(self.renderGridViewShell(useNativeGrid));
+                gridView.dataset.gridShell = shellMode;
                 container.appendChild(gridView);
 
-                gridView.querySelector('.seerrfin-grid-back').addEventListener('click', function () {
-                    self.closeGridView(container);
+                gridView.querySelectorAll('[data-grid-nav="back"]').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        self.closeGridView(container);
+                    });
                 });
-                gridView.querySelector('.seerrfin-grid-loadmore button').addEventListener('click', function () {
+                gridView.querySelector('[data-seerrfin-loadmore] button').addEventListener('click', function () {
                     self.loadMoreGridItems(gridView);
                 });
             }
 
+            if (useNativeGrid) {
+                window.seerrFinNativeUi.bindGridControls(self, gridView);
+            }
+
             gridView.dataset.path = path;
+            gridView.dataset.gridSessionId = String(Date.now()) + '-' + Math.random().toString(16).slice(2);
+            gridView.dataset.loading = 'false';
             gridView.dataset.loadedCount = '0';
-            gridView.querySelector('.seerrfin-grid-title').textContent = title;
+            gridView.dataset.total = '0';
+            gridView.dataset.nativeCards = useNativeGrid ? 'true' : 'false';
+            gridView.dataset.gridViewMode = 'ThumbCard';
+            gridView.dataset.gridSort = 'title';
+            gridView.dataset.gridSortBy = 'SortName';
+            delete gridView.dataset.gridSortOrder;
+            const gridTitle = gridView.querySelector('.sectionTitle');
+            if (gridTitle) {
+                gridTitle.textContent = title;
+            }
             gridView.querySelector('.itemsContainer').innerHTML = '';
-            gridView.querySelector('.seerrfin-grid-loadmore').style.display = 'none';
-            gridView.querySelector('.seerrfin-grid-status').style.display = 'none';
+            gridView.querySelector('[data-seerrfin-loadmore]').style.display = 'none';
+            gridView.querySelector('[data-seerrfin-status]').style.display = 'none';
             gridView.style.display = '';
+            if (useNativeGrid) {
+                window.seerrFinNativeUi.setGridControlsEnabled(gridView, false);
+                window.seerrFinNativeUi.updateGridChrome(gridView);
+            }
 
             self.loadMoreGridItems(gridView, true);
         },
@@ -1626,8 +2057,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         closeGridView: function (container) {
             this.clearJellyfinSelection();
 
-            const gridView = container.querySelector('.seerrfin-grid-view');
+            const gridView = container.querySelector('[data-seerrfin-grid-view]');
             if (gridView) {
+                gridView.dataset.gridSessionId = 'closed-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+                gridView.dataset.loading = 'false';
                 gridView.style.display = 'none';
             }
 
@@ -1637,17 +2070,20 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     delete child.dataset.seerrfinHidden;
                 }
             });
+            this.scheduleRender();
         },
 
         loadMoreGridItems: function (gridView, isInitial) {
             const self = this;
             const path = gridView.dataset.path;
             const itemsContainer = gridView.querySelector('.itemsContainer');
-            const loadMore = gridView.querySelector('.seerrfin-grid-loadmore');
+            const loadMore = gridView.querySelector('[data-seerrfin-loadmore]');
             const loadMoreBtn = loadMore.querySelector('button');
-            const status = gridView.querySelector('.seerrfin-grid-status');
+            const status = gridView.querySelector('[data-seerrfin-status]');
             const loadedCount = parseInt(gridView.dataset.loadedCount || '0', 10);
             const pageSize = self._gridPageSize;
+            const useNativeCards = gridView.dataset.nativeCards === 'true';
+            const gridSessionId = gridView.dataset.gridSessionId || '';
 
             if (gridView.dataset.loading === 'true') {
                 return;
@@ -1663,17 +2099,25 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
 
             self.fetchDiscover(path, '?startIndex=' + encodeURIComponent(loadedCount) + '&limit=' + encodeURIComponent(pageSize)).then(function (result) {
+                if (!gridView.isConnected || gridView.dataset.gridSessionId !== gridSessionId || gridView.dataset.path !== path) {
+                    return;
+                }
+
                 gridView.dataset.loading = 'false';
                 status.style.display = 'none';
 
                 if (!result.items.length && loadedCount === 0) {
                     itemsContainer.innerHTML = `<div class="seerrfin-empty-row">No items to show</div>`;
                     loadMore.style.display = 'none';
+                    if (useNativeCards) {
+                        window.seerrFinNativeUi.setGridControlsEnabled(gridView, false);
+                        window.seerrFinNativeUi.updateGridChrome(gridView);
+                    }
                     return;
                 }
 
-                const existingIds = new Set(); // deduplicate cards using tmdb id by using a set
-                itemsContainer.querySelectorAll('.seerrfin-discover-card[data-tmdb-id]').forEach(function (card) {
+                const existingIds = new Set();
+                itemsContainer.querySelectorAll('[data-tmdb-id]').forEach(function (card) {
                     existingIds.add(card.getAttribute('data-tmdb-id'));
                 });
                 const newItems = result.items.filter(function (item) {
@@ -1683,8 +2127,13 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     return id && !existingIds.has(id) && existingIds.add(id);
                 });
 
-                itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(newItems, true));
-                if (self.shouldUseBackdropThumbnails()) {
+                itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(newItems, true, {
+                    nativeCards: useNativeCards
+                }));
+                if (useNativeCards) {
+                    self.hydrateNativeBackdropCards(itemsContainer);
+                    self.initLazyImages(itemsContainer);
+                } else if (self.shouldUseBackdropThumbnails()) {
                     self.hydrateDiscoverBackdropCards(itemsContainer);
                 } else {
                     self.initLazyImages(itemsContainer);
@@ -1692,12 +2141,26 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 const newCount = loadedCount + result.items.length;
                 gridView.dataset.loadedCount = String(newCount);
 
+                const total = parseInt(result.total || gridView.dataset.total || '0', 10);
+                if (total > 0) {
+                    gridView.dataset.total = String(total);
+                }
+
                 const hasMore = result.items.length === pageSize &&
-                    (result.total === 0 || newCount < result.total);
+                    (total === 0 || newCount < total);
                 loadMore.style.display = hasMore ? '' : 'none';
                 loadMoreBtn.textContent = 'Load more';
                 loadMoreBtn.disabled = false;
+                if (useNativeCards) {
+                    self.applyGridPresentation(gridView);
+                    window.seerrFinNativeUi.setGridControlsEnabled(gridView, newCount > 0);
+                    window.seerrFinNativeUi.updateGridChrome(gridView);
+                }
             }).catch(function (err) {
+                if (!gridView.isConnected || gridView.dataset.gridSessionId !== gridSessionId || gridView.dataset.path !== path) {
+                    return;
+                }
+
                 gridView.dataset.loading = 'false';
                 status.style.display = 'none';
                 loadMoreBtn.textContent = 'Load more';
@@ -1705,6 +2168,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 console.error('SeerrFin grid load failed:', err);
                 if (loadedCount === 0) {
                     itemsContainer.innerHTML = `<div class="seerrfin-empty-row">Failed to load items.</div>`;
+                }
+                if (useNativeCards) {
+                    window.seerrFinNativeUi.updateGridChrome(gridView);
                 }
             });
         },
@@ -1825,6 +2291,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         showSearchSkeleton: function (searchPage) {
             this.removeSearchSection();
+            if (this.shouldUseNativeSearchResults()) {
+                return;
+            }
             const skeleton = this.buildRowSkeleton('Seerr results', 'poster');
             skeleton.classList.add('seerrfin-search-section');
             this.insertSearchSection(searchPage, skeleton);
@@ -1914,18 +2383,26 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
 
             const safeQuery = this.escapeHtml(query);
-            const section = this.mountFromHtml(`
-                <div class="verticalSection seerrfin-poster-section seerrfin-search-section seerrfin-section-fadein" data-query="${safeQuery}">
-                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
-                        <h2 class="sectionTitle sectionTitle-cards">Seerr results</h2>
-                    </div>
-                    <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x"></div>
-                </div>`);
+            const useNativeCards = this.shouldUseNativeSearchResults();
+            const section = useNativeCards
+                ? this.mountFromHtml(`
+                    <div class="verticalSection seerrfin-poster-section seerrfin-search-section seerrfin-section-fadein" data-query="${safeQuery}">
+                        <h2 class="sectionTitle sectionTitle-cards focuscontainer-x padded-left padded-right">Seerr results</h2>
+                        <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x animatedScrollX" data-monitor="videoplayback,markplayed"></div>
+                    </div>`)
+                : this.mountFromHtml(`
+                    <div class="verticalSection seerrfin-poster-section seerrfin-search-section seerrfin-section-fadein" data-query="${safeQuery}">
+                        <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                            <h2 class="sectionTitle sectionTitle-cards">Seerr results</h2>
+                        </div>
+                        <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x"></div>
+                    </div>`);
 
             const itemsContainer = section.querySelector('.itemsContainer');
             itemsContainer.innerHTML = this.createDiscoverCards(items, false, {
                 interactive: true,
-                includeMetaText: true
+                includeMetaText: true,
+                nativeCards: useNativeCards
             });
             this.appendHorizontalScroller(section, itemsContainer, {
                 focusScale: this.getAdvancedCarouselSetting('discoverRowFocusScale', true),
@@ -1936,7 +2413,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 return;
             }
 
-            if (this.shouldUseBackdropThumbnails()) {
+            if (useNativeCards) {
+                this.hydrateNativeBackdropCards(itemsContainer);
+                this.initLazyImages(itemsContainer);
+            } else if (this.shouldUseBackdropThumbnails()) {
                 this.hydrateDiscoverBackdropCards(itemsContainer);
             } else {
                 this.initLazyImages(itemsContainer);

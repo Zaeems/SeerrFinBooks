@@ -93,6 +93,10 @@ public class SeerrFinController : ControllerBase
     [Produces("text/css")]
     public ActionResult GetStylesheet() => ServeEmbedded("Inject.seerrfin-tabs.css", "text/css");
 
+    [HttpGet("seerrfin-nativeui.js")]
+    [Produces("application/javascript")]
+    public ActionResult GetNativeUiScript() => ServeEmbedded("Inject.seerrfin-nativeui.js", "application/javascript");
+
     [HttpGet("seerrfin-modal.js")]
     [Produces("application/javascript")]
     public ActionResult GetModalScript() => ServeEmbedded("Inject.seerrfin-modal.js", "application/javascript");
@@ -181,6 +185,9 @@ public class SeerrFinController : ControllerBase
             config.ElegantFinFixes,
             config.QualityRecommendations,
             config.AddSeerrResultsInSearch,
+            config.NativeCarousels,
+            config.NativeGridPages,
+            config.NativeSearchResults,
             displayCustomizations = DisplayCustomizationsHelper.Resolve(config),
             advanced = AdvancedSettingsHelper.BuildFrontendPayload(config)
         });

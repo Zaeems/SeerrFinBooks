@@ -30,6 +30,7 @@ public static class TransformationPatches
             $"<link rel=\"stylesheet\" href=\"/SeerrFin/seerrfin-letterboxd.css{cacheParam}\" />";
         string scripts =
             $"<script defer src=\"/SeerrFin/seerrfin-modal.js{cacheParam}\"></script>" +
+            $"<script defer src=\"/SeerrFin/seerrfin-nativeui.js{cacheParam}\"></script>" +
             $"<script defer src=\"/SeerrFin/seerrfin-tabs.js{cacheParam}\"></script>" +
             $"<script defer src=\"/SeerrFin/seerrfin-requests.js{cacheParam}\"></script>" +
             $"<script defer src=\"/SeerrFin/seerrfin-letterboxd.js{cacheParam}\"></script>";

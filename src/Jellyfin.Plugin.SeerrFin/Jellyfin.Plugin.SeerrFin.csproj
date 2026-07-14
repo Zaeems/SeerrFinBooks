@@ -25,6 +25,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Configuration\config.html" />
+        <EmbeddedResource Include="Inject\seerrfin-nativeui.js" />
         <EmbeddedResource Include="Inject\seerrfin-tabs.js" />
         <EmbeddedResource Include="Inject\seerrfin-tabs.css" />
         <EmbeddedResource Include="Inject\seerrfin-modal.js" />
