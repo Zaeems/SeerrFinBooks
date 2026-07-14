@@ -87,13 +87,6 @@ public class TmdbBackdropService
     {
         string mediaType = item.MediaType.ToLowerInvariant();
         int tmdbId = item.TmdbId;
-        string cacheKey = $"{mediaType}:{tmdbId}";
-
-        CachedBackdropDto? cached = TryGetCachedBackdrop(cacheKey);
-        if (cached != null)
-        {
-            return ToBatchItem(mediaType, tmdbId, cached);
-        }
 
         PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
         string? apiKey = config.TmdbApiKey?.Trim();
@@ -103,6 +96,14 @@ public class TmdbBackdropService
         }
 
         AdvancedTmdbSettings tmdbSettings = AdvancedSettingsHelper.Resolve(config).Tmdb;
+        string cacheKey = BuildBackdropCacheKey(mediaType, tmdbId, tmdbSettings);
+
+        CachedBackdropDto? cached = TryGetCachedBackdrop(cacheKey, tmdbSettings);
+        if (cached != null)
+        {
+            return ToBatchItem(mediaType, tmdbId, cached);
+        }
+
         BackdropPickResult pick = await TmdbBackdropHelper.FetchBackdropAsync(
             _httpClient,
             mediaType,
@@ -137,7 +138,7 @@ public class TmdbBackdropService
         return ToBatchItem(mediaType, tmdbId, dto);
     }
 
-    private CachedBackdropDto? TryGetCachedBackdrop(string cacheKey)
+    private CachedBackdropDto? TryGetCachedBackdrop(string cacheKey, AdvancedTmdbSettings tmdbSettings)
     {
         if (!_cache.TryGetValue(cacheKey, out CachedBackdropDto? cached))
         {
@@ -150,7 +151,6 @@ public class TmdbBackdropService
             return null;
         }
 
-        AdvancedTmdbSettings tmdbSettings = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Tmdb;
         string backdropSize = string.IsNullOrWhiteSpace(tmdbSettings.BackdropImageSize) ? "w780" : tmdbSettings.BackdropImageSize;
         string cachedSourceUrl = $"https://image.tmdb.org/t/p/{backdropSize}{cached.TmdbBackdropPath}";
         string refreshedUrl = ImageCacheHelper.GetCachedImageUrl(_imageCacheService, cachedSourceUrl, _logger);
@@ -166,6 +166,16 @@ public class TmdbBackdropService
 
         _cache.TryRemove(cacheKey, out _);
         return null;
+    }
+
+    private static string BuildBackdropCacheKey(string mediaType, int tmdbId, AdvancedTmdbSettings tmdbSettings)
+    {
+        string languageFilter = string.IsNullOrWhiteSpace(tmdbSettings.BackdropLanguageFilter)
+            ? "en,null,en-US"
+            : tmdbSettings.BackdropLanguageFilter.Trim();
+        string preferOriginal = tmdbSettings.PreferOriginalLanguageImages ? "original" : "default";
+
+        return $"{mediaType}:{tmdbId}:lang={languageFilter.ToLowerInvariant()}:mode={preferOriginal}";
     }
 
     private static BackdropBatchItemDto ToBatchItem(string mediaType, int tmdbId, CachedBackdropDto cached) =>

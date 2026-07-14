@@ -102,12 +102,11 @@ public class JellyseerrDiscoveryService
                 }
             }
 
-            int totalResults = json.Value<int?>("totalResults") ?? items.Count;
             return new QueryResult<BaseItemDto>
             {
                 Items = items.ToArray(),
                 StartIndex = 0,
-                TotalRecordCount = totalResults
+                TotalRecordCount = items.Count
             };
         }
         catch (Exception ex)
@@ -887,12 +886,16 @@ public class JellyseerrDiscoveryService
         return path.StartsWith('/') ? path : "/" + path;
     }
 
-    private static DiscoverItemFilterOptions ResolveSearchMapping() => new()
+    private static DiscoverItemFilterOptions ResolveSearchMapping()
     {
-        ApplyLanguageFilter = false,
-        HideRequestedMedia = false,
-        HideAvailableInLibrary = false
-    };
+        AdvancedDiscoverySettings discovery = AdvancedSettingsHelper.Resolve(SeerrFinPlugin.Instance.Configuration).Discovery;
+        return new DiscoverItemFilterOptions
+        {
+            ApplyLanguageFilter = false,
+            HideRequestedMedia = discovery.HideRequestedMedia,
+            HideAvailableInLibrary = discovery.HideAvailableInLibrary
+        };
+    }
 
     private static DiscoverItemFilterOptions ResolveMapping(PluginConfiguration config, bool useSeerrMapping)
     {
@@ -902,8 +905,8 @@ public class JellyseerrDiscoveryService
             return new DiscoverItemFilterOptions
             {
                 ApplyLanguageFilter = false,
-                HideRequestedMedia = false,
-                HideAvailableInLibrary = false
+                HideRequestedMedia = discovery.HideRequestedMedia,
+                HideAvailableInLibrary = discovery.HideAvailableInLibrary
             };
         }
 

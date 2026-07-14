@@ -216,7 +216,12 @@ public static class AdvancedSettingsHelper
             },
             tmdb = new
             {
-                genreBackdropSelectionMode = advanced.Tmdb.GenreBackdropSelectionMode
+                backdropImageSize = advanced.Tmdb.BackdropImageSize,
+                posterImageSize = advanced.Tmdb.PosterImageSize,
+                backdropLanguageFilter = advanced.Tmdb.BackdropLanguageFilter,
+                preferOriginalLanguageImages = advanced.Tmdb.PreferOriginalLanguageImages,
+                genreBackdropSelectionMode = advanced.Tmdb.GenreBackdropSelectionMode,
+                fallbackToOriginalImageUrl = advanced.Tmdb.FallbackToOriginalImageUrl
             },
             letterboxd = new
             {

@@ -438,6 +438,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         loadDisplaySettings: function () {
             const self = this;
+            const hadDisplaySettings = !!self._displaySettings;
+            const previousSettingsKey = hadDisplaySettings ? self.getDisplaySettingsKey() : '';
             return ApiClient.ajax({
                 url: ApiClient.getUrl('SeerrFin/display-settings') + '?_=' + Date.now(),
                 type: 'GET',
@@ -510,6 +512,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 };
                 self.applyAdvancedSettings(self._displaySettings.Advanced);
                 self.syncElegantFinFixes();
+                if (hadDisplaySettings && previousSettingsKey !== self.getDisplaySettingsKey()) {
+                    self.clearBackdropCaches();
+                }
                 return self._displaySettings;
             }).catch(function () {
                 self._displaySettings = {
@@ -528,6 +533,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 };
                 self.applyAdvancedSettings(self._displaySettings.Advanced);
                 self.syncElegantFinFixes();
+                if (hadDisplaySettings && previousSettingsKey !== self.getDisplaySettingsKey()) {
+                    self.clearBackdropCaches();
+                }
                 return self._displaySettings;
             });
         },
@@ -576,7 +584,12 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     backdropLanguageFilter: requestModal.backdropLanguageFilter || requestModal.BackdropLanguageFilter || 'en,null,en-US'
                 },
                 tmdb: {
-                    genreBackdropSelectionMode: tmdb.genreBackdropSelectionMode || tmdb.GenreBackdropSelectionMode || 'random'
+                    backdropImageSize: tmdb.backdropImageSize || tmdb.BackdropImageSize || 'w780',
+                    posterImageSize: tmdb.posterImageSize || tmdb.PosterImageSize || 'w600_and_h900_bestv2',
+                    backdropLanguageFilter: tmdb.backdropLanguageFilter || tmdb.BackdropLanguageFilter || 'en,null,en-US',
+                    preferOriginalLanguageImages: self.readAdvancedBool(tmdb.preferOriginalLanguageImages ?? tmdb.PreferOriginalLanguageImages, false),
+                    genreBackdropSelectionMode: tmdb.genreBackdropSelectionMode || tmdb.GenreBackdropSelectionMode || 'random',
+                    fallbackToOriginalImageUrl: self.readAdvancedBool(tmdb.fallbackToOriginalImageUrl ?? tmdb.FallbackToOriginalImageUrl, true)
                 },
                 letterboxd: {
                     usernamePattern: letterboxd.usernamePattern || letterboxd.UsernamePattern || '^[a-zA-Z0-9_-]{1,30}$',
@@ -744,9 +757,15 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             return window.ApiClient.getUrl(url);
         },
 
+        clearBackdropCaches: function () {
+            this._backdropResultCache = {};
+            this._backdropBatchInflight = {};
+        },
+
         invalidateDisplaySettings: function () {
             const self = this;
             this._displaySettings = null;
+            this.clearBackdropCaches();
             document.querySelectorAll('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-search-section').forEach(function (section) {
                 delete section.dataset.seerrfinDisplaySettings;
             });
@@ -1158,7 +1177,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             if (options.nativeCards === true) {
                 return window.seerrFinNativeUi.createDiscoverCards(this, items, Object.assign({}, options, {
                     forGrid: forGrid === true,
-                    preferEnglishBackdrop: true
+                    preferEnglishBackdrop: (((this._advancedSettings || {}).tmdb || {}).preferOriginalLanguageImages !== true)
                 }));
             }
 
@@ -1384,7 +1403,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             return String(mediaType || '').toLowerCase() + ':' + String(tmdbId || '');
         },
 
-        // Use English backdrops when merging batch responses into the cache
+        // Use English backdrops by default, unless the original-language image setting is enabled.
         cacheBackdropResult: function (cacheKey, incoming) {
             if (!cacheKey || !incoming || !incoming.url) {
                 return;
@@ -1396,6 +1415,12 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             const existing = this._backdropResultCache[cacheKey];
             if (!existing || !existing.url) {
+                this._backdropResultCache[cacheKey] = incoming;
+                return;
+            }
+
+            const preferOriginal = (((this._advancedSettings || {}).tmdb || {}).preferOriginalLanguageImages === true);
+            if (preferOriginal) {
                 this._backdropResultCache[cacheKey] = incoming;
                 return;
             }

@@ -50,6 +50,16 @@
         return 'https://image.tmdb.org/t/p/' + (size || 'original') + path;
     }
 
+    function resolveImageUrl(url) {
+        if (!url) {
+            return '';
+        }
+        if (url.startsWith('http') || url.startsWith('data:')) {
+            return url;
+        }
+        return ApiClient.getUrl(url);
+    }
+
     const PLUGIN_ID = 'c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c';
 
     function getLogoImageUrl(data) {
@@ -223,6 +233,16 @@
             });
     }
 
+    function fetchSettingsBackdrop(mediaId, mediaType) {
+        return ApiClient.ajax({
+            url: ApiClient.getUrl('SeerrFin/backdrop/' + mediaType + '/' + mediaId),
+            type: 'GET',
+            dataType: 'json'
+        }).catch(function () {
+            return null;
+        });
+    }
+
     function fetchTmdbDetailsFromBrowser(mediaId, mediaType, apiKey) {
         const isTv = mediaType === 'tv';
         const segment = isTv ? 'tv' : 'movie';
@@ -234,13 +254,19 @@
 
         return Promise.all([
             fetchTmdbJson(detailsUrl, apiKey),
-            fetchTmdbLogoPath(mediaId, mediaType, apiKey)
+            fetchTmdbLogoPath(mediaId, mediaType, apiKey),
+            fetchSettingsBackdrop(mediaId, mediaType)
         ]).then(function (results) {
             const raw = results[0];
             const logoPath = results[1];
+            const backdrop = results[2];
             const mapped = isTv ? mapTvDetails(raw) : mapMovieDetails(raw);
             if (logoPath) {
                 mapped.logoPath = logoPath;
+            }
+            if (backdrop) {
+                mapped.backdropUrl = resolveImageUrl(backdrop.backdropUrl || backdrop.BackdropUrl || '');
+                mapped.backdropPath = backdrop.tmdbBackdropPath || backdrop.TmdbBackdropPath || mapped.backdropPath;
             }
             return mapped;
         }).catch(function (err) {
@@ -797,7 +823,7 @@
         const year = (data.releaseDate || data.firstAirDate || '').substring(0, 4);
         const rating = data.voteAverage != null ? data.voteAverage : data.vote_average;
         const voteCount = data.voteCount != null ? data.voteCount : data.vote_count;
-        const backdrop = tmdbImage(data.backdropPath || data.backdrop_path, 'original');
+        const backdrop = resolveImageUrl(data.backdropUrl || data.backdrop_url || '') || tmdbImage(data.backdropPath || data.backdrop_path, 'original');
         const runtimeMinutes = data.runtime || (data.episodeRunTime && data.episodeRunTime[0]);
         const runtime = formatRuntime(runtimeMinutes);
         const endsAt = formatEndsAt(runtimeMinutes);
