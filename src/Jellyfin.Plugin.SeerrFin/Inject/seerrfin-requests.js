@@ -1,11 +1,32 @@
 'use strict';
 
+window.seerrFinLog = window.seerrFinLog || {
+    info: function (msg) {
+        console.log('SF • ' + msg);
+    },
+    warn: function (msg, detail) {
+        if (detail !== undefined) {
+            console.warn('SF • ' + msg, detail);
+        } else {
+            console.warn('SF • ' + msg);
+        }
+    },
+    error: function (msg, detail) {
+        if (detail !== undefined) {
+            console.error('SF • ' + msg, detail);
+        } else {
+            console.error('SF • ' + msg);
+        }
+    }
+};
+
 (function () {
     if (window.__seerrFinRequestsInit) {
         return;
     }
     window.__seerrFinRequestsInit = true;
 
+    const log = window.seerrFinLog;
     const DEFAULT_PAGE_SIZE = 20;
     const DEFAULT_FETCH_SIZE = 100;
     const SEERR_LOGO = '<svg xmlns="http://www.w3.org/2000/svg" width="1.45em" height="1.45em" viewBox="0 0 96 96" fill="none"><circle cx="52" cy="52" r="28" fill="#131928"/><path fill-rule="evenodd" clip-rule="evenodd" d="M48 96C74.5097 96 96 74.5097 96 48C96 21.4903 74.5097 0 48 0C21.4903 0 0 21.4903 0 48C0 74.5097 21.4903 96 48 96ZM80.0001 52C80.0001 67.464 67.4641 80 52.0001 80C36.5361 80 24.0001 67.464 24.0001 52C24.0001 49.1303 24.4318 46.3615 25.2338 43.7548C27.4288 48.6165 32.3194 52 38.0001 52C45.7321 52 52.0001 45.732 52.0001 38C52.0001 32.3192 48.6166 27.4287 43.755 25.2337C46.3616 24.4317 49.1304 24 52.0001 24C67.4641 24 80.0001 36.536 80.0001 52Z" fill="url(#bst-seerr-grad0)"/><path opacity="0.2" fill-rule="evenodd" clip-rule="evenodd" d="M80.0002 52C80.0002 67.464 67.4642 80 52.0002 80C36.864 80 24.5329 67.9897 24.017 52.9791C24.0057 53.318 24 53.6583 24 54C24 70.5685 37.4315 84 54 84C70.5685 84 84 70.5685 84 54C84 37.4315 70.5685 24 54 24C53.6597 24 53.3207 24.0057 52.9831 24.0169C67.9919 24.5347 80.0002 36.865 80.0002 52Z" fill="#131928"/><path fill-rule="evenodd" clip-rule="evenodd" d="M48 12C28.1177 12 12 28.1177 12 48C12 50.2091 10.2091 52 8 52C5.79086 52 4 50.2091 4 48C4 23.6995 23.6995 4 48 4C50.2091 4 52 5.79086 52 8C52 10.2091 50.2091 12 48 12Z" fill="url(#bst-seerr-grad1)"/><defs><linearGradient id="bst-seerr-grad0" x1="48" y1="-2.07126e-06" x2="117.5" y2="69.5" gradientUnits="userSpaceOnUse"><stop stop-color="#C395FC"/><stop offset="1" stop-color="#4F65F5"/></linearGradient><linearGradient id="bst-seerr-grad1" x1="28" y1="8" x2="28" y2="48" gradientUnits="userSpaceOnUse"><stop stop-color="white" stop-opacity="0.4"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient></defs></svg>';
@@ -40,7 +61,8 @@
                 radarrUrl: (config.radarrUrl || '').replace(/\/+$/, ''),
                 sonarrUrl: (config.sonarrUrl || '').replace(/\/+$/, '')
             };
-        }).catch(function () {
+        }).catch(function (err) {
+            log.warn('client settings fetch failed', err);
             state.clientSettings = {
                 jellyseerrBrowseUrl: '',
                 radarrUrl: '',
@@ -74,7 +96,9 @@
             dataType: 'json'
         }).then(function (config) {
             openWithBase((config.jellyseerrBrowseUrl || '').replace(/\/+$/, ''));
-        }).catch(function () { });
+        }).catch(function (err) {
+            log.warn('Jellyseerr browse URL fetch failed', err);
+        });
     }
 
     function openServarrUrl(url) {
@@ -236,7 +260,8 @@
             .then(function (item) {
                 openDetails(itemId, item);
             })
-            .catch(function () {
+            .catch(function (err) {
+                log.warn('Jellyfin item lookup failed for ' + itemId, err);
                 openDetails(itemId);
             });
     }
@@ -724,11 +749,19 @@
             body.innerHTML = `<div class="seerrfin-loading-row padded-left">Loading...</div>`;
         }
 
+        log.info('loading requests tab');
         fetchAllRequests()
-            .catch(function () {
+            .then(function () {
                 if (loadId !== state.loadId) {
                     return;
                 }
+                log.info('requests loaded (' + state.allRequests.length + ')');
+            })
+            .catch(function (err) {
+                if (loadId !== state.loadId) {
+                    return;
+                }
+                log.error('requests load failed', err);
                 state.allRequests = [];
                 state.rendered = false;
                 if (body) {
@@ -771,13 +804,17 @@
             return;
         }
 
+        log.info('adding requests panel');
         container.innerHTML = renderRequestsPanel();
 
         bindContainerEvents(container);
 
         const plugin = getPlugin();
         const settingsPromise = plugin && typeof plugin.loadDisplaySettings === 'function'
-            ? plugin.loadDisplaySettings().catch(function () { return null; })
+            ? plugin.loadDisplaySettings().catch(function (err) {
+                log.warn('requests tab display settings failed', err);
+                return null;
+            })
             : Promise.resolve();
 
         settingsPromise.then(function () {
@@ -879,6 +916,7 @@
             return;
         }
 
+        log.info('requests module init');
         window.__seerrFinRequestsEnsureMounted = ensureMounted;
         document.addEventListener('viewshow', ensureMounted);
         ensureMounted();

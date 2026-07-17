@@ -186,7 +186,7 @@ public class JustWatchQualitiesService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to fetch TMDB metadata for JustWatch qualities {Type}/{TmdbId}", mediaType, tmdbId);
+            _logger.LogDebug(ex, "SF • failed to fetch TMDB metadata for JustWatch qualities {Type}/{TmdbId}", mediaType, tmdbId);
             return null;
         }
     }
@@ -251,7 +251,7 @@ public class JustWatchQualitiesService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "JustWatch GraphQL request failed");
+            _logger.LogDebug(ex, "SF • JustWatch GraphQL request failed");
             return null;
         }
     }

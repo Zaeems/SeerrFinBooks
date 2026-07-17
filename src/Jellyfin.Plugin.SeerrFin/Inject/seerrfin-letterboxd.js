@@ -1,11 +1,32 @@
 'use strict';
 
+window.seerrFinLog = window.seerrFinLog || {
+    info: function (msg) {
+        console.log('SF • ' + msg);
+    },
+    warn: function (msg, detail) {
+        if (detail !== undefined) {
+            console.warn('SF • ' + msg, detail);
+        } else {
+            console.warn('SF • ' + msg);
+        }
+    },
+    error: function (msg, detail) {
+        if (detail !== undefined) {
+            console.error('SF • ' + msg, detail);
+        } else {
+            console.error('SF • ' + msg);
+        }
+    }
+};
+
 (function () {
     if (window.__seerrFinLetterboxdInit) {
         return;
     }
     window.__seerrFinLetterboxdInit = true;
 
+    const log = window.seerrFinLog;
     const DEFAULT_USERNAME_PATTERN = '^[a-zA-Z0-9_-]{1,30}$';
 
     const state = {
@@ -67,7 +88,7 @@
         try {
             return new RegExp(pattern);
         } catch (err) {
-            console.warn('SeerrFin: invalid Letterboxd username pattern, using default', err);
+            log.warn('invalid Letterboxd username pattern, using default', err);
             return new RegExp(DEFAULT_USERNAME_PATTERN);
         }
     }
@@ -166,8 +187,8 @@
                 state.syncProgressPercent = clamped;
                 updateSyncButton(container);
             }
-        }).catch(function () {
-            // Ignore polling errors while sync is in flight.
+        }).catch(function (err) {
+            log.warn('Letterboxd sync progress poll failed', err);
         });
     }
 
@@ -523,8 +544,8 @@
             }
 
             updateBulkRequestProgressModal(container, result);
-        }).catch(function () {
-            // Ignore polling errors
+        }).catch(function (err) {
+            log.warn('Letterboxd request progress poll failed', err);
         });
     }
 
@@ -711,7 +732,10 @@
         };
 
         if (typeof plugin.loadDisplaySettings === 'function') {
-            plugin.loadDisplaySettings().then(renderCards).catch(renderCards);
+            plugin.loadDisplaySettings().then(renderCards).catch(function (err) {
+                log.warn('Letterboxd display settings failed', err);
+                renderCards();
+            });
             return;
         }
 
@@ -796,6 +820,7 @@
         state.syncing = true;
         state.syncProgressPercent = 0;
         state.syncMeta = Object.assign({}, state.syncMeta || {}, { lastError: null });
+        log.info('Letterboxd sync starting for ' + username);
         renderPanel(container);
         startSyncProgressPolling(container);
 
@@ -804,7 +829,7 @@
                 state.selectedIds.clear();
             })
             .catch(function (err) {
-                console.error('SeerrFin Letterboxd sync:', err);
+                log.error('Letterboxd sync failed', err);
                 const message = err?.responseJSON?.message || 'Could not sync Letterboxd watchlist.';
                 state.syncMeta = Object.assign({}, state.syncMeta || {}, { lastError: message });
             })
@@ -1082,7 +1107,7 @@
                 continueBulkRequest(panel, container, selectedIds);
             })
             .catch(function (err) {
-                console.error('SeerrFin Letterboxd request check:', err);
+                log.error('Letterboxd request check failed', err);
                 if (list) {
                     list.innerHTML = `<div class="bst-quality-empty">Could not check existing requests.</div>`;
                 }
@@ -1142,7 +1167,7 @@
                 }, panel);
             });
         }).catch(function (err) {
-            console.error('SeerrFin Letterboxd profiles:', err);
+            log.error('Letterboxd profiles load failed', err);
             list.innerHTML = `<div class="bst-quality-empty">Failed to load quality profiles.</div>`;
         });
     }
@@ -1172,7 +1197,7 @@
             applyCompletedResults(container, results, state.requestProgressAppliedCount);
             showBulkRequestComplete(panel, requested, skipped, failed);
         }).catch(function (err) {
-            console.error('SeerrFin Letterboxd bulk request:', err);
+            log.error('Letterboxd bulk request failed', err);
             showBulkRequestError(panel, err?.responseJSON?.message || 'Bulk request failed.');
         }).finally(function () {
             stopRequestProgressPolling();
@@ -1241,6 +1266,7 @@
             return;
         }
 
+        log.info('adding Letterboxd panel');
         renderPanel(container);
     }
 
@@ -1257,6 +1283,7 @@
             return;
         }
 
+        log.info('Letterboxd module init');
         window.__seerrFinLetterboxdEnsureMounted = ensureMounted;
         document.addEventListener('viewshow', ensureMounted);
         ensureMounted();

@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "honor settings across search and backdrop flows",
+  "changelog": "Honor settings across search and backdrop flows",
   "description": "The best way to discover and request Movies and TV Shows through Seerr directly in Jellyfin.",
   "guid": "c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c",
   "name": "SeerrFin",

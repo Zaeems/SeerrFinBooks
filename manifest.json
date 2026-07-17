@@ -11,7 +11,7 @@
     "versions": [
       {
         "version": "1.6.1.1",
-        "changelog": "honor settings across search and backdrop flows",
+        "changelog": "Honor settings across search and backdrop flows",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/varunaditya-plus/SeerrFin/releases/download/1.6.1.1/Jellyfin.Plugin.SeerrFin_10.11.0.zip",
         "checksum": "B56403BEA757AFC63850C57A7D398CEB",

@@ -1,6 +1,28 @@
 'use strict';
 
+window.seerrFinLog = window.seerrFinLog || {
+    info: function (msg) {
+        console.log('SF • ' + msg);
+    },
+    warn: function (msg, detail) {
+        if (detail !== undefined) {
+            console.warn('SF • ' + msg, detail);
+        } else {
+            console.warn('SF • ' + msg);
+        }
+    },
+    error: function (msg, detail) {
+        if (detail !== undefined) {
+            console.error('SF • ' + msg, detail);
+        } else {
+            console.error('SF • ' + msg);
+        }
+    }
+};
+
 if (typeof window.seerrFinPlugin === 'undefined') {
+    const log = window.seerrFinLog;
+
     window.seerrFinPlugin = {
         movieRows: [
             { title: 'Trending movies this week', path: 'discover/movies/trending' },
@@ -25,12 +47,14 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         init: function () {
             if (typeof ApiClient === 'undefined') {
+                log.warn('init waiting for ApiClient');
                 setTimeout(() => this.init(), 200);
                 return;
             }
 
             if (!this._handlersBound) {
                 this._handlersBound = true;
+                log.info('init binding handlers');
                 this.bindRequestHandler();
                 this.bindCardClickHandler();
                 this.bindViewMoreHandler();
@@ -40,6 +64,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             if (!this._watchersReady) {
                 this._watchersReady = true;
+                log.info('init setting up custom tab watchers');
                 this.setupCustomTabWatchers();
             } else {
                 this.scheduleRender();
@@ -108,6 +133,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
 
             tabs.dataset.bstCustomTabGuard = 'true';
+            log.info('custom tab guard attached');
             const self = this;
 
             tabs.addEventListener('beforetabchange', function (event) {
@@ -116,6 +142,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     return;
                 }
 
+                log.info('custom tab before change to index ' + index);
                 setTimeout(function () {
                     self.onCustomTabShown();
                 }, 0);
@@ -128,12 +155,14 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     return;
                 }
 
+                log.info('blocking Jellyfin tabchange handler for custom tab index ' + index);
                 event.stopImmediatePropagation();
             }, true);
         },
 
         onCustomTabShown: function () {
             const self = this;
+            log.info('custom tab shown, scheduling render');
             setTimeout(function () {
                 self.scheduleRender();
                 if (typeof window.__seerrFinRequestsEnsureMounted === 'function') {
@@ -147,10 +176,15 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         setupCustomTabWatchers: function () {
             const self = this;
+            log.info('custom tab watchers ready');
 
             document.addEventListener('viewshow', function (event) {
                 if (event.target && event.target.id === 'indexPage') {
-                    self.attachCustomTabGuard(document.querySelector('.headerTabs [is="emby-tabs"]'));
+                    const tabs = document.querySelector('.headerTabs [is="emby-tabs"]');
+                    if (!tabs) {
+                        log.warn('indexPage shown but emby-tabs not found');
+                    }
+                    self.attachCustomTabGuard(tabs);
                 }
                 self.scheduleRender();
             });
@@ -223,6 +257,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 const settingsKey = self.getDisplaySettingsKey();
 
                 if (container.dataset.seerrfinDisplaySettings !== settingsKey) {
+                    log.info(type + ' tab display settings changed, clearing container');
                     container.dataset.seerrfinDisplaySettings = settingsKey;
                     if (self.isContainerPopulated(container)) {
                         container.innerHTML = '';
@@ -241,6 +276,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 }
 
                 self.loadTab(type, container);
+            }).catch(function (err) {
+                log.error(type + ' tab render aborted: display settings failed', err);
             });
         },
 
@@ -251,6 +288,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 );
             }
             if (!container || !this.isContainerVisible(container) || this.isGridViewOpen(container)) {
+                if (container && !this.isContainerVisible(container)) {
+                    log.info(type + ' tab skip load: container not visible');
+                }
                 return;
             }
 
@@ -263,6 +303,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             const self = this;
             const loadId = String(Date.now()) + '-' + Math.random().toString(16).slice(2);
 
+            log.info('loading ' + type + ' tab (' + rows.length + ' rows)');
             container.dataset.seerrfinLoading = 'true';
             container.dataset.seerrfinLoadId = loadId;
             delete container.dataset.seerrfinLoaded;
@@ -270,10 +311,12 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             // Ignore results if user switched tabs or theres a newer load.
             const finishLoading = function () {
                 if (container.dataset.seerrfinLoadId !== loadId) {
+                    log.info(type + ' tab load finished but was superseded');
                     return;
                 }
                 container.dataset.seerrfinLoading = 'false';
                 container.dataset.seerrfinLoaded = 'true';
+                log.info(type + ' tab load complete');
             };
 
             const isStale = function () {
@@ -290,12 +333,14 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             self.loadDisplaySettings().then(function () {
                 if (isStale()) {
+                    log.info(type + ' tab load stale before fetch');
                     finishLoading();
                     return;
                 }
 
                 container.innerHTML = '';
                 const useNativeCarousels = self.shouldUseNativeCarousels();
+                log.info(type + ' tab using ' + (useNativeCarousels ? 'native' : 'custom') + ' carousels');
 
                 const rowSlots = rows.map(function (row) {
                     if (useNativeCarousels) {
@@ -331,6 +376,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         return;
                     }
                     if (!anySuccess && !isStale()) {
+                        log.error(type + ' tab: all discovery rows/carousels failed');
                         container.innerHTML = `<div class="seerrfin-empty-row">Failed to load discovery rows. Check Seerr settings and that your Jellyfin user is linked in Seerr.</div>`;
                     }
                     finishLoading();
@@ -367,11 +413,11 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                                 total: result.total
                             }));
                         } catch (err) {
-                            console.warn('SeerrFin: row render failed', slot.row.title, err);
+                            log.warn('row render failed: ' + slot.row.title, err);
                             replaceSkeleton(slot.skeleton, null);
                         }
                     }).catch(function (err) {
-                        console.warn('SeerrFin: row failed', slot.row.path, err);
+                        log.warn('row failed: ' + slot.row.path, err);
                         replaceSkeleton(slot.skeleton, null);
                     }).finally(checkAllDone);
                 });
@@ -383,6 +429,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         }
                         const items = self.asArray(data);
                         if (!items.length) {
+                            log.warn('carousel empty: ' + slot.def.path);
                             replaceSkeleton(slot.skeleton, null);
                             return;
                         }
@@ -390,11 +437,11 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         try {
                             replaceSkeleton(slot.skeleton, self.buildCarouselSection(slot.def.title, items, mediaType, slot.def.kind));
                         } catch (err) {
-                            console.warn('SeerrFin: carousel render failed', slot.def.title, err);
+                            log.warn('carousel render failed: ' + slot.def.title, err);
                             replaceSkeleton(slot.skeleton, null);
                         }
                     }).catch(function (err) {
-                        console.warn('SeerrFin: carousel failed', slot.def.path, err);
+                        log.warn('carousel failed: ' + slot.def.path, err);
                         replaceSkeleton(slot.skeleton, null);
                     }).finally(checkAllDone);
                 });
@@ -402,7 +449,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 if (isStale()) {
                     return;
                 }
-                console.error('SeerrFin:', err);
+                log.error(type + ' tab load failed', err);
                 container.dataset.seerrfinLoading = 'false';
                 container.dataset.seerrfinLoaded = 'true';
                 container.innerHTML = `<div class="seerrfin-empty-row">Failed to load discovery rows. Check Seerr settings and that your Jellyfin user is linked in Seerr.</div>`;
@@ -515,8 +562,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 if (hadDisplaySettings && previousSettingsKey !== self.getDisplaySettingsKey()) {
                     self.clearBackdropCaches();
                 }
+                log.info('display settings loaded');
                 return self._displaySettings;
-            }).catch(function () {
+            }).catch(function (err) {
+                log.warn('display settings fetch failed, using defaults', err);
                 self._displaySettings = {
                     StreamingServiceUseImages: true,
                     StudioNetworkUseImages: true,
@@ -1040,7 +1089,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 self.scheduleRowScrollCheck(section);
             }).catch(function (err) {
                 section.dataset.loading = 'false';
-                console.error('SeerrFin row load failed:', err);
+                log.error('row infinite scroll load failed', err);
             });
         },
 
@@ -1518,7 +1567,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     self.cacheBackdropResult(cacheKey, normalized);
                 });
                 return self._backdropResultCache;
-            }).catch(function () {
+            }).catch(function (err) {
+                log.warn('backdrop batch fetch failed', err);
                 return self._backdropResultCache;
             }).finally(function () {
                 delete self._backdropBatchInflight[batchKey];
@@ -2190,7 +2240,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 status.style.display = 'none';
                 loadMoreBtn.textContent = 'Load more';
                 loadMoreBtn.disabled = false;
-                console.error('SeerrFin grid load failed:', err);
+                log.error('grid load failed for ' + path, err);
                 if (loadedCount === 0) {
                     itemsContainer.innerHTML = `<div class="seerrfin-empty-row">Failed to load items.</div>`;
                 }
@@ -2395,7 +2445,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 self.renderSearchSection(currentPage, query, result.items);
             }).catch(function (err) {
                 if (self._activeSearchToken === token) {
-                    console.warn('SeerrFin search failed:', err);
+                    log.warn('search failed for "' + query + '"', err);
                     self.removeSearchSection();
                 }
             });
@@ -2556,6 +2606,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
     };
 
     function boot() {
+        log.info('boot');
         window.seerrFinPlugin.init();
     }
 
@@ -2566,6 +2617,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
     }
 
     window.addEventListener('popstate', function () {
+        log.info('popstate. rebooting');
         setTimeout(boot, 800);
     });
     document.addEventListener('visibilitychange', function () {

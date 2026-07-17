@@ -43,7 +43,7 @@ public class JellyseerrRequestService
             if (!listResponse.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
-                    "Failed to fetch Seerr {ServerType} services: {StatusCode}",
+                    "SF • failed to fetch Seerr {ServerType} services: {StatusCode}",
                     serverType,
                     listResponse.StatusCode);
                 return options;
@@ -73,7 +73,7 @@ public class JellyseerrRequestService
                 if (!detailResponse.IsSuccessStatusCode)
                 {
                     _logger.LogWarning(
-                        "Failed to fetch Seerr {ServerType} service details for {ServerId}: {StatusCode}",
+                        "SF • failed to fetch Seerr {ServerType} service details for {ServerId}: {StatusCode}",
                         serverType,
                         serverId,
                         detailResponse.StatusCode);
@@ -121,7 +121,7 @@ public class JellyseerrRequestService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch {ServerType} request options", serverType);
+            _logger.LogWarning(ex, "SF • failed to fetch {ServerType} request options", serverType);
         }
 
         return options;

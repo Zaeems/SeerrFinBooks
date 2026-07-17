@@ -27,7 +27,7 @@ public class StartupService : IScheduledTask
 
     public Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("SeerrFin: Registering file transformations");
+        _logger.LogInformation("SF • registering file transformations");
 
         // Resolve File Transformation assembly at runtime via reflection
         var fileTransformationAssembly = AssemblyLoadContext.All
@@ -36,14 +36,14 @@ public class StartupService : IScheduledTask
 
         if (fileTransformationAssembly == null)
         {
-            _logger.LogWarning("SeerrFin: File Transformation plugin not found. UI injection won't work");
+            _logger.LogWarning("SF • File Transformation plugin not found. UI injection won't work");
             return Task.CompletedTask;
         }
 
         Type? pluginInterfaceType = fileTransformationAssembly.GetType("Jellyfin.Plugin.FileTransformation.PluginInterface");
         if (pluginInterfaceType == null)
         {
-            _logger.LogWarning("SeerrFin: File Transformation PluginInterface type not found.");
+            _logger.LogWarning("SF • File Transformation PluginInterface type not found");
             return Task.CompletedTask;
         }
 
@@ -58,7 +58,7 @@ public class StartupService : IScheduledTask
         };
 
         pluginInterfaceType.GetMethod("RegisterTransformation")?.Invoke(null, new object?[] { payload });
-        _logger.LogInformation("SeerrFin: Registered index.html transformation.");
+        _logger.LogInformation("SF • registered index.html transformation");
         return Task.CompletedTask;
     }
 

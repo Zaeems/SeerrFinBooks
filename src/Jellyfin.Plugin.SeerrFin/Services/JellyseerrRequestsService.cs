@@ -113,7 +113,7 @@ public class JellyseerrRequestsService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch Seerr requests");
+            _logger.LogWarning(ex, "SF • failed to fetch Seerr requests");
             return (502, "{\"error\":true,\"message\":\"Failed to reach Seerr.\"}");
         }
     }
@@ -172,7 +172,7 @@ public class JellyseerrRequestsService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to proxy Seerr avatar");
+            _logger.LogDebug(ex, "SF • failed to proxy Seerr avatar");
             return (null, null);
         }
     }
@@ -324,7 +324,7 @@ public class JellyseerrRequestsService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to resolve Jellyfin item for {Type}/{TmdbId}", type, tmdbId);
+            _logger.LogDebug(ex, "SF • failed to resolve Jellyfin item for {Type}/{TmdbId}", type, tmdbId);
         }
 
         cache[cacheKey] = itemId;

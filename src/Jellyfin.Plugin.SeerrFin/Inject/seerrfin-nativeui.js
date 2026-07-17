@@ -1,9 +1,31 @@
 'use strict';
 
+window.seerrFinLog = window.seerrFinLog || {
+    info: function (msg) {
+        console.log('SF • ' + msg);
+    },
+    warn: function (msg, detail) {
+        if (detail !== undefined) {
+            console.warn('SF • ' + msg, detail);
+        } else {
+            console.warn('SF • ' + msg);
+        }
+    },
+    error: function (msg, detail) {
+        if (detail !== undefined) {
+            console.error('SF • ' + msg, detail);
+        } else {
+            console.error('SF • ' + msg);
+        }
+    }
+};
+
 (function () {
     if (window.seerrFinNativeUi) {
         return;
     }
+
+    const log = window.seerrFinLog;
 
     window.seerrFinNativeUi = {
         // Picks best backdrop url for native Seerr result card
@@ -180,7 +202,7 @@
                 window.__seerrfinWebpackRequire = req;
                 return req;
             } catch (err) {
-                console.warn('SeerrFin: failed to access Jellyfin webpack runtime', err);
+                log.warn('failed to access Jellyfin webpack runtime', err);
                 return null;
             }
         },
@@ -231,6 +253,7 @@
         showNativeActionSheet: function (button, items, callback) {
             const actionSheet = this.getNativeActionSheet();
             if (!actionSheet || typeof actionSheet.show !== 'function') {
+                log.warn('native action sheet unavailable');
                 return false;
             }
 
@@ -238,8 +261,8 @@
                 items: items,
                 positionTo: button,
                 callback: callback
-            }).catch(function () {
-                // Jellyfin actionSheet rejects when dismissed; no work needed.
+            }).catch(function (err) {
+                log.info('native action sheet dismissed or failed', err);
             });
             return true;
         },

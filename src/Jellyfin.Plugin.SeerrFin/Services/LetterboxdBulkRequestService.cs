@@ -161,7 +161,7 @@ public class LetterboxdBulkRequestService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Bulk request failed for TMDB movie {TmdbId}", tmdbId);
+                    _logger.LogWarning(ex, "SF • bulk request failed for TMDB movie {TmdbId}", tmdbId);
                     result.Results.Add(new LetterboxdBulkRequestItemResult
                     {
                         TmdbId = tmdbId,
