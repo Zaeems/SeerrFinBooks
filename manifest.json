@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/SeerrFin",
     "versions": [
       {
+        "version": "1.6.1.2",
+        "changelog": "Added better logging throughout app to better catch errors/failures, especially with custom tab loading",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/SeerrFin/releases/download/1.6.1.2/Jellyfin.Plugin.SeerrFin_10.11.0.zip",
+        "checksum": "D41557D28549DFC638CD40B390D4DD8D",
+        "timestamp": "2026-07-17T08:42:11.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.6.1.1",
         "changelog": "Honor settings across search and backdrop flows",
         "targetAbi": "10.11.0.0",
