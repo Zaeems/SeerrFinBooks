@@ -255,8 +255,9 @@ window.seerrFinLog = window.seerrFinLog || {
     }
 
     function fetchSettingsBackdrop(mediaId, mediaType) {
+        // Modals have logos, so always use plain backdrop rather than the English backdrop used by cards.
         return ApiClient.ajax({
-            url: ApiClient.getUrl('SeerrFin/backdrop/' + mediaType + '/' + mediaId),
+            url: ApiClient.getUrl('SeerrFin/backdrop/' + mediaType + '/' + mediaId, { preferNeutral: true }),
             type: 'GET',
             dataType: 'json'
         }).catch(function (err) {

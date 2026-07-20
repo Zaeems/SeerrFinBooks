@@ -195,7 +195,7 @@ public class SeerrFinController : ControllerBase
 
     [HttpGet("backdrop/{mediaType}/{tmdbId}")]
     [Authorize]
-    public async Task<ActionResult> GetBackdrop(string mediaType, int tmdbId, CancellationToken cancellationToken)
+    public async Task<ActionResult> GetBackdrop(string mediaType, int tmdbId, [FromQuery] bool preferNeutral = false, CancellationToken cancellationToken = default)
     {
         if (tmdbId <= 0)
         {
@@ -209,7 +209,7 @@ public class SeerrFinController : ControllerBase
         }
 
         TmdbBackdropService.CachedBackdropDto? backdrop = await _tmdbBackdropService
-            .GetCachedBackdropAsync(mediaType, tmdbId, cancellationToken)
+            .GetCachedBackdropAsync(mediaType, tmdbId, preferNeutral, cancellationToken)
             .ConfigureAwait(false);
 
         if (backdrop == null || string.IsNullOrEmpty(backdrop.BackdropUrl))

@@ -21,20 +21,17 @@ public class TmdbBackdropService
         _logger = logger;
     }
 
-    public async Task<CachedBackdropDto?> GetCachedBackdropAsync(string mediaType, int tmdbId, CancellationToken cancellationToken = default)
+    public async Task<CachedBackdropDto?> GetCachedBackdropAsync(string mediaType, int tmdbId, bool preferNeutral = false, CancellationToken cancellationToken = default)
     {
-        List<BackdropBatchItemDto> results = await GetCachedBackdropsAsync(
-            new BackdropBatchRequestItemDto[]
+        BackdropBatchItemDto? match = await ResolveBackdropItemAsync(
+            new BackdropBatchRequestItemDto
             {
-                new()
-                {
-                    MediaType = mediaType,
-                    TmdbId = tmdbId
-                }
+                MediaType = mediaType,
+                TmdbId = tmdbId
             },
+            preferNeutral,
             cancellationToken).ConfigureAwait(false);
 
-        BackdropBatchItemDto? match = results.FirstOrDefault();
         if (match == null || string.IsNullOrEmpty(match.BackdropUrl))
         {
             return null;
@@ -68,7 +65,7 @@ public class TmdbBackdropService
             await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                return await ResolveBackdropItemAsync(item, cancellationToken).ConfigureAwait(false);
+                return await ResolveBackdropItemAsync(item, preferNeutral: false, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -83,7 +80,7 @@ public class TmdbBackdropService
             .ToList();
     }
 
-    private async Task<BackdropBatchItemDto?> ResolveBackdropItemAsync(BackdropBatchRequestItemDto item, CancellationToken cancellationToken)
+    private async Task<BackdropBatchItemDto?> ResolveBackdropItemAsync(BackdropBatchRequestItemDto item, bool preferNeutral, CancellationToken cancellationToken)
     {
         string mediaType = item.MediaType.ToLowerInvariant();
         int tmdbId = item.TmdbId;
@@ -96,7 +93,7 @@ public class TmdbBackdropService
         }
 
         AdvancedTmdbSettings tmdbSettings = AdvancedSettingsHelper.Resolve(config).Tmdb;
-        string cacheKey = BuildBackdropCacheKey(mediaType, tmdbId, tmdbSettings);
+        string cacheKey = BuildBackdropCacheKey(mediaType, tmdbId, tmdbSettings, preferNeutral);
 
         CachedBackdropDto? cached = TryGetCachedBackdrop(cacheKey, tmdbSettings);
         if (cached != null)
@@ -110,7 +107,8 @@ public class TmdbBackdropService
             tmdbId,
             apiKey,
             tmdbSettings.BackdropLanguageFilter,
-            tmdbSettings.PreferOriginalLanguageImages,
+            preferOriginalLanguage: !preferNeutral && tmdbSettings.PreferOriginalLanguageImages,
+            preferNeutral: preferNeutral,
             cancellationToken).ConfigureAwait(false);
 
         if (string.IsNullOrEmpty(pick.FilePath))
@@ -168,14 +166,15 @@ public class TmdbBackdropService
         return null;
     }
 
-    private static string BuildBackdropCacheKey(string mediaType, int tmdbId, AdvancedTmdbSettings tmdbSettings)
+    private static string BuildBackdropCacheKey(string mediaType, int tmdbId, AdvancedTmdbSettings tmdbSettings, bool preferNeutral)
     {
         string languageFilter = string.IsNullOrWhiteSpace(tmdbSettings.BackdropLanguageFilter)
             ? "en,null,en-US"
             : tmdbSettings.BackdropLanguageFilter.Trim();
-        string preferOriginal = tmdbSettings.PreferOriginalLanguageImages ? "original" : "default";
+        string preferOriginal = !preferNeutral && tmdbSettings.PreferOriginalLanguageImages ? "original" : "default";
+        string neutral = preferNeutral ? "neutral" : "card";
 
-        return $"{mediaType}:{tmdbId}:lang={languageFilter.ToLowerInvariant()}:mode={preferOriginal}";
+        return $"{mediaType}:{tmdbId}:lang={languageFilter.ToLowerInvariant()}:mode={preferOriginal}:pick={neutral}";
     }
 
     private static BackdropBatchItemDto ToBatchItem(string mediaType, int tmdbId, CachedBackdropDto cached) =>
