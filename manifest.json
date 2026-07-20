@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/SeerrFin",
     "versions": [
       {
+        "version": "1.6.1.3",
+        "changelog": "Request modal now uses the default backdrop image instead of the english backdrop image (which has the movie's logo)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/SeerrFin/releases/download/1.6.1.3/Jellyfin.Plugin.SeerrFin_10.11.0.zip",
+        "checksum": "98DE6CD57F793B0A751DC5EB470F4DD0",
+        "timestamp": "2026-07-20T11:22:54.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.6.1.2",
         "changelog": "Added better logging throughout app to better catch errors/failures, especially with custom tab loading",
         "targetAbi": "10.11.0.0",
