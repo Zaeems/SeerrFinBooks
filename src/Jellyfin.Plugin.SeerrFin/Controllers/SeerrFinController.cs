@@ -588,6 +588,7 @@ public class SeerrFinController : ControllerBase
         [FromServices] IUserManager userManager,
         [FromQuery] int take = 20,
         [FromQuery] int skip = 0,
+        [FromQuery] string? filter = null,
         CancellationToken cancellationToken = default)
     {
         Guid userId = GetUserId();
@@ -598,7 +599,7 @@ public class SeerrFinController : ControllerBase
         }
 
         (int statusCode, string body) = await _requestsService
-            .GetRequestsAsync(userId, username, take, skip, cancellationToken)
+            .GetRequestsAsync(userId, username, take, skip, filter, cancellationToken)
             .ConfigureAwait(false);
 
         return new ContentResult

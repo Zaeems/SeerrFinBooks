@@ -1,3 +1,60 @@
+.seerrfin-requests-panel .sectionTitleContainer-cards {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+}
+
+.seerrfin-requests-reload {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2em;
+    height: 2em;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--secondaryTextColor, rgba(255, 255, 255, 0.65));
+    cursor: pointer;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.seerrfin-requests-reload:hover,
+.seerrfin-requests-reload:focus-visible {
+    color: var(--primaryTextColor, #fff);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.seerrfin-requests-reload:disabled {
+    cursor: default;
+}
+
+.seerrfin-requests-reload.is-loading {
+    opacity: 0.7;
+}
+
+.seerrfin-requests-reload.is-success {
+    color: #4caf50;
+}
+
+.seerrfin-requests-reload.is-error {
+    color: #e53935;
+}
+
+.seerrfin-requests-reload .material-icons {
+    font-size: 1.35em;
+    line-height: 1;
+}
+
+.seerrfin-requests-reload.is-loading .material-icons {
+    animation: seerrfin-requests-reload-spin 0.8s linear infinite;
+}
+
+@keyframes seerrfin-requests-reload-spin {
+    to { transform: rotate(360deg); }
+}
+
 .seerrfin-requests-filters {
     display: flex;
     flex-wrap: wrap;

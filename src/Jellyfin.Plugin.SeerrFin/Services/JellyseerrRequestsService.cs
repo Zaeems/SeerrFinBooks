@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Jellyfin.Data.Enums;
 using Jellyfin.Database.Implementations.Entities;
@@ -12,6 +13,10 @@ namespace Jellyfin.Plugin.SeerrFin.Services;
 
 public class JellyseerrRequestsService
 {
+    private static readonly ConcurrentDictionary<string, (JObject Data, DateTime CachedAt)> MediaDetailCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, Task<JObject?>> MediaDetailInFlight = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan MediaDetailCacheTtl = TimeSpan.FromMinutes(10);
+
     private readonly ILogger<JellyseerrRequestsService> _logger;
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
@@ -30,6 +35,7 @@ public class JellyseerrRequestsService
         string username,
         int take,
         int skip,
+        string? filter,
         CancellationToken cancellationToken)
     {
         PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
@@ -43,8 +49,18 @@ public class JellyseerrRequestsService
             return (401, "{\"error\":true,\"message\":\"User not found.\"}");
         }
 
-        take = Math.Clamp(take, 1, 100);
+        take = Math.Clamp(take, 1, 200);
         skip = Math.Max(0, skip);
+
+        bool isComingSoonFilter = string.Equals(filter, "comingsoon", StringComparison.OrdinalIgnoreCase);
+        string filterParam = filter?.ToLowerInvariant() switch
+        {
+            "pending" => "&filter=pending",
+            "available" => "&filter=available",
+            "processing" => "&filter=processing",
+            "comingsoon" => "&filter=processing",
+            _ => string.Empty
+        };
 
         using HttpClient client = CreateClient(config);
         int? jellyseerrUserId = await ResolveJellyseerrUserIdAsync(client, username, cancellationToken).ConfigureAwait(false);
@@ -55,7 +71,7 @@ public class JellyseerrRequestsService
 
         client.DefaultRequestHeaders.Add("X-Api-User", jellyseerrUserId.ToString());
 
-        string apiPath = $"/api/v1/request?take={take}&skip={skip}&sort=added&sortDirection=desc";
+        string apiPath = $"/api/v1/request?take={take}&skip={skip}&sort=added&sortDirection=desc{filterParam}";
         try
         {
             using HttpResponseMessage response = await client.GetAsync(apiPath, cancellationToken).ConfigureAwait(false);
@@ -69,18 +85,31 @@ public class JellyseerrRequestsService
             JArray? results = data.Value<JArray>("results");
             if (results == null || results.Count == 0)
             {
-                return (200, BuildResponse(data, new JArray()).ToString());
+                return (200, BuildResponse(data, new JArray(), isComingSoonFilter, take).ToString());
             }
 
-            Dictionary<string, JObject?> detailCache = new(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, Guid?> libraryItemCache = new(StringComparer.OrdinalIgnoreCase);
             User? user = _userManager.GetUserById(userId);
-            JArray mappedRequests = new();
 
-            foreach (JObject req in results.OfType<JObject>())
+            (JObject Req, JObject? Details)[] enriched = await Task.WhenAll(
+                results.OfType<JObject>().Select(async req =>
+                {
+                    JObject? details = await GetMediaDetailsAsync(client, req, cancellationToken).ConfigureAwait(false);
+                    return (req, details);
+                })).ConfigureAwait(false);
+
+            JArray mappedRequests = new();
+            foreach ((JObject req, JObject? details) in enriched)
             {
-                JObject? details = await GetMediaDetailsAsync(client, req, detailCache, cancellationToken).ConfigureAwait(false);
                 mappedRequests.Add(MapRequest(req, details, user, libraryItemCache));
+            }
+
+            if (isComingSoonFilter)
+            {
+                mappedRequests = new JArray(
+                    mappedRequests.OfType<JObject>()
+                        .Where(r => r.Value<bool?>("isComingSoon") == true)
+                        .OrderBy(r => r.Value<string>("releaseSortDate") ?? "9999"));
             }
 
             await _servarrProgressService.EnrichRequestsAsync(mappedRequests, cancellationToken).ConfigureAwait(false);
@@ -109,7 +138,7 @@ public class JellyseerrRequestsService
                 mapped.Remove("externalServiceId");
             }
 
-            return (200, BuildResponse(data, mappedRequests).ToString());
+            return (200, BuildResponse(data, mappedRequests, isComingSoonFilter, take).ToString());
         }
         catch (Exception ex)
         {
@@ -177,20 +206,23 @@ public class JellyseerrRequestsService
         }
     }
 
-    private static JObject BuildResponse(JObject source, JArray requests)
+    private static JObject BuildResponse(JObject source, JArray requests, bool isComingSoonFilter, int take)
     {
         JObject? pageInfo = source.Value<JObject>("pageInfo");
+        int totalPages = isComingSoonFilter
+            ? Math.Max(1, (int)Math.Ceiling(requests.Count / (double)take))
+            : pageInfo?.Value<int?>("pages") ?? 1;
+
         return new JObject
         {
             ["requests"] = requests,
-            ["totalPages"] = pageInfo?["pages"] ?? 1
+            ["totalPages"] = totalPages
         };
     }
 
     private static async Task<JObject?> GetMediaDetailsAsync(
         HttpClient client,
         JObject req,
-        Dictionary<string, JObject?> cache,
         CancellationToken cancellationToken)
     {
         JObject? media = req.Value<JObject>("media");
@@ -202,32 +234,67 @@ public class JellyseerrRequestsService
         }
 
         string cacheKey = $"{type}:{tmdbId.Value}";
-        if (cache.TryGetValue(cacheKey, out JObject? cached))
+        if (MediaDetailCache.TryGetValue(cacheKey, out (JObject Data, DateTime CachedAt) cached) && DateTime.UtcNow - cached.CachedAt < MediaDetailCacheTtl)
         {
-            return cached;
+            return cached.Data;
         }
 
-        string path = string.Equals(type, "tv", StringComparison.OrdinalIgnoreCase)
-            ? $"/api/v1/tv/{tmdbId.Value}"
-            : $"/api/v1/movie/{tmdbId.Value}";
+        Task<JObject?> fetchTask = MediaDetailInFlight.GetOrAdd(cacheKey, _ => FetchMediaDetailsAsync(client, type, tmdbId.Value, cancellationToken));
+        try
+        {
+            JObject? details = await fetchTask.ConfigureAwait(false);
+            if (details != null)
+            {
+                MediaDetailCache[cacheKey] = (details, DateTime.UtcNow);
+                PruneMediaDetailCache();
+            }
 
-        JObject? details = null;
+            return details;
+        }
+        finally
+        {
+            MediaDetailInFlight.TryRemove(cacheKey, out _);
+        }
+    }
+
+    private static async Task<JObject?> FetchMediaDetailsAsync(HttpClient client, string type, int tmdbId, CancellationToken cancellationToken)
+    {
+        string path = string.Equals(type, "tv", StringComparison.OrdinalIgnoreCase)
+            ? $"/api/v1/tv/{tmdbId}"
+            : $"/api/v1/movie/{tmdbId}";
+
         try
         {
             using HttpResponseMessage response = await client.GetAsync(path, cancellationToken).ConfigureAwait(false);
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                string raw = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                details = JObject.Parse(raw);
+                return null;
             }
+
+            string raw = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return JObject.Parse(raw);
         }
         catch
         {
-            // Fall back to request media fields when detail lookup fails.
+            // Fallback to request media fields when detail lookup fails.
+            return null;
+        }
+    }
+
+    private static void PruneMediaDetailCache()
+    {
+        if (MediaDetailCache.Count <= 500 && MediaDetailCache.Count % 100 != 0)
+        {
+            return;
         }
 
-        cache[cacheKey] = details;
-        return details;
+        foreach (KeyValuePair<string, (JObject Data, DateTime CachedAt)> entry in MediaDetailCache)
+        {
+            if (DateTime.UtcNow - entry.Value.CachedAt > MediaDetailCacheTtl)
+            {
+                MediaDetailCache.TryRemove(entry.Key, out _);
+            }
+        }
     }
 
     private JObject MapRequest(JObject req, JObject? details, User? user, Dictionary<string, Guid?> libraryItemCache)
