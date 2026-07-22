@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/SeerrFin",
     "versions": [
       {
+        "version": "1.6.2.1",
+        "changelog": "Fixed genre/streaming service/studio box cards, and slightly updated config",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/SeerrFin/releases/download/1.6.2.1/Jellyfin.Plugin.SeerrFin_10.11.0.zip",
+        "checksum": "60F856666E7C2EF1DCBEB03706F505F1",
+        "timestamp": "2026-07-22T07:32:34.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.6.2.0",
         "changelog": "Made Requests tab loading faster via server-side pagination and add a reload button which shows success/error on reload",
         "targetAbi": "10.11.0.0",
