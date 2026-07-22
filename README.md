@@ -68,6 +68,36 @@ After installation, now configure the extension so it will work with your Seerr 
   </tr>
 </table>
 
+## FAQ
+
+### The Movie/TV Shows/etc. tabs show up, but nothing loads inside them. What do I do?
+1. Clear your browser cache. Try a different browser/incognito mode.
+2. Restart Jellyfin so File Transformation can reregister the inject scripts.
+3. Try the solution at https://github.com/varunaditya-plus/SeerrFin/issues/8#issuecomment-4958115561
+
+### In console, I got `Cannot find module './'` and tabs don't load. What do I do?
+Usually a problem to do with File Transformation not loading the scripts correctly. Uninstall SeerrFin, restart Jellyfin, reinstall SeerrFin, and restart again.
+
+### SeerrFin UI looks weird and inconsistent, what should I do?
+Some themes, like ElegantFin have issues with SeerFin's elements. In SeerrFin settings, enable **ElegantFin fixes** to fix issues with ElegantFin. For the Abyss theme, make sure to add `#searchPage .scrollSlider { overflow: visible !important; }` at the bottom of your custom CSS so scrolling works in the search carousel.
+
+### Is a TMDB API key required?
+Not required, but is heavily recommended. TMDB gives you better images, landscape thumbnails, and release-type filtering. Get a key for free from [TMDB](https://www.themoviedb.org/settings/api).
+
+### Does SeerrFin work on external Jellyfin clients like mobile/tv apps, or only the web client?
+Currently, SeerrFin only works on the Jellyfin web client and anything using the web client, but I am planning to try to support native clients in the future. Native clients each need their own custom SeerrFin implementation in different languages and can't work through just this plugin. [Swiftfin](https://github.com/jellyfin/swiftfin) is the first native client I want SeerrFin to be supported on.
+
+### How is SeerrFin different from Jellyfin Enhanced?
+While Jellyfin Enhanced has Seerr search results, some discovery features, and a requests page, SeerrFin integrates Seerr discovery directly into Jellyfin in the cleanest way possible with category carousels, genre/network/studio browsing, quality recommendations, Letterboxd sync, and full request modals inside tabs.
+
+### Will SeerrFin conflict with Jellyfin Enhanced or other Seerr plugins?
+They can run together, and some people do, but be aware that you might see ui from both plugins that do the same thing. Make sure to disable duplicate features in the plugin you don't want to use for that feature. Report any issues in a GitHub issue.
+
+### What URL should I use for Seerr/Radarr/Sonarr in the plugin settings?
+Use a URL the Jellyfin server can reach. In Docker that's usually the internal hostname (`http://seerr:5055`). Put the browser-facing URL in **External Seerr URL** for the "Open in Seerr" links. Same thing for the *arrs.
+
+### Do regular (non-admin) Jellyfin users need anything set up to request media?
+They need a matching Seerr user linked to their Jellyfin user with request permissions in Seerr.
 
 ## Contributing & Support
 Please open pull requests if you have any suggestions or features you want to be implemented in this plugin. This is my first C# project, and is inspired heavily by [Home Screen Sections](https://github.com/IAmParadox27/jellyfin-plugin-home-sections). For suggestions, feature requests, or bug reports, open an issue. Please include your Jellyfin version and a screenshot if relevant.
