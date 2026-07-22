@@ -1192,7 +1192,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             return `
                 <div class="card seerrfin-discover-card seerrfin-discover-card--backdrop seerrfin-box-card seerrfin-discover-card--static${extraClass}"
-                    data-kind="${kind}" data-media-type="${mediaType}" data-id="${id}" data-name="${safeName}" role="button" tabindex="0">
+                    data-seerrfin-box-card="true" data-kind="${kind}" data-media-type="${mediaType}" data-id="${id}" data-name="${safeName}" role="button" tabindex="0">
                     <div class="cardBox">
                         <div class="cardScalable seerrfin-discover-backdrop-scalable">
                             <div class="cardPadder seerrfin-discover-backdrop-padder"></div>
