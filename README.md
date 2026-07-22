@@ -26,13 +26,15 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 ## Features
 - **Movie and TV tabs**: New tabs for discovering movies and TV shows using Custom Tabs
 - **Discovery sections**: Carousels sorting movies/tv shows to be discovered by (eg. Trending, Popular, etc.)
+- **Jellyfin search integration**: Added Seerr movie and TV show results appear in Jellyfin's search to allow you to search and request content directly from Jellyfin
 - **Request from Seerr**: Easily request movies and TV shows directly in Jellyfin and select quality profiles and specific seasons (for shows)
-- **Quality recommendations**: Get the highest released and most common streaming quality when requesting to get the right quality for your request
+- **Quality recommendations**: See the highest released and most common streaming quality when requesting to know the right quality profile for your request
 - **Requests tab**: Track your Seerr requests with, and open each request open requested content in Seerr, Radarr or Sonarr
 - **Radarr/Sonarr download progress**: See live download progress of requests to see how far along each request is
 - **Letterboxd watchlist sync**: Sync your Letterboxd watchlist into Jellyfin and request all movies from your watchlist at once
 - **Bulk request from Letterboxd**: Select and request multiple movies from your Letterboxd watchlist at once
 - **Display customizations**: Customize logos, backdrops, poster style, and colors for all carousels/cards
+- **Native Jellyfin UI**: Optional native look for carousels, grid pages, and search results that matches Jellyfin's own UI style (should work with most themes)
 
 
 ## Installation
