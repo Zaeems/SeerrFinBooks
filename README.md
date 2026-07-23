@@ -68,6 +68,16 @@ After installation, now configure the extension so it will work with your Seerr 
   </tr>
 </table>
 
+<p align="center">
+  <a href="https://downloadhistory.varunaditya.xyz/#varunaditya-plus/SeerrFin&Date">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://downloadhistory.varunaditya.xyz/svg?repos=varunaditya-plus/SeerrFin&type=Date&theme=dark" />
+      <source media="(prefers-color-scheme: light)" srcset="https://downloadhistory.varunaditya.xyz/svg?repos=varunaditya-plus/SeerrFin&type=Date" />
+      <img alt="Download History Chart" src="https://downloadhistory.varunaditya.xyz/svg?repos=varunaditya-plus/SeerrFin&type=Date" />
+    </picture>
+  </a>
+</p>
+
 ## FAQ
 
 ### The Movie/TV Shows/etc. tabs show up, but nothing loads inside them. What do I do?
@@ -99,11 +109,10 @@ Use a URL the Jellyfin server can reach. In Docker that's usually the internal h
 ### Do regular (non-admin) Jellyfin users need anything set up to request media?
 They need a matching Seerr user linked to their Jellyfin user with request permissions in Seerr.
 
+<!--
 ## Contributing & Support
 Please open pull requests if you have any suggestions or features you want to be implemented in this plugin. This is my first C# project, and is inspired heavily by [Home Screen Sections](https://github.com/IAmParadox27/jellyfin-plugin-home-sections). For suggestions, feature requests, or bug reports, open an issue. Please include your Jellyfin version and a screenshot if relevant.
-
-## License
-SeerrFin is licensed under the [MIT License](https://github.com/varunaditya-plus/SeerrFin/tree/main?tab=MIT-1-ov-file#readme).
+-->
 
 ## Credits
 - [Lato](https://fonts.google.com/specimen/Lato) by Łukasz Dziedzic, served via Google Fonts.
