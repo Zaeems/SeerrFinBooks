@@ -59,5 +59,9 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public string DisplayCustomizationsJson { get; set; } = string.Empty;
 
+    public List<SeerrFinTabConfig> Tabs { get; set; } = SeerrFinTabConfig.CreateDefaults();
+
+    public List<string> TabBarOrder { get; set; } = new();
+
     public AdvancedSettings? Advanced { get; set; }
 }

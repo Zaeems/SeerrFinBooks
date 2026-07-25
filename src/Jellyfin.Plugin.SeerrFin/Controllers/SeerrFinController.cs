@@ -175,6 +175,7 @@ public class SeerrFinController : ControllerBase
     public ActionResult GetDisplaySettings()
     {
         PluginConfiguration config = SeerrFinPlugin.Instance.Configuration;
+        List<SeerrFinTabConfig> tabs = SeerrFinTabConfigHelper.Normalize(config.Tabs);
         Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
         return Ok(new
         {
@@ -189,7 +190,9 @@ public class SeerrFinController : ControllerBase
             config.NativeGridPages,
             config.NativeSearchResults,
             displayCustomizations = DisplayCustomizationsHelper.Resolve(config),
-            advanced = AdvancedSettingsHelper.BuildFrontendPayload(config)
+            advanced = AdvancedSettingsHelper.BuildFrontendPayload(config),
+            tabs = tabs.Select(tab => new { id = tab.Id, enabled = tab.Enabled }),
+            tabBarOrder = SeerrFinTabConfigHelper.NormalizeBarOrder(config.TabBarOrder)
         });
     }
 

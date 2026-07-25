@@ -33,6 +33,18 @@ public class SeerrFinPlugin : BasePlugin<PluginConfiguration>, IHasPluginConfigu
         };
     }
 
+    // to normalize tab settings and order before saving to disk
+    public override void UpdateConfiguration(BasePluginConfiguration configuration)
+    {
+        if (configuration is PluginConfiguration config)
+        {
+            config.Tabs = SeerrFinTabConfigHelper.Normalize(config.Tabs);
+            config.TabBarOrder = SeerrFinTabConfigHelper.NormalizeBarOrder(config.TabBarOrder);
+        }
+
+        base.UpdateConfiguration(configuration);
+    }
+
     public void BustCache()
     {
         Configuration.CacheBustCounter++;

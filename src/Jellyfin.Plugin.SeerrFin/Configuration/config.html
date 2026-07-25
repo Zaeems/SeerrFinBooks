@@ -120,6 +120,64 @@
             gap: 1em;
         }
 
+        .bst-tab-order-list {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: stretch;
+            gap: 0.65em;
+            margin-top: 0.35em;
+        }
+
+        .bst-tab-order-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35em;
+            min-width: 6.5em;
+            max-width: 9.5em;
+            flex: 1 1 6.5em;
+            padding: 0.85em 0.7em 0.7em;
+            border: 1px solid var(--cardBackground, rgba(255, 255, 255, 0.12));
+            background: var(--cardBackground, rgba(255, 255, 255, 0.06));
+            cursor: grab;
+            user-select: none;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .bst-tab-order-item.is-dragging {
+            opacity: 0.92;
+            cursor: grabbing;
+            border-color: var(--accent, #00a4dc);
+        }
+
+        .bst-tab-order-item:not(.is-anchor) {
+            touch-action: none;
+        }
+
+        .bst-tab-order-item.is-anchor {
+            cursor: default;
+            opacity: 0.92;
+        }
+
+        .bst-tab-order-item.is-disabled {
+            opacity: 0.55;
+        }
+
+        .bst-tab-order-label {
+            font-size: 1.05em;
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        .bst-tab-order-meta {
+            font-size: 0.72em;
+            line-height: 1.2;
+            color: var(--secondaryTextColor, rgba(255, 255, 255, 0.5));
+        }
+
         .bst-input-group {
             margin-bottom: 1.75em;
         }
@@ -308,6 +366,10 @@
 
         .bst-toggle input:checked + .bst-toggle-slider {
             background: var(--accent, #00a4dc);
+        }
+
+        .bst-toggle input:checked + .bst-toggle-slider.bst-tab-slider {
+            background: #4caf50;
         }
 
         .bst-toggle input:checked + .bst-toggle-slider:before {
@@ -608,7 +670,7 @@
             gap: 2.5em;
         }
 
-        .bst-custom-tab-card.is-added {
+        .bst-seerrfin-tab-card.is-enabled {
             border-color: #4caf50;
         }
 
@@ -618,10 +680,6 @@
 
         .bst-config-summary-row:hover {
             opacity: 0.85;
-        }
-
-        .bst-save-btn.is-hidden {
-            display: none;
         }
 
         @media (max-width: 768px) {
@@ -692,65 +750,69 @@
                         <span class="bst-icon">✕</span>
                         <span>File transformation</span>
                     </div>
-                    <div id="bstDepCustomTabs" class="bst-dep-item is-missing">
-                        <span class="bst-icon">✕</span>
-                        <span>Custom tabs</span>
-                    </div>
                 </div>
             </div>
 
-            <!-- Add Custom Tabs Section -->
             <div class="bst-section-container">
-                <div class="bst-section-title">Add custom tabs [<span id="bstCustomTabsAdded">0</span>/4]</div>
+                <div class="bst-section-title">Turn on the tabs you want</div>
                 <div class="bst-card">
-                    <div class="bst-section-header">
-                        <div class="bst-field-desc bst-field-desc--inline">
-                            In <strong>Dashboard → Plugins → Custom Tabs</strong>, add tabs using the values below
-                        </div>
-                        <a class="bst-link" href="/web/#/configurationpage?name=Custom%20Tabs">Open Custom Tabs</a>
-                    </div>
                     <div class="bst-tabs-grid">
-                        <div class="bst-card bst-custom-tab-card" data-bst-tab-marker="seerrfin-movies-sections">
-                            <div class="bst-input-group">
-                                <label class="bst-label">Display text</label>
-                                <input type="text" class="bst-input" readonly value="Movies" />
-                            </div>
-                            <div class="bst-input-group">
-                                <label class="bst-label">Html Content</label>
-                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections seerrfin-movies-sections"&gt;&lt;/div&gt;</textarea>
-                            </div>
-                        </div>
-                        <div class="bst-card bst-custom-tab-card" data-bst-tab-marker="seerrfin-tv-sections">
-                            <div class="bst-input-group">
-                                <label class="bst-label">Display text</label>
-                                <input type="text" class="bst-input" readonly value="TV Shows" />
-                            </div>
-                            <div class="bst-input-group">
-                                <label class="bst-label">Html Content</label>
-                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections seerrfin-tv-sections"&gt;&lt;/div&gt;</textarea>
+                        <div class="bst-card bst-seerrfin-tab-card" data-bst-tab-id="movies">
+                            <div class="bst-toggle-row">
+                                <div class="bst-toggle-copy">
+                                    <label class="bst-toggle-label" for="bstTabEnabled_movies">Enable Movies tab</label>
+                                </div>
+                                <div class="bst-toggle-actions">
+                                    <label class="bst-toggle">
+                                        <input id="bstTabEnabled_movies" type="checkbox" data-bst-tab-enabled="movies" checked />
+                                        <span class="bst-toggle-slider bst-tab-slider"></span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                        <div class="bst-card bst-custom-tab-card" data-bst-tab-marker="seerrfin-requests-sections">
-                            <div class="bst-input-group">
-                                <label class="bst-label">Display text</label>
-                                <input type="text" class="bst-input" readonly value="Requests" />
-                            </div>
-                            <div class="bst-input-group">
-                                <label class="bst-label">Html Content</label>
-                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections seerrfin-requests-sections"&gt;&lt;/div&gt;</textarea>
+                        <div class="bst-card bst-seerrfin-tab-card" data-bst-tab-id="tv">
+                            <div class="bst-toggle-row">
+                                <div class="bst-toggle-copy">
+                                    <label class="bst-toggle-label" for="bstTabEnabled_tv">Enable TV Shows tab</label>
+                                </div>
+                                <div class="bst-toggle-actions">
+                                    <label class="bst-toggle">
+                                        <input id="bstTabEnabled_tv" type="checkbox" data-bst-tab-enabled="tv" checked />
+                                        <span class="bst-toggle-slider bst-tab-slider"></span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                        <div class="bst-card bst-custom-tab-card" data-bst-tab-marker="seerrfin-letterboxd-sections">
-                            <div class="bst-input-group">
-                                <label class="bst-label">Display text</label>
-                                <input type="text" class="bst-input" readonly value="Letterboxd" />
+                        <div class="bst-card bst-seerrfin-tab-card" data-bst-tab-id="requests">
+                            <div class="bst-toggle-row">
+                                <div class="bst-toggle-copy">
+                                    <label class="bst-toggle-label" for="bstTabEnabled_requests">Enable Requests tab</label>
+                                </div>
+                                <div class="bst-toggle-actions">
+                                    <label class="bst-toggle">
+                                        <input id="bstTabEnabled_requests" type="checkbox" data-bst-tab-enabled="requests" checked />
+                                        <span class="bst-toggle-slider bst-tab-slider"></span>
+                                    </label>
+                                </div>
                             </div>
-                            <div class="bst-input-group">
-                                <label class="bst-label">Html Content</label>
-                                <textarea class="bst-input bst-textarea" readonly>&lt;div class="sections seerrfin-letterboxd-sections"&gt;&lt;/div&gt;</textarea>
+                        </div>
+                        <div class="bst-card bst-seerrfin-tab-card" data-bst-tab-id="letterboxd">
+                            <div class="bst-toggle-row">
+                                <div class="bst-toggle-copy">
+                                    <label class="bst-toggle-label" for="bstTabEnabled_letterboxd">Enable Letterboxd tab</label>
+                                </div>
+                                <div class="bst-toggle-actions">
+                                    <label class="bst-toggle">
+                                        <input id="bstTabEnabled_letterboxd" type="checkbox" data-bst-tab-enabled="letterboxd" checked />
+                                        <span class="bst-toggle-slider bst-tab-slider"></span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="bst-section-title" style="margin-top: 1.5em; margin-bottom: 0.65em;">Tab order (drag to reorder)</div>
+                    <div id="bstTabOrderList" class="bst-tab-order-list" aria-label="Tab order"></div>
                 </div>
             </div>
 
@@ -1562,7 +1624,7 @@
                 </div>
                 </div>
 
-                <button type="submit" class="bst-save-btn is-hidden" id="bstSaveBtn">Save</button>
+                <button type="submit" class="bst-save-btn" id="bstSaveBtn">Save</button>
             </form>
         </div>
     </div>
@@ -1595,13 +1657,10 @@
     <script type="text/javascript">
         (function () {
             const pluginId = 'c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c';
+            const customTabsPluginId = 'fbacd0b6-fd46-4a05-b0a4-2045d6a135b0';
             const form = document.querySelector('.seerrFinConfigurationForm');
-            const saveBtn = document.getElementById('bstSaveBtn');
-            let activeBstPage = 'overview';
 
             function switchBstPage(pageId) {
-                activeBstPage = pageId;
-
                 document.querySelectorAll('.bst-page-nav-btn[data-bst-panel]').forEach(function (btn) {
                     btn.classList.toggle('is-active', btn.getAttribute('data-bst-panel') === pageId);
                 });
@@ -1610,12 +1669,8 @@
                     panel.classList.toggle('is-active', panel.getAttribute('data-bst-panel') === pageId);
                 });
 
-                if (saveBtn) {
-                    saveBtn.classList.toggle('is-hidden', pageId === 'overview');
-                }
-
                 if (pageId === 'overview') {
-                    checkCustomTabsAdded();
+                    syncTabCardsFromState();
                     updateConfigSummary();
                 }
             }
@@ -1647,6 +1702,348 @@
                 setSummaryRow('bstCfgSonarr', fieldValue('sonarrUrl') !== '' && fieldValue('sonarrApiKey') !== '');
             }
 
+            const TAB_TITLES = {
+                movies: 'Movies',
+                tv: 'TV Shows',
+                requests: 'Requests',
+                letterboxd: 'Letterboxd'
+            };
+
+            function createDefaultTabs() {
+                return Object.keys(TAB_TITLES).map(function (id) {
+                    return { Id: id, Enabled: true };
+                });
+            }
+
+            let tabSettings = createDefaultTabs();
+            let customTabsForeign = [];
+            let tabBarOrder = ['jf:home', 'jf:favorites'].concat(Object.keys(TAB_TITLES).map(seerrFinBarKey));
+            let tabOrderDragId = null;
+            let tabOrderPointerId = null;
+
+            function seerrFinBarKey(id) {
+                return 'sf:' + String(id || '').toLowerCase();
+            }
+
+            function customTabsBarKey(index) {
+                return 'ct:' + index;
+            }
+
+            function isLegacySeerrFinCustomTabHtml(html) {
+                const value = String(html || '').toLowerCase();
+                return Object.keys(TAB_TITLES).some(function (id) {
+                    return value.indexOf('seerrfin-' + id + '-sections') !== -1;
+                });
+            }
+
+            function normalizeTabsFromConfig(tabs) {
+                const enabledById = {};
+                (Array.isArray(tabs) ? tabs : []).forEach(function (tab) {
+                    const id = String(tab && (tab.Id || tab.id) || '').toLowerCase();
+                    if (!TAB_TITLES[id] || Object.prototype.hasOwnProperty.call(enabledById, id)) {
+                        return;
+                    }
+                    enabledById[id] = tab.Enabled !== false && tab.enabled !== false;
+                });
+
+                return createDefaultTabs().map(function (tab) {
+                    if (Object.prototype.hasOwnProperty.call(enabledById, tab.Id)) {
+                        tab.Enabled = enabledById[tab.Id];
+                    }
+                    return tab;
+                });
+            }
+
+            function normalizeBarOrder(order, customTabs) {
+                const result = [];
+                const seen = {};
+                const customList = Array.isArray(customTabs) ? customTabs : [];
+
+                function add(key) {
+                    if (!key || seen[key]) {
+                        return;
+                    }
+                    seen[key] = true;
+                    result.push(key);
+                }
+
+                add('jf:home');
+                add('jf:favorites');
+
+                (Array.isArray(order) ? order : []).forEach(function (raw) {
+                    let key = String(raw || '').trim();
+                    if (!key) {
+                        return;
+                    }
+                    if (TAB_TITLES[key.toLowerCase()]) {
+                        key = seerrFinBarKey(key);
+                    }
+                    if (key === 'jf:home' || key === 'jf:favorites') {
+                        return;
+                    }
+                    if (key.indexOf('sf:') === 0) {
+                        const id = key.slice(3);
+                        if (TAB_TITLES[id]) {
+                            add(seerrFinBarKey(id));
+                        }
+                        return;
+                    }
+                    if (key.indexOf('ct:') === 0) {
+                        const index = parseInt(key.slice(3), 10);
+                        if (!isNaN(index) && customList[index] && !customList[index].legacySeerrFin) {
+                            add(customTabsBarKey(index));
+                        }
+                    }
+                });
+
+                Object.keys(TAB_TITLES).forEach(function (id) {
+                    add(seerrFinBarKey(id));
+                });
+                customList.forEach(function (tab, index) {
+                    if (!tab.legacySeerrFin) {
+                        add(customTabsBarKey(index));
+                    }
+                });
+
+                return result;
+            }
+
+            function getTabById(id) {
+                for (let i = 0; i < tabSettings.length; i++) {
+                    if (tabSettings[i].Id === id) {
+                        return tabSettings[i];
+                    }
+                }
+                return null;
+            }
+
+            function describeBarKey(key) {
+                if (key === 'jf:home') {
+                    return { label: 'Home', meta: 'Jellyfin', disabled: false };
+                }
+                if (key === 'jf:favorites') {
+                    return { label: 'Favorites', meta: 'Jellyfin', disabled: false };
+                }
+                if (key.indexOf('sf:') === 0) {
+                    const id = key.slice(3);
+                    const tab = getTabById(id);
+                    return {
+                        label: TAB_TITLES[id] || id,
+                        meta: 'SeerrFin',
+                        disabled: !!(tab && tab.Enabled === false)
+                    };
+                }
+                if (key.indexOf('ct:') === 0) {
+                    const index = parseInt(key.slice(3), 10);
+                    const foreign = customTabsForeign[index];
+                    return {
+                        label: (foreign && foreign.title) || ('Custom Tab ' + (index + 1)),
+                        meta: 'Custom Tabs',
+                        disabled: false
+                    };
+                }
+                return { label: key, meta: '', disabled: false };
+            }
+
+            function syncTabCardsFromState() {
+                tabSettings.forEach(function (tab) {
+                    const card = document.querySelector('.bst-seerrfin-tab-card[data-bst-tab-id="' + tab.Id + '"]');
+                    const enabledInput = document.querySelector('[data-bst-tab-enabled="' + tab.Id + '"]');
+                    if (enabledInput) {
+                        enabledInput.checked = tab.Enabled !== false;
+                    }
+                    if (card) {
+                        card.classList.toggle('is-enabled', tab.Enabled !== false);
+                    }
+                });
+                renderTabOrderList();
+            }
+
+            function buildTabsPayload() {
+                return tabSettings.map(function (tab) {
+                    return {
+                        Id: tab.Id,
+                        Enabled: tab.Enabled !== false
+                    };
+                });
+            }
+
+            function renderTabOrderList() {
+                const list = document.getElementById('bstTabOrderList');
+                if (!list) {
+                    return;
+                }
+
+                list.innerHTML = '';
+                tabBarOrder.forEach(function (key) {
+                    const info = describeBarKey(key);
+                    const isAnchor = key.indexOf('sf:') !== 0;
+                    const item = document.createElement('div');
+                    item.className = 'bst-tab-order-item' +
+                        (isAnchor ? ' is-anchor' : '') +
+                        (info.disabled ? ' is-disabled' : '');
+                    item.setAttribute('data-bst-tab-order-id', key);
+                    item.innerHTML =
+                        '<span class="bst-tab-order-label"></span>' +
+                        '<span class="bst-tab-order-meta"></span>';
+                    item.querySelector('.bst-tab-order-label').textContent = info.label;
+                    item.querySelector('.bst-tab-order-meta').textContent = info.meta;
+                    list.appendChild(item);
+                });
+            }
+
+            function moveTabOrder(fromId, toId, before) {
+                if (!fromId || !toId || fromId === toId || fromId.indexOf('sf:') !== 0) {
+                    return false;
+                }
+
+                const fromIndex = tabBarOrder.indexOf(fromId);
+                let toIndex = tabBarOrder.indexOf(toId);
+                if (fromIndex < 0 || toIndex < 0) {
+                    return false;
+                }
+
+                const moved = tabBarOrder.splice(fromIndex, 1)[0];
+                toIndex = tabBarOrder.indexOf(toId);
+
+                if (!before) {
+                    toIndex += 1;
+                }
+
+                // jellyfin defaults stay pinned at the front
+                const minIdx = Math.max(tabBarOrder.indexOf('jf:home'), tabBarOrder.indexOf('jf:favorites')) + 1;
+                toIndex = Math.max(minIdx, toIndex);
+
+                if (toIndex === fromIndex) {
+                    tabBarOrder.splice(fromIndex, 0, moved);
+                    return false;
+                }
+
+                tabBarOrder.splice(toIndex, 0, moved);
+                return true;
+            }
+
+            function syncTabOrderDomFromState(list) {
+                tabBarOrder.forEach(function (key) {
+                    const item = list.querySelector('[data-bst-tab-order-id="' + key + '"]');
+                    if (item) {
+                        list.appendChild(item);
+                    }
+                });
+            }
+
+            function loadCustomTabsForeign() {
+                function fromTabs(tabs) {
+                    return (Array.isArray(tabs) ? tabs : []).map(function (tab, index) {
+                        const html = tab.ContentHtml || tab.contentHtml || '';
+                        return {
+                            title: String(tab.Title || tab.title || ('Custom Tab ' + (index + 1))).trim() || ('Custom Tab ' + (index + 1)),
+                            legacySeerrFin: isLegacySeerrFinCustomTabHtml(html)
+                        };
+                    });
+                }
+
+                return ApiClient.ajax({
+                    url: ApiClient.getUrl('CustomTabs/Config'),
+                    type: 'GET',
+                    dataType: 'json'
+                }).then(function (tabs) {
+                    return fromTabs(tabs);
+                }).catch(function () {
+                    return ApiClient.getPluginConfiguration(customTabsPluginId).then(function (config) {
+                        return fromTabs(config.Tabs || config.tabs || []);
+                    }).catch(function () {
+                        return [];
+                    });
+                });
+            }
+
+            function bindTabSettingsUi() {
+                document.querySelectorAll('[data-bst-tab-enabled]').forEach(function (input) {
+                    input.addEventListener('change', function () {
+                        const tab = getTabById(input.getAttribute('data-bst-tab-enabled'));
+                        if (!tab) {
+                            return;
+                        }
+                        tab.Enabled = input.checked === true;
+                        syncTabCardsFromState();
+                    });
+                });
+
+                const list = document.getElementById('bstTabOrderList');
+                if (!list || list.dataset.bstBound === 'true') {
+                    return;
+                }
+                list.dataset.bstBound = 'true';
+
+                function finishTabOrderDrag() {
+                    if (!tabOrderDragId) {
+                        return;
+                    }
+                    tabOrderDragId = null;
+                    tabOrderPointerId = null;
+                    renderTabOrderList();
+                }
+
+                list.addEventListener('pointerdown', function (event) {
+                    if (event.button !== 0) {
+                        return;
+                    }
+                    const item = event.target.closest('[data-bst-tab-order-id]');
+                    if (!item || item.classList.contains('is-anchor')) {
+                        return;
+                    }
+                    tabOrderDragId = item.getAttribute('data-bst-tab-order-id');
+                    tabOrderPointerId = event.pointerId;
+                    item.classList.add('is-dragging');
+                    try {
+                        item.setPointerCapture(event.pointerId);
+                    } catch (err) {
+                        // capture is best-effort
+                    }
+                    event.preventDefault();
+                });
+
+                list.addEventListener('pointermove', function (event) {
+                    if (!tabOrderDragId || event.pointerId !== tabOrderPointerId) {
+                        return;
+                    }
+
+                    const items = Array.from(list.querySelectorAll('[data-bst-tab-order-id]'));
+                    for (let i = 0; i < items.length; i++) {
+                        const target = items[i];
+                        if (target.getAttribute('data-bst-tab-order-id') === tabOrderDragId) {
+                            continue;
+                        }
+                        const rect = target.getBoundingClientRect();
+                        if (event.clientX < rect.left || event.clientX > rect.right ||
+                            event.clientY < rect.top || event.clientY > rect.bottom) {
+                            continue;
+                        }
+                        const before = event.clientX < rect.left + (rect.width / 2);
+                        const toId = target.getAttribute('data-bst-tab-order-id');
+                        if (moveTabOrder(tabOrderDragId, toId, before)) {
+                            syncTabOrderDomFromState(list);
+                        }
+                        break;
+                    }
+                });
+
+                list.addEventListener('pointerup', function (event) {
+                    if (event.pointerId !== tabOrderPointerId) {
+                        return;
+                    }
+                    finishTabOrderDrag();
+                });
+
+                list.addEventListener('pointercancel', function (event) {
+                    if (event.pointerId !== tabOrderPointerId) {
+                        return;
+                    }
+                    finishTabOrderDrag();
+                });
+            }
+
             function bindConfigSummaryListeners() {
                 ['jellyseerrUrl', 'jellyseerrApiKey', 'tmdbApiKey', 'radarrUrl', 'radarrApiKey', 'sonarrUrl', 'sonarrApiKey'].forEach(function (id) {
                     const el = document.getElementById(id);
@@ -1654,51 +2051,6 @@
                         el.addEventListener('input', updateConfigSummary);
                         el.addEventListener('change', updateConfigSummary);
                     }
-                });
-            }
-
-            function checkCustomTabsAdded() {
-                const cards = document.querySelectorAll('.bst-custom-tab-card[data-bst-tab-marker]');
-                const countEl = document.getElementById('bstCustomTabsAdded');
-
-                cards.forEach(function (card) {
-                    card.classList.remove('is-added');
-                });
-
-                if (countEl) {
-                    countEl.textContent = '0';
-                }
-
-                ApiClient.getPluginConfiguration('fbacd0b6-fd46-4a05-b0a4-2045d6a135b0').then(function (config) { // get custom tabs plugin config
-                    const tabs = config.Tabs || config.tabs || [];
-                    let addedCount = 0;
-
-                    cards.forEach(function (card) {
-                        const marker = (card.getAttribute('data-bst-tab-marker') || '').toLowerCase();
-                        if (!marker) {
-                            return;
-                        }
-
-                        let found = false;
-                        for (let i = 0; i < tabs.length; i++) {
-                            const html = String(tabs[i].ContentHtml || tabs[i].contentHtml || '').toLowerCase();
-                            if (html.indexOf(marker) !== -1) {
-                                found = true;
-                                break;
-                            }
-                        }
-
-                        if (found) {
-                            card.classList.add('is-added');
-                            addedCount++;
-                        }
-                    });
-
-                    if (countEl) {
-                        countEl.textContent = String(addedCount);
-                    }
-                }).catch(function () {
-                    /* Custom Tabs not installed or config unavailable */
                 });
             }
 
@@ -1721,6 +2073,7 @@
             });
 
             bindConfigSummaryListeners();
+            bindTabSettingsUi();
 
             const DISPLAY_STYLE_ITEMS = {
                 streamingService: {
@@ -2216,21 +2569,27 @@
             }
 
             function checkInstalledPlugins() {
-                Promise.all([
-                    probePlugin(['File Transformation']),
-                    probePlugin(['Custom Tabs'])
-                ]).then(function (results) {
-                    setDependencyRow('bstDepFileTransformation', results[0] === true, 'File transformation');
-                    setDependencyRow('bstDepCustomTabs', results[1] === true, 'Custom tabs');
+                probePlugin(['File Transformation']).then(function (installed) {
+                    setDependencyRow('bstDepFileTransformation', installed === true, 'File transformation');
                 });
             }
 
             checkInstalledPlugins();
-            checkCustomTabsAdded();
 
             Dashboard.showLoadingMsg();
-            ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+            Promise.all([
+                ApiClient.getPluginConfiguration(pluginId),
+                loadCustomTabsForeign()
+            ]).then(function (results) {
+                const config = results[0] || {};
+                customTabsForeign = results[1] || [];
                 loadDisplayCustomizationsFromConfig(config);
+                tabSettings = normalizeTabsFromConfig(config.Tabs || config.tabs);
+                tabBarOrder = normalizeBarOrder(
+                    config.TabBarOrder || config.tabBarOrder || [],
+                    customTabsForeign
+                );
+                syncTabCardsFromState();
                 document.querySelector('#jellyseerrUrl').value = config.JellyseerrUrl || '';
                 document.querySelector('#externalJellyseerrUrl').value = config.ExternalJellyseerrUrl || '';
                 document.querySelector('#jellyseerrApiKey').value = config.JellyseerrApiKey || '';
@@ -2261,6 +2620,10 @@
                 Dashboard.hideLoadingMsg();
             }).catch(function () {
                 displayCustomizations = createDefaultDisplayCustomizations();
+                tabSettings = createDefaultTabs();
+                customTabsForeign = [];
+                tabBarOrder = normalizeBarOrder([], customTabsForeign);
+                syncTabCardsFromState();
                 Dashboard.hideLoadingMsg();
             });
 
@@ -2269,6 +2632,8 @@
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                     config.DisplayCustomizationsJson = JSON.stringify(buildDisplayCustomizationsPayload());
+                    config.Tabs = buildTabsPayload();
+                    config.TabBarOrder = tabBarOrder.slice();
                     config.JellyseerrUrl = document.querySelector('#jellyseerrUrl').value;
                     config.ExternalJellyseerrUrl = document.querySelector('#externalJellyseerrUrl').value;
                     config.JellyseerrApiKey = document.querySelector('#jellyseerrApiKey').value;

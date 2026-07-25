@@ -13,7 +13,7 @@
 [![GitHub Release](https://shieldcn.dev/github/release/varunaditya-plus/SeerrFin.svg?size=sm)](https://github.com/varunaditya-plus/SeerrFin/releases/latest)
 ![Please star this repo](https://shieldcn.dev/badge/★%20please%20star-22c55e.svg?theme=amber&color=eab308&size=sm&variant=outline)
 
-The best way to discover and request Movies and TV Shows by using Seerr directly in Jellyfin. This plugin lets you add two top bar tabs for Movies and TV discovery, with request modals powered by your Seerr instance. The categories are gotten using TMDB.
+The best way to discover and request Movies and TV Shows by using Seerr directly in Jellyfin. This plugin adds tabs for discovery, requests, and Letterboxd watchlist syncing, with request modals powered by your Seerr instance. The categories are gotten using TMDB.
 
 </div>
 
@@ -24,7 +24,7 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 ---
 
 ## Features
-- **Movie and TV tabs**: New tabs for discovering movies and TV shows using Custom Tabs
+- **Movie and TV tabs**: New tabs for discovering movies and TV shows directly in Jellyfin
 - **Discovery sections**: Carousels sorting movies/tv shows to be discovered by (eg. Trending, Popular, etc.)
 - **Jellyfin search integration**: Added Seerr movie and TV show results appear in Jellyfin's search to allow you to search and request content directly from Jellyfin
 - **Request from Seerr**: Easily request movies and TV shows directly in Jellyfin and select quality profiles and specific seasons (for shows)
@@ -42,7 +42,6 @@ The best way to discover and request Movies and TV Shows by using Seerr directly
 ### First make sure you have these prerequisites:
 - A running Jellyfin **10.11.x** and Seerr instance
 - [File Transformation](https://www.iamparadox.dev/jellyfin/plugins/manifest.json) plugin
-- [Custom Tabs](https://www.iamparadox.dev/jellyfin/plugins/manifest.json) plugin
 
 ### Install from plugin catalog
 1. Open **Dashboard → Plugins → Manage Repositories**.
@@ -86,7 +85,7 @@ After installation, now configure the extension so it will work with your Seerr 
 
 1. Clear your browser cache. Try a different browser/incognito mode.
 2. Restart Jellyfin so File Transformation can reregister the inject scripts.
-3. Try the solution at https://github.com/varunaditya-plus/SeerrFin/issues/8#issuecomment-4958115561
+3. Open **Dashboard → SeerrFin → Overview**, make sure the tabs are enabled, Save, clear your browser cache, and refresh the home page.
 
 </details>
 <details><summary><b>In console, I got <code>Cannot find module './'</code> and tabs don't load. What do I do?</b></summary>
@@ -141,4 +140,4 @@ Please open pull requests if you have any suggestions or features you want to be
 - Discover and request flows powered by the [Seerr](https://github.com/seerr-team/seerr) API.
 - [Letterboxd](https://letterboxd.com/) for providing user watchlists for Letterboxd syncing
 - Streaming quality recommendations gotten from [JustWatch](https://www.justwatch.com/).
-- Uses [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) and depends on [Custom Tabs](https://github.com/IAmParadox27/jellyfin-plugin-custom-tabs) by IAmParadox27.
+- Uses [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) by IAmParadox27.

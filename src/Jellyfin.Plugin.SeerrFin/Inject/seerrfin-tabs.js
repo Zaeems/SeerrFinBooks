@@ -44,6 +44,20 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         _gridPageSize: 40,
         _carouselScrollThreshold: 1200,
         _displaySettings: null,
+        _displaySettingsPromise: null,
+        _tabSettingsSnapshot: null,
+        _tabConfig: null,
+        _tabConfigPromise: null,
+        _tabsEnsuring: false,
+
+        TAB_DEFS: {
+            movies: { sectionClass: 'seerrfin-movies-sections', defaultTitle: 'Movies' },
+            tv: { sectionClass: 'seerrfin-tv-sections', defaultTitle: 'TV Shows' },
+            requests: { sectionClass: 'seerrfin-requests-sections', defaultTitle: 'Requests' },
+            letterboxd: { sectionClass: 'seerrfin-letterboxd-sections', defaultTitle: 'Letterboxd' }
+        },
+
+        CUSTOM_TABS_PLUGIN_ID: 'fbacd0b6-fd46-4a05-b0a4-2045d6a135b0',
 
         init: function () {
             if (typeof ApiClient === 'undefined') {
@@ -64,11 +78,13 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             if (!this._watchersReady) {
                 this._watchersReady = true;
-                log.info('init setting up custom tab watchers');
-                this.setupCustomTabWatchers();
-            } else {
-                this.scheduleRender();
+                log.info('init setting up native tab watchers');
+                this.setupNativeTabWatchers();
             }
+
+            this.ensureNativeTabs().then(function () {
+                window.seerrFinPlugin.scheduleRender();
+            });
         },
 
         isContainerVisible: function (container) {
@@ -84,6 +100,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             const tabPanel = container.closest('.tabContent, .pageTabContent');
             if (tabPanel && tabPanel.classList.contains('hide')) {
+                return false;
+            }
+
+            if (tabPanel && tabPanel.classList.contains('pageTabContent') && !tabPanel.classList.contains('is-active')) {
                 return false;
             }
 
@@ -127,42 +147,282 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             });
         },
 
-        attachCustomTabGuard: function (tabs) {
-            if (!tabs || tabs.dataset.bstCustomTabGuard === 'true') {
+        getDefaultTabConfig: function () {
+            return Object.keys(this.TAB_DEFS).map(function (id) {
+                return { id: id, enabled: true };
+            });
+        },
+
+        normalizeTabConfig: function (tabs) {
+            const defaults = this.getDefaultTabConfig();
+            const enabledById = {};
+            (Array.isArray(tabs) ? tabs : []).forEach(function (tab) {
+                const id = String(tab && tab.id || '').toLowerCase();
+                if (!defaults.some(function (item) { return item.id === id; }) ||
+                    Object.prototype.hasOwnProperty.call(enabledById, id)) {
+                    return;
+                }
+                enabledById[id] = tab.enabled !== false;
+            });
+
+            return defaults.map(function (tab) {
+                return {
+                    id: tab.id,
+                    enabled: Object.prototype.hasOwnProperty.call(enabledById, tab.id)
+                        ? enabledById[tab.id]
+                        : true
+                };
+            });
+        },
+
+        isHomeTabContext: function () {
+            const hash = window.location.hash || '';
+            const onHomeHash = hash === '' ||
+                hash === '#/home' ||
+                hash === '#/home.html' ||
+                hash.indexOf('#/home?') === 0 ||
+                hash.indexOf('#/home.html?') === 0;
+            if (!onHomeHash) {
+                return false;
+            }
+
+            const page = document.getElementById('indexPage');
+            if (!page || page.classList.contains('hide')) {
+                return false;
+            }
+
+            // indexPage can stay cached while browsing libraries. require it to be the visible page.
+            const visiblePage = document.querySelector('.page:not(.hide)');
+            return !visiblePage || visiblePage.id === 'indexPage';
+        },
+
+        cleanupSeerrFinHeaderButtons: function () {
+            document.querySelectorAll('.headerTabs [data-seerrfin-tab]').forEach(function (btn) {
+                btn.remove();
+            });
+        },
+
+        seerrFinBarKey: function (id) {
+            return 'sf:' + String(id || '').toLowerCase();
+        },
+
+        customTabsBarKey: function (index) {
+            return 'ct:' + index;
+        },
+
+        isLegacySeerrFinCustomTabHtml: function (html) {
+            const value = String(html || '').toLowerCase();
+            const tabDefs = this.TAB_DEFS;
+            return Object.keys(tabDefs).some(function (id) {
+                return value.indexOf(tabDefs[id].sectionClass) !== -1;
+            });
+        },
+
+        normalizeBarOrder: function (barOrder, customTabs) {
+            const self = this;
+            const customList = Array.isArray(customTabs) ? customTabs : [];
+            const result = [];
+            const seen = {};
+
+            function add(key) {
+                if (!key || seen[key]) {
+                    return;
+                }
+                seen[key] = true;
+                result.push(key);
+            }
+
+            add('jf:home');
+            add('jf:favorites');
+
+            (Array.isArray(barOrder) ? barOrder : []).forEach(function (raw) {
+                let key = String(raw || '').trim();
+                if (!key) {
+                    return;
+                }
+
+                if (self.TAB_DEFS[key.toLowerCase()]) {
+                    key = self.seerrFinBarKey(key);
+                }
+
+                if (key === 'jf:home' || key === 'jf:favorites') {
+                    return;
+                }
+
+                if (key.indexOf('sf:') === 0) {
+                    const id = key.slice(3);
+                    if (self.TAB_DEFS[id]) {
+                        add(self.seerrFinBarKey(id));
+                    }
+                    return;
+                }
+
+                if (key.indexOf('ct:') === 0) {
+                    const index = parseInt(key.slice(3), 10);
+                    if (!isNaN(index) && index >= 0 && index < customList.length && !customList[index].legacySeerrFin) {
+                        add(self.customTabsBarKey(index));
+                    }
+                }
+            });
+
+            Object.keys(self.TAB_DEFS).forEach(function (id) {
+                add(self.seerrFinBarKey(id));
+            });
+
+            customList.forEach(function (tab, index) {
+                if (!tab.legacySeerrFin) {
+                    add(self.customTabsBarKey(index));
+                }
+            });
+
+            return result;
+        },
+
+        loadCustomTabsConfig: function () {
+            const self = this;
+
+            function mapTabs(tabs) {
+                return (Array.isArray(tabs) ? tabs : []).map(function (tab, index) {
+                    return {
+                        index: index,
+                        legacySeerrFin: self.isLegacySeerrFinCustomTabHtml(tab.ContentHtml || tab.contentHtml || '')
+                    };
+                });
+            }
+
+            return ApiClient.ajax({
+                url: ApiClient.getUrl('CustomTabs/Config'),
+                type: 'GET',
+                dataType: 'json'
+            }).then(mapTabs).catch(function () {
+                return ApiClient.getPluginConfiguration(self.CUSTOM_TABS_PLUGIN_ID).then(function (config) {
+                    return mapTabs(config.Tabs || config.tabs);
+                }).catch(function () {
+                    return [];
+                });
+            });
+        },
+
+        loadTabConfig: function () {
+            const self = this;
+            if (self._tabConfig) {
+                return Promise.resolve(self._tabConfig);
+            }
+            if (self._tabConfigPromise) {
+                return self._tabConfigPromise;
+            }
+
+            const displaySettingsPromise = self._tabSettingsSnapshot
+                ? Promise.resolve(self._tabSettingsSnapshot)
+                : self.loadDisplaySettings().then(function () {
+                    return self._tabSettingsSnapshot || {};
+                });
+
+            self._tabConfigPromise = Promise.all([
+                displaySettingsPromise,
+                self.loadCustomTabsConfig()
+            ]).then(function (results) {
+                const settings = results[0] || {};
+                const customTabs = results[1] || [];
+                const tabs = self.normalizeTabConfig(settings.tabs);
+                return {
+                    tabs: tabs,
+                    tabBarOrder: self.normalizeBarOrder(settings.tabBarOrder, customTabs),
+                    customTabs: customTabs
+                };
+            }).catch(function (err) {
+                log.warn('tab config fetch failed, using defaults', err);
+                const tabs = self.getDefaultTabConfig();
+                return {
+                    tabs: tabs,
+                    tabBarOrder: self.normalizeBarOrder([], []),
+                    customTabs: []
+                };
+            }).then(function (config) {
+                self._tabConfig = config;
+                self._tabConfigPromise = null;
+                return config;
+            });
+
+            return self._tabConfigPromise;
+        },
+
+        syncTabPanelsActiveState: function (selectedIndex) {
+            if (isNaN(selectedIndex) || !this.isHomeTabContext()) {
                 return;
             }
 
-            tabs.dataset.bstCustomTabGuard = 'true';
-            log.info('custom tab guard attached');
+            const page = document.getElementById('indexPage');
+            page.querySelectorAll('.tabContent[data-index]').forEach(function (panel) {
+                const panelIndex = parseInt(panel.getAttribute('data-index'), 10);
+                panel.classList.toggle('is-active', panelIndex === selectedIndex);
+            });
+        },
+
+        attachPluginTabGuard: function (tabs) {
+            if (!tabs || tabs.dataset.seerrfinPluginTabGuard === 'true') {
+                return;
+            }
+
+            tabs.dataset.seerrfinPluginTabGuard = 'true';
+            log.info('native tab guard attached');
             const self = this;
 
             tabs.addEventListener('beforetabchange', function (event) {
-                const index = parseInt(event.detail && event.detail.selectedTabIndex, 10);
-                if (isNaN(index) || index < 2) {
+                if (!self.isHomeTabContext()) {
                     return;
                 }
 
-                log.info('custom tab before change to index ' + index);
-                setTimeout(function () {
-                    self.onCustomTabShown();
-                }, 0);
+                const index = parseInt(event.detail && event.detail.selectedTabIndex, 10);
+                if (isNaN(index)) {
+                    return;
+                }
+
+                // jellyfin activates panels by NodeList index.
+                // sync by data-index so SeerrFin panels stay in the right order.
+                self.syncTabPanelsActiveState(index);
+
+                const selectedButton = tabs.querySelector('.emby-tab-button[data-index="' + index + '"]');
+                if (selectedButton && selectedButton.getAttribute('data-seerrfin-tab')) {
+                    log.info('SeerrFin tab before change to index ' + index);
+                    setTimeout(function () {
+                        if (self.isHomeTabContext()) {
+                            self.onSeerrFinTabShown();
+                        }
+                    }, 0);
+                }
             }, true);
 
-            // Jellyfin HomeView only defines controllers for 0/1 while Custom Tabs use data-index >= 2. It throws error for anything else unless we stop that handler.
+            // Jellyfin HomeView only has controllers for Home/Favorites (block plugin tabs by identity)
             tabs.addEventListener('tabchange', function (event) {
-                const index = parseInt(event.detail && event.detail.selectedTabIndex, 10);
-                if (isNaN(index) || index < 2) {
+                if (!self.isHomeTabContext()) {
                     return;
                 }
 
-                log.info('blocking Jellyfin tabchange handler for custom tab index ' + index);
+                const index = parseInt(event.detail && event.detail.selectedTabIndex, 10);
+                if (isNaN(index)) {
+                    return;
+                }
+
+                const selectedButton = tabs.querySelector('.emby-tab-button[data-index="' + index + '"]');
+                if (!selectedButton) {
+                    return;
+                }
+
+                const isPluginTab = !!selectedButton.getAttribute('data-seerrfin-tab') ||
+                    (selectedButton.id || '').indexOf('customTabButton_') === 0;
+                if (!isPluginTab) {
+                    return;
+                }
+
+                log.info('blocking Jellyfin tabchange handler for plugin tab index ' + index);
                 event.stopImmediatePropagation();
             }, true);
         },
 
-        onCustomTabShown: function () {
+        onSeerrFinTabShown: function () {
             const self = this;
-            log.info('custom tab shown, scheduling render');
+            log.info('SeerrFin tab shown, scheduling render');
             setTimeout(function () {
                 self.scheduleRender();
                 if (typeof window.__seerrFinRequestsEnsureMounted === 'function') {
@@ -174,30 +434,358 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }, 0);
         },
 
-        setupCustomTabWatchers: function () {
+        removeObsoleteSeerrFinPanels: function (page, slots) {
+            const tabDefs = this.TAB_DEFS;
+            const sectionSelector = Object.keys(tabDefs).map(function (id) {
+                return '.' + tabDefs[id].sectionClass;
+            }).join(', ');
+            const activeIds = new Set(slots.filter(function (slot) {
+                return slot.type === 'seerrfin';
+            }).map(function (slot) {
+                return slot.id;
+            }));
+
+            page.querySelectorAll('.tabContent').forEach(function (panel) {
+                const id = panel.getAttribute('data-seerrfin-tab');
+                if (id) {
+                    if (!activeIds.has(id)) {
+                        panel.remove();
+                    }
+                    return;
+                }
+
+                if (panel.querySelector(sectionSelector)) {
+                    panel.remove();
+                }
+            });
+        },
+
+        createTabButton: function (id) {
+            const title = document.createElement('div');
+            title.className = 'emby-button-foreground';
+            title.textContent = this.TAB_DEFS[id].defaultTitle;
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.setAttribute('is', 'empty-button');
+            button.className = 'emby-tab-button emby-button';
+            button.setAttribute('data-seerrfin-tab', id);
+            button.appendChild(title);
+            return button;
+        },
+
+        createTabPanel: function (id) {
+            const panel = document.createElement('div');
+            panel.className = 'tabContent pageTabContent';
+            panel.setAttribute('data-seerrfin-tab', id);
+
+            const sections = document.createElement('div');
+            sections.className = 'sections ' + this.TAB_DEFS[id].sectionClass;
+            panel.appendChild(sections);
+            return panel;
+        },
+
+        findJellyfinTabButton: function (tabsSlider, kind) {
+            const buttons = Array.from(tabsSlider.querySelectorAll('.emby-tab-button'));
+            for (let i = 0; i < buttons.length; i++) {
+                const btn = buttons[i];
+                if (btn.hasAttribute('data-seerrfin-tab') || (btn.id || '').indexOf('customTabButton_') === 0) {
+                    continue;
+                }
+                const index = parseInt(btn.getAttribute('data-index'), 10);
+                if (kind === 'home' && index === 0) {
+                    return btn;
+                }
+                if (kind === 'favorites' && index === 1) {
+                    return btn;
+                }
+            }
+
+            // Fallback only while still on home: first two non-plugin buttons in DOM order.
+            const native = buttons.filter(function (btn) {
+                return !btn.hasAttribute('data-seerrfin-tab') && (btn.id || '').indexOf('customTabButton_') !== 0;
+            });
+            if (kind === 'home') {
+                return native[0] || null;
+            }
+            return native[1] || null;
+        },
+
+        buildDesiredBarSlots: function (config) {
             const self = this;
-            log.info('custom tab watchers ready');
+            const tabsById = {};
+            (config.tabs || []).forEach(function (tab) {
+                tabsById[tab.id] = tab;
+            });
+
+            return (config.tabBarOrder || []).map(function (key) {
+                if (key === 'jf:home') {
+                    return { key: key, type: 'jellyfin', id: 'home' };
+                }
+                if (key === 'jf:favorites') {
+                    return { key: key, type: 'jellyfin', id: 'favorites' };
+                }
+                if (key.indexOf('sf:') === 0) {
+                    const id = key.slice(3);
+                    const tab = tabsById[id];
+                    if (!tab || tab.enabled === false || !self.TAB_DEFS[id]) {
+                        return null;
+                    }
+                    return { key: key, type: 'seerrfin', id: id };
+                }
+                if (key.indexOf('ct:') === 0) {
+                    const index = parseInt(key.slice(3), 10);
+                    const custom = (config.customTabs || [])[index];
+                    if (!custom || custom.legacySeerrFin) {
+                        return null;
+                    }
+                    return { key: key, type: 'customtabs', index: index };
+                }
+                return null;
+            }).filter(Boolean);
+        },
+
+        barPlacementSignature: function (slots) {
+            return slots.map(function (slot) {
+                return slot.key;
+            }).join('|');
+        },
+
+        readCurrentBarSignature: function (tabsSlider) {
+            return Array.from(tabsSlider.querySelectorAll('.emby-tab-button')).map(function (btn) {
+                const sf = btn.getAttribute('data-seerrfin-tab');
+                if (sf) {
+                    return 'sf:' + sf;
+                }
+                const ct = /^customTabButton_(\d+)$/.exec(btn.id || '');
+                if (ct) {
+                    return 'ct:' + ct[1];
+                }
+                const index = btn.getAttribute('data-index');
+                if (index === '0') {
+                    return 'jf:home';
+                }
+                if (index === '1') {
+                    return 'jf:favorites';
+                }
+                return 'other:' + index;
+            }).join('|');
+        },
+
+        waitForCustomTabs: function (customTabs, attemptsLeft) {
+            const self = this;
+            const page = document.getElementById('indexPage');
+            const missing = (customTabs || []).some(function (tab) {
+                if (tab.legacySeerrFin) {
+                    return false;
+                }
+                const button = document.getElementById('customTabButton_' + tab.index);
+                const panel = page && page.querySelector('#customTab_' + tab.index);
+                return !button || !panel;
+            });
+            if (!missing || attemptsLeft <= 0) {
+                return Promise.resolve();
+            }
+
+            return new Promise(function (resolve) {
+                setTimeout(function () {
+                    self.waitForCustomTabs(customTabs, attemptsLeft - 1).then(resolve);
+                }, 150);
+            });
+        },
+
+        applyBarOrder: function (page, tabsSlider, slots) {
+            const self = this;
+            if (!self.isHomeTabContext() || !page || !tabsSlider) {
+                return false;
+            }
+
+            const homeTab = page.querySelector('#homeTab');
+            const favoritesTab = page.querySelector('#favoritesTab');
+            if (!homeTab || !favoritesTab) {
+                log.warn('home tab panels missing; skipping bar apply');
+                return false;
+            }
+
+            // Resolve references first so we can abort before moving nodes.
+            const planned = [];
+            for (let i = 0; i < slots.length; i++) {
+                const slot = slots[i];
+                let button = null;
+                let panel = null;
+
+                if (slot.type === 'jellyfin') {
+                    button = self.findJellyfinTabButton(tabsSlider, slot.id);
+                    panel = slot.id === 'home' ? homeTab : favoritesTab;
+                    if (!button || !panel) {
+                        continue;
+                    }
+                } else if (slot.type === 'customtabs') {
+                    button = document.getElementById('customTabButton_' + slot.index);
+                    if (button && !button.closest('.headerTabs')) {
+                        button = null;
+                    }
+                    // Never fabricate custom tab panels. empty placeholders remove real custom tab html on rebuild.
+                    panel = page.querySelector('#customTab_' + slot.index);
+                    if (!button || !panel) {
+                        continue;
+                    }
+                } else if (slot.type === 'seerrfin') {
+                    button = tabsSlider.querySelector('[data-seerrfin-tab="' + slot.id + '"]');
+                    panel = page.querySelector('.tabContent[data-seerrfin-tab="' + slot.id + '"]');
+                }
+
+                planned.push({ slot: slot, button: button, panel: panel });
+            }
+
+            if (!planned.length || !self.isHomeTabContext()) {
+                return false;
+            }
+
+            self.removeObsoleteSeerrFinPanels(page, slots);
+
+            const fragmentButtons = document.createDocumentFragment();
+            const fragmentPanels = document.createDocumentFragment();
+
+            planned.forEach(function (item, placedIndex) {
+                let button = item.button;
+                let panel = item.panel;
+
+                if (item.slot.type === 'seerrfin') {
+                    if (!(button && button.getAttribute('data-seerrfin-tab') === item.slot.id)) {
+                        button = self.createTabButton(item.slot.id);
+                    }
+                    if (!(panel && panel.getAttribute('data-seerrfin-tab') === item.slot.id)) {
+                        panel = self.createTabPanel(item.slot.id);
+                    }
+                }
+
+                button.setAttribute('data-index', String(placedIndex));
+                panel.setAttribute('data-index', String(placedIndex));
+                fragmentButtons.appendChild(button);
+                fragmentPanels.appendChild(panel);
+            });
+
+            if (!self.isHomeTabContext()) {
+                return false;
+            }
+
+            tabsSlider.replaceChildren(fragmentButtons);
+
+            // Append Jellyfin, Custom Tabs, and SeerrFin panels in bar order.
+            page.appendChild(fragmentPanels);
+            return true;
+        },
+
+        ensureNativeTabs: function () {
+            const self = this;
+            if (self._tabsEnsuring) {
+                return self._tabsEnsuring;
+            }
+
+            if (!self.isHomeTabContext()) {
+                self.cleanupSeerrFinHeaderButtons();
+                return Promise.resolve();
+            }
+
+            self._tabsEnsuring = self.loadTabConfig().then(function (config) {
+                if (!self.isHomeTabContext()) {
+                    self.cleanupSeerrFinHeaderButtons();
+                    return;
+                }
+
+                return self.waitForCustomTabs(config.customTabs, 20).then(function () {
+                    if (!self.isHomeTabContext()) {
+                        self.cleanupSeerrFinHeaderButtons();
+                        return;
+                    }
+
+                    const page = document.getElementById('indexPage');
+                    const tabsSlider = document.querySelector('.headerTabs .emby-tabs-slider');
+                    const tabsEl = document.querySelector('.headerTabs [is="emby-tabs"]');
+                    if (!page || !tabsSlider || !tabsEl) {
+                        return;
+                    }
+
+                    self.attachPluginTabGuard(tabsEl);
+
+                    const slots = self.buildDesiredBarSlots(config);
+                    const desiredSig = self.barPlacementSignature(slots);
+                    const currentSig = self.readCurrentBarSignature(tabsSlider);
+                    const panelsMatch = slots.every(function (slot) {
+                        if (slot.type === 'seerrfin') {
+                            return !!page.querySelector('.tabContent[data-seerrfin-tab="' + slot.id + '"]');
+                        }
+                        if (slot.type === 'customtabs') {
+                            return !!page.querySelector('#customTab_' + slot.index);
+                        }
+                        return true;
+                    });
+
+                    if (desiredSig === currentSig && panelsMatch) {
+                        return;
+                    }
+
+                    if (!self.applyBarOrder(page, tabsSlider, slots)) {
+                        return;
+                    }
+
+                    log.info('native tab bar ready: ' + slots.map(function (s) { return s.key; }).join(', '));
+
+                    if (typeof tabsEl.refresh === 'function') {
+                        try {
+                            tabsEl.refresh();
+                        } catch (err) {
+                            // scroller refresh is best-effort
+                        }
+                    }
+                });
+            }).catch(function (err) {
+                log.error('failed to ensure native tabs', err);
+            }).then(function () {
+                self._tabsEnsuring = null;
+            });
+
+            return self._tabsEnsuring;
+        },
+
+        setupNativeTabWatchers: function () {
+            const self = this;
+            log.info('native tab watchers ready');
 
             document.addEventListener('viewshow', function (event) {
                 if (event.target && event.target.id === 'indexPage') {
-                    const tabs = document.querySelector('.headerTabs [is="emby-tabs"]');
-                    if (!tabs) {
-                        log.warn('indexPage shown but emby-tabs not found');
+                    self.ensureNativeTabs().then(function () {
+                        if (!self.isHomeTabContext()) {
+                            return;
+                        }
+                        self.scheduleRender();
+                    });
+                } else {
+                    // left home for a library/folder view (never leave seerrfin buttons in the header)
+                    self.cleanupSeerrFinHeaderButtons();
+                    self.scheduleRender();
+                }
+            });
+
+            if (!self._ctButtonObserver && typeof MutationObserver !== 'undefined') {
+                self._ctButtonObserver = new MutationObserver(function () {
+                    if (self._ctObserveTimer) {
+                        clearTimeout(self._ctObserveTimer);
                     }
-                    self.attachCustomTabGuard(tabs);
+                    self._ctObserveTimer = setTimeout(function () {
+                        if (self.isHomeTabContext()) {
+                            self.ensureNativeTabs();
+                        } else {
+                            self.cleanupSeerrFinHeaderButtons();
+                        }
+                    }, 250);
+                });
+                const headerTabs = document.querySelector('.headerTabs');
+                if (headerTabs) {
+                    self._ctButtonObserver.observe(headerTabs, { childList: true, subtree: true });
                 }
-                self.scheduleRender();
-            });
-
-            document.addEventListener('click', function (e) {
-                if (e.target.closest('.emby-tab-button')) {
-                    setTimeout(function () {
-                        self.onCustomTabShown();
-                    }, 150);
-                }
-            });
-
-            self.scheduleRender();
+            }
         },
 
         isContainerLoading: function (container) {
@@ -485,14 +1073,22 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         loadDisplaySettings: function () {
             const self = this;
+            if (self._displaySettingsPromise) {
+                return self._displaySettingsPromise;
+            }
+
             const hadDisplaySettings = !!self._displaySettings;
             const previousSettingsKey = hadDisplaySettings ? self.getDisplaySettingsKey() : '';
-            return ApiClient.ajax({
+            self._displaySettingsPromise = ApiClient.ajax({
                 url: ApiClient.getUrl('SeerrFin/display-settings') + '?_=' + Date.now(),
                 type: 'GET',
                 dataType: 'json',
                 cache: false
             }).then(function (data) {
+                self._tabSettingsSnapshot = {
+                    tabs: data && data.tabs,
+                    tabBarOrder: data && data.tabBarOrder
+                };
                 self._displaySettings = {
                     StreamingServiceUseImages: self.readConfigBool(
                         data,
@@ -566,6 +1162,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 return self._displaySettings;
             }).catch(function (err) {
                 log.warn('display settings fetch failed, using defaults', err);
+                self._tabSettingsSnapshot = null;
                 self._displaySettings = {
                     StreamingServiceUseImages: true,
                     StudioNetworkUseImages: true,
@@ -586,7 +1183,12 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     self.clearBackdropCaches();
                 }
                 return self._displaySettings;
+            }).then(function (settings) {
+                self._displaySettingsPromise = null;
+                return settings;
             });
+
+            return self._displaySettingsPromise;
         },
 
         readAdvancedBool: function (value, fallback) {
@@ -813,12 +1415,25 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         invalidateDisplaySettings: function () {
             const self = this;
+            const pendingSettings = this._displaySettingsPromise;
+            const pendingTabConfig = this._tabConfigPromise;
             this._displaySettings = null;
+            this._tabSettingsSnapshot = null;
+            this._tabConfig = null;
+            this._tabConfigPromise = null;
             this.clearBackdropCaches();
             document.querySelectorAll('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-search-section').forEach(function (section) {
                 delete section.dataset.seerrfinDisplaySettings;
             });
-            this.loadDisplaySettings().then(function () {
+            Promise.all([pendingSettings, pendingTabConfig]).then(function () {
+                self._displaySettings = null;
+                self._tabSettingsSnapshot = null;
+                self._tabConfig = null;
+                self._tabConfigPromise = null;
+                return self.loadDisplaySettings();
+            }).then(function () {
+                return self.ensureNativeTabs();
+            }).then(function () {
                 self.scheduleRender();
                 self.handleJellyfinSearchPage();
             });
