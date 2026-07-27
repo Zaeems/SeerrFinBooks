@@ -1,13 +1,12 @@
-- add search functionality via Search tab, Search button next to tabs, or via Jellyfin's search
-
 - show progress/playability on cards in discover pages and let user play directly from there
 - add layout editor for modal
 - add layout editor for carousel pages
 
 - different people have different *arr quality profiles. remove hardcoded ones
+- some people don't have any quality profiles and just want to request to seerr
 
 BOUNTIES
-- Swiftfin support - not actually current possible without changed to Swiftfin (they don't support dynamic tabs)
+- Swiftfin support
 - Infuse support
 - Streamyfin support
 - Findroid support !!

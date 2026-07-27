@@ -51,9 +51,11 @@ window.seerrFinLog = window.seerrFinLog || {
             const interactive = options.interactive !== false;
             const includeMetaText = options.includeMetaText !== false;
             const forGrid = options.forGrid === true;
-            const preferEnglishBackdrop = options.preferEnglishBackdrop === true;
-            const cardType = forGrid ? 'backdropCard' : 'overflowBackdropCard';
-            const padderType = forGrid ? 'cardPadder-backdrop' : 'cardPadder-overflowBackdrop';
+            const usePoster = options.usePoster === true;
+            // english backdrop hydration only for landscape
+            const preferEnglishBackdrop = !usePoster && options.preferEnglishBackdrop === true;
+            const cardType = usePoster ? (forGrid ? 'portraitCard' : 'overflowPortraitCard') : (forGrid ? 'backdropCard' : 'overflowBackdropCard');
+            const padderType = usePoster ? (forGrid ? 'cardPadder-portrait' : 'cardPadder-overflowPortrait') : (forGrid ? 'cardPadder-backdrop' : 'cardPadder-overflowBackdrop');
 
             return (items || []).map(function (item) {
                 const mediaId = plugin.getProviderId(item, 'Tmdb') || plugin.getProviderId(item, 'Jellyseerr') || plugin.getField(item, 'id', 'Id');
@@ -63,18 +65,21 @@ window.seerrFinLog = window.seerrFinLog || {
                     return '';
                 }
 
-                const fallbackUrl = self.buildCardImageUrl(plugin, item);
-                const safeUrl = plugin.escapeHtml(fallbackUrl || '');
-                const imageAttrs = !preferEnglishBackdrop && safeUrl ? ` data-src="${safeUrl}"` : '';
-                const fallbackAttr = safeUrl ? ` data-fallback-src="${safeUrl}"` : '';
+                const posterUrl = plugin.buildDiscoverPosterUrl(item);
+                const backdropUrl = self.buildCardImageUrl(plugin, item);
+                const displayUrl = usePoster ? (posterUrl || backdropUrl) : backdropUrl;
+                const safeDisplayUrl = plugin.escapeHtml(displayUrl || '');
+                const safeBackdropUrl = plugin.escapeHtml(backdropUrl || '');
+                const imageAttrs = (!preferEnglishBackdrop && safeDisplayUrl) ? ` data-src="${safeDisplayUrl}"` : '';
+                // landscape fallback for grid Thumb/ThumbCard view switches
+                const fallbackAttr = safeBackdropUrl ? ` data-fallback-src="${safeBackdropUrl}"` : '';
                 const tmdbBackdropPath = plugin.getProviderId(item, 'TmdbBackdropPath') || '';
                 const backdropPathAttr = tmdbBackdropPath ? ` data-tmdb-backdrop-path="${plugin.escapeHtml(tmdbBackdropPath)}"` : '';
-                const posterUrl = plugin.buildDiscoverPosterUrl(item);
                 const posterAttr = posterUrl ? ` data-poster-src="${plugin.escapeHtml(posterUrl)}"` : '';
                 const meta = plugin.buildDiscoverYearText(item);
                 const yearValue = parseInt(meta.year || '0', 10) || 0;
                 const ratingValue = Number(plugin.getField(item, 'CommunityRating', 'communityRating') || 0) || 0;
-                const imageClass = !preferEnglishBackdrop && safeUrl
+                const imageClass = !preferEnglishBackdrop && safeDisplayUrl
                     ? 'cardImageContainer coveredImage cardContent lazy blurhashed lazy-hidden'
                     : 'cardImageContainer coveredImage cardContent lazy-hidden';
                 const metaHtml = includeMetaText ? `
@@ -91,10 +96,10 @@ window.seerrFinLog = window.seerrFinLog || {
                     </div>` : '';
 
                 return `
-                    <div class="card ${cardType} card-hoverable card-withuserdata" data-seerrfin-native-card="true" data-tmdb-id="${mediaId}" data-media-type="${mediaType}" data-name="${safeName}" data-year="${yearValue}" data-rating="${ratingValue}"${fallbackAttr}${backdropPathAttr}${posterAttr}>
+                    <div class="card ${cardType} card-hoverable card-withuserdata" data-seerrfin-native-card="true" data-tmdb-id="${mediaId}" data-media-type="${mediaType}" data-name="${safeName}" data-year="${yearValue}" data-rating="${ratingValue}" data-use-poster="${usePoster ? 'true' : 'false'}"${fallbackAttr}${backdropPathAttr}${posterAttr}>
                         <div class="cardBox cardBox-bottompadded">
                             <div class="cardScalable">
-                                <div class="cardPadder ${padderType} lazy-hidden-children"></div>
+                                <div class="cardPadder ${padderType} seerrfin-card-thumb-skeleton"></div>
                                 <canvas aria-hidden="true" width="20" height="20" class="blurhash-canvas lazy-hidden"></canvas>
                                 <div class="${imageClass}"${imageAttrs} aria-label="${safeName}" role="img"></div>
                                 ${overlayHtml}
@@ -103,6 +108,62 @@ window.seerrFinLog = window.seerrFinLog || {
                         </div>
                     </div>`;
             }).join('');
+        },
+
+        // kkeleton carousel using jellyfin card markup
+        buildRowSkeleton: function (plugin, title, kind) {
+            const isCarousel = kind === 'carousel';
+            const usePoster = !isCarousel && !plugin.shouldUseBackdropThumbnails();
+            const count = isCarousel ? 6 : (usePoster ? 8 : 6);
+            const sectionClass = isCarousel
+                ? 'verticalSection seerrfin-carousel-section seerrfin-skeleton-section'
+                : 'verticalSection seerrfin-poster-section seerrfin-skeleton-section';
+            const focusScale = isCarousel
+                ? plugin.getAdvancedCarouselSetting('browseCarouselFocusScale', false)
+                : plugin.getAdvancedCarouselSetting('discoverRowFocusScale', true);
+            const scrollerClass = focusScale
+                ? 'padded-top-focusscale padded-bottom-focusscale emby-scroller'
+                : 'emby-scroller';
+            const centerFocusAttr = plugin.getAdvancedCarouselSetting('enableCenterFocus', true)
+                ? ' data-centerfocus="true"'
+                : '';
+            const safeTitle = plugin.escapeHtml(title || 'Loading');
+            const cardType = usePoster ? 'overflowPortraitCard' : 'overflowBackdropCard';
+            const padderType = usePoster ? 'cardPadder-overflowPortrait' : 'cardPadder-overflowBackdrop';
+
+            // match real native cards and meta lines
+            let cards = '';
+            for (let i = 0; i < count; i++) {
+                const metaHtml = isCarousel ? '' : `
+                    <div class="cardText cardTextCentered cardText-secondary">
+                        <span class="seerrfin-native-skeleton-text seerrfin-native-skeleton-text--meta"></span>
+                    </div>`;
+                cards += `
+                    <div class="card ${cardType} card-hoverable" data-seerrfin-skeleton-card="true" aria-hidden="true">
+                        <div class="cardBox cardBox-bottompadded">
+                            <div class="cardScalable">
+                                <div class="cardPadder ${padderType}"></div>
+                                <div class="cardImageContainer coveredImage cardContent seerrfin-native-skeleton-image" role="presentation"></div>
+                            </div>
+                            <div class="cardText cardTextCentered cardText-first">
+                                <span class="seerrfin-native-skeleton-text seerrfin-native-skeleton-text--title"></span>
+                            </div>
+                            ${metaHtml}
+                        </div>
+                    </div>`;
+            }
+
+            return plugin.mountFromHtml(`
+                <div class="${sectionClass}" aria-hidden="true" data-seerrfin-skeleton="true" data-seerrfin-native-skeleton="true">
+                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                        <h2 class="sectionTitle sectionTitle-cards">${safeTitle}</h2>
+                    </div>
+                    <div is="emby-scroller" class="${scrollerClass}"${centerFocusAttr}>
+                        <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x animatedScrollX" data-monitor="videoplayback,markplayed">
+                            ${cards}
+                        </div>
+                    </div>
+                </div>`);
         },
 
         // Builds carousel cards for genres providers studios and networks

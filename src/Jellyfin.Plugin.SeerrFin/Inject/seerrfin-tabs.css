@@ -92,7 +92,10 @@
 }
 
 .seerrfin-skeleton-title::after,
-.seerrfin-skeleton-card::after {
+.seerrfin-skeleton-card::after,
+.seerrfin-native-skeleton-image::after,
+.seerrfin-native-skeleton-text::after,
+.seerrfin-card-thumb-skeleton::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -100,9 +103,67 @@
     animation: seerrfin-skeleton-shimmer 1.5s ease-in-out infinite;
 }
 
+.cardPadder.seerrfin-card-thumb-skeleton {
+    overflow: hidden;
+}
+
+[data-seerrfin-native-card] .cardImageContainer.cardContent {
+    z-index: 1;
+}
+
 @keyframes seerrfin-skeleton-shimmer {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
+}
+
+/* native skeletons reusing Jellyfin overflowBackdropCard sizing */
+[data-seerrfin-native-skeleton] .emby-scroller,
+[data-seerrfin-native-skeleton] [is="emby-scroller"] {
+    overflow: hidden;
+}
+
+[data-seerrfin-native-skeleton] .itemsContainer {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.seerrfin-native-skeleton-image {
+    background-color: var(--cardBackground, #242424);
+    overflow: hidden;
+}
+
+.seerrfin-native-skeleton-text {
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+    vertical-align: middle;
+    border-radius: 0.2em;
+    background: var(--cardBackground, rgba(255, 255, 255, 0.08));
+    height: 1em;
+    max-width: 100%;
+}
+
+.seerrfin-native-skeleton-text--title {
+    width: 68%;
+    margin-top: 0.1em;
+}
+
+.seerrfin-native-skeleton-text--meta {
+    width: 32%;
+    height: 0.85em;
+}
+
+[data-seerrfin-skeleton-card]:nth-child(2n) .seerrfin-native-skeleton-text--title {
+    width: 54%;
+}
+
+[data-seerrfin-skeleton-card]:nth-child(3n) .seerrfin-native-skeleton-text--title {
+    width: 78%;
+}
+
+[data-seerrfin-skeleton-card]:nth-child(4n) .seerrfin-native-skeleton-text--meta {
+    width: 40%;
 }
 
 .seerrfin-section-fadein {
@@ -298,7 +359,8 @@ html.seerrfin-elegantfin .seerrfin-tv-sections .seerrfin-discover-card,
 html.seerrfin-elegantfin .seerrfin-search-section .seerrfin-discover-card,
 html.seerrfin-elegantfin .seerrfin-movies-sections .seerrfin-box-card,
 html.seerrfin-elegantfin .seerrfin-tv-sections .seerrfin-box-card,
-html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card {
+html.seerrfin-elegantfin .seerrfin-grid-view .seerrfin-discover-card,
+html.seerrfin-elegantfin [data-seerrfin-skeleton-card] {
     padding: 0 !important;
     flex: 0 0 auto !important;
 }

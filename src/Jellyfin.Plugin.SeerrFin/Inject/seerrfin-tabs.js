@@ -931,24 +931,12 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 log.info(type + ' tab using ' + (useNativeCarousels ? 'native' : 'custom') + ' carousels');
 
                 const rowSlots = rows.map(function (row) {
-                    if (useNativeCarousels) {
-                        const marker = document.createComment('seerrfin-row-slot');
-                        container.appendChild(marker);
-                        return { row: row, skeleton: marker };
-                    }
-
                     const skeleton = self.buildRowSkeleton(row.title, 'poster');
                     container.appendChild(skeleton);
                     return { row: row, skeleton: skeleton };
                 });
 
                 const carouselSlots = carouselDefs.map(function (def) {
-                    if (useNativeCarousels) {
-                        const marker = document.createComment('seerrfin-carousel-slot');
-                        container.appendChild(marker);
-                        return { def: def, skeleton: marker };
-                    }
-
                     const skeleton = self.buildRowSkeleton(def.title, 'carousel');
                     container.appendChild(skeleton);
                     return { def: def, skeleton: skeleton };
@@ -1489,7 +1477,16 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             return `<div class="seerrfin-letterboxd-card-slot">${cardHtml}</div>`;
         },
 
-        buildRowSkeleton: function (title, kind) {
+        buildRowSkeleton: function (title, kind, options) {
+            options = options || {};
+            const useNative = options.native != null ? options.native === true : this.shouldUseNativeCarousels();
+
+            if (useNative &&
+                window.seerrFinNativeUi &&
+                typeof window.seerrFinNativeUi.buildRowSkeleton === 'function') {
+                return window.seerrFinNativeUi.buildRowSkeleton(this, title, kind);
+            }
+
             const useBackdrop = kind === 'poster' && this.shouldUseBackdropThumbnails();
             const cardClass = kind === 'carousel'
                 ? 'seerrfin-skeleton-card seerrfin-skeleton-card--carousel'
@@ -1554,15 +1551,24 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 focusScale: this.getAdvancedCarouselSetting('discoverRowFocusScale', true),
                 scrollEvent: this.getAdvancedCarouselSetting('enableRowInfiniteScroll', true)
             });
-            if (useNativeCards) {
-                this.hydrateNativeBackdropCards(itemsContainer);
-                this.initLazyImages(itemsContainer);
-            } else if (this.shouldUseBackdropThumbnails()) {
-                this.hydrateDiscoverBackdropCards(itemsContainer);
-            } else {
-                this.initLazyImages(itemsContainer);
-            }
+            this.initNativeOrCustomCards(itemsContainer, useNativeCards);
             return section;
+        },
+
+        initNativeOrCustomCards: function (container, useNativeCards) {
+            if (useNativeCards) {
+                if (this.shouldUseBackdropThumbnails()) {
+                    this.hydrateNativeBackdropCards(container);
+                }
+                this.initLazyImages(container);
+                return;
+            }
+
+            if (this.shouldUseBackdropThumbnails()) {
+                this.hydrateDiscoverBackdropCards(container);
+            } else {
+                this.initLazyImages(container);
+            }
         },
 
         bindRowInfiniteScroll: function (section) {
@@ -1682,14 +1688,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(newItems, false, {
                         nativeCards: useNativeCards
                     }));
-                    if (useNativeCards) {
-                        self.hydrateNativeBackdropCards(itemsContainer);
-                        self.initLazyImages(itemsContainer);
-                    } else if (self.shouldUseBackdropThumbnails()) {
-                        self.hydrateDiscoverBackdropCards(itemsContainer);
-                    } else {
-                        self.initLazyImages(itemsContainer);
-                    }
+                    self.initNativeOrCustomCards(itemsContainer, useNativeCards);
                 }
 
                 const newCount = loadedCount + result.items.length;
@@ -1838,15 +1837,17 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         createDiscoverCards: function (items, forGrid, options) {
             options = options || {};
+            const useBackdrop = options.forceBackdrop === true ||
+                (options.forceBackdrop !== false && this.shouldUseBackdropThumbnails());
+
             if (options.nativeCards === true) {
                 return window.seerrFinNativeUi.createDiscoverCards(this, items, Object.assign({}, options, {
                     forGrid: forGrid === true,
+                    usePoster: !useBackdrop,
                     preferEnglishBackdrop: (((this._advancedSettings || {}).tmdb || {}).preferOriginalLanguageImages !== true)
                 }));
             }
 
-            const useBackdrop = options.forceBackdrop === true ||
-                (options.forceBackdrop !== false && this.shouldUseBackdropThumbnails());
             if (useBackdrop) {
                 return this.createDiscoverBackdropCards(items, forGrid, options);
             }
@@ -2316,13 +2317,39 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             });
         },
 
+        clearCardThumbSkeleton: function (root) {
+            if (!root) {
+                return;
+            }
+
+            const card = root.closest ? (root.closest('.card') || root) : root;
+            if (!card || !card.querySelectorAll) {
+                return;
+            }
+
+            card.querySelectorAll('.seerrfin-card-thumb-skeleton').forEach(function (skeleton) {
+                if (skeleton.classList.contains('cardPadder')) {
+                    skeleton.classList.remove('seerrfin-card-thumb-skeleton');
+                    return;
+                }
+                skeleton.remove();
+            });
+        },
+
         setNativeBackdropImage: function (card, url, fallbackUrl) {
-            if (!card || !url) {
+            const self = this;
+            if (!card) {
+                return;
+            }
+
+            if (!url) {
+                self.clearCardThumbSkeleton(card);
                 return;
             }
 
             const image = card.querySelector('.cardImageContainer.cardContent');
             if (!image) {
+                self.clearCardThumbSkeleton(card);
                 return;
             }
 
@@ -2344,6 +2371,22 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 if (canvas) {
                     canvas.classList.add('lazy-hidden');
                 }
+
+                const clearSkeleton = function () {
+                    if (card.dataset.nativeBackdropRequest === requestId) {
+                        self.clearCardThumbSkeleton(card);
+                    }
+                };
+                image.addEventListener('animationend', function onEnd() {
+                    clearSkeleton();
+                    image.removeEventListener('animationend', onEnd);
+                });
+                setTimeout(clearSkeleton, 200);
+
+                const padder = card.querySelector('.cardPadder');
+                if (padder) {
+                    padder.classList.add('lazy-hidden-children');
+                }
             };
 
             const preloader = new Image();
@@ -2352,12 +2395,16 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             };
             preloader.onerror = function () {
                 if (!fallbackUrl || fallbackUrl === url) {
+                    self.clearCardThumbSkeleton(card);
                     return;
                 }
 
                 const fallback = new Image();
                 fallback.onload = function () {
                     applyLoadedImage(fallbackUrl);
+                };
+                fallback.onerror = function () {
+                    self.clearCardThumbSkeleton(card);
                 };
                 fallback.src = fallbackUrl;
             };
@@ -2424,6 +2471,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 }
 
                 if (!mediaId || !mediaType) {
+                    self.clearCardThumbSkeleton(card);
                     card.dataset.nativeBackdropLoaded = 'true';
                     return;
                 }
@@ -2448,6 +2496,11 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     const cacheKey = self.getBackdropCacheKey(entry.mediaType, entry.mediaId);
                     const result = self._backdropResultCache && self._backdropResultCache[cacheKey] || null;
                     self.applyNativeBackdropResult(entry.card, result);
+
+                    const hasUrl = !!(result && result.url) || !!entry.card.getAttribute('data-fallback-src');
+                    if (!hasUrl) {
+                        self.clearCardThumbSkeleton(entry.card);
+                    }
                     entry.card.dataset.nativeBackdropLoaded = 'true';
                 });
             });
@@ -2724,7 +2777,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             gridView.dataset.loadedCount = '0';
             gridView.dataset.total = '0';
             gridView.dataset.nativeCards = useNativeGrid ? 'true' : 'false';
-            gridView.dataset.gridViewMode = 'ThumbCard';
+            gridView.dataset.gridViewMode = self.shouldUseBackdropThumbnails() ? 'ThumbCard' : 'PosterCard';
             gridView.dataset.gridSort = 'title';
             gridView.dataset.gridSortBy = 'SortName';
             delete gridView.dataset.gridSortOrder;
@@ -2820,14 +2873,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 itemsContainer.insertAdjacentHTML('beforeend', self.createDiscoverCards(newItems, true, {
                     nativeCards: useNativeCards
                 }));
-                if (useNativeCards) {
-                    self.hydrateNativeBackdropCards(itemsContainer);
-                    self.initLazyImages(itemsContainer);
-                } else if (self.shouldUseBackdropThumbnails()) {
-                    self.hydrateDiscoverBackdropCards(itemsContainer);
-                } else {
-                    self.initLazyImages(itemsContainer);
-                }
+                self.initNativeOrCustomCards(itemsContainer, useNativeCards);
                 const newCount = loadedCount + result.items.length;
                 gridView.dataset.loadedCount = String(newCount);
 
@@ -2981,10 +3027,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
         showSearchSkeleton: function (searchPage) {
             this.removeSearchSection();
-            if (this.shouldUseNativeSearchResults()) {
-                return;
-            }
-            const skeleton = this.buildRowSkeleton('Seerr results', 'poster');
+            const skeleton = this.buildRowSkeleton('Seerr results', 'poster', {
+                native: this.shouldUseNativeSearchResults()
+            });
             skeleton.classList.add('seerrfin-search-section');
             this.insertSearchSection(searchPage, skeleton);
         },
@@ -3103,14 +3148,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 return;
             }
 
-            if (useNativeCards) {
-                this.hydrateNativeBackdropCards(itemsContainer);
-                this.initLazyImages(itemsContainer);
-            } else if (this.shouldUseBackdropThumbnails()) {
-                this.hydrateDiscoverBackdropCards(itemsContainer);
-            } else {
-                this.initLazyImages(itemsContainer);
-            }
+            this.initNativeOrCustomCards(itemsContainer, useNativeCards);
             this.refreshScrollers(section);
         },
 
@@ -3169,8 +3207,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         },
 
         loadLazyImage: function (elem) {
+            const self = this;
             const url = elem.getAttribute('data-src');
             if (!url) {
+                self.clearCardThumbSkeleton(elem);
                 return;
             }
 
@@ -3184,14 +3224,24 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     elem.classList.add('lazy-image-fadein-fast');
                     elem.classList.remove('lazy-hidden');
 
+                    const clearSkeleton = function () {
+                        self.clearCardThumbSkeleton(elem);
+                    };
+
                     elem.addEventListener('animationend', function onEnd() {
                         const padder = elem.parentNode && elem.parentNode.querySelector('.cardPadder');
                         if (padder) {
                             padder.classList.add('lazy-hidden-children');
                         }
+                        clearSkeleton();
                         elem.removeEventListener('animationend', onEnd);
                     });
+                    setTimeout(clearSkeleton, 200);
                 });
+            };
+
+            preloader.onerror = function () {
+                self.clearCardThumbSkeleton(elem);
             };
         },
 
