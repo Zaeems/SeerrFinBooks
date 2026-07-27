@@ -10,6 +10,15 @@
     "repositoryUrl": "https://github.com/varunaditya-plus/SeerrFin",
     "versions": [
       {
+        "version": "1.6.4.1",
+        "changelog": "Added auto-refresh for Requests tab, with customizable options in advanced settings",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/varunaditya-plus/SeerrFin/releases/download/1.6.4.1/Jellyfin.Plugin.SeerrFin_10.11.0.zip",
+        "checksum": "13EBC26B7F907622340B794ED1E5521C",
+        "timestamp": "2026-07-27T18:08:47.0000000Z",
+        "dependencies": []
+      },
+      {
         "version": "1.6.4.0",
         "changelog": "Added skeletons for native cards, and shimmer skeleton for thumbnails. Also fixed native poster thumbnails not working",
         "targetAbi": "10.11.0.0",
