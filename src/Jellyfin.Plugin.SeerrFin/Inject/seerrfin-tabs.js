@@ -426,7 +426,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             setTimeout(function () {
                 self.scheduleRender();
                 if (typeof window.__seerrFinRequestsEnsureMounted === 'function') {
-                    window.__seerrFinRequestsEnsureMounted();
+                    window.__seerrFinRequestsEnsureMounted({ tabShown: true });
                 }
                 if (typeof window.__seerrFinLetterboxdEnsureMounted === 'function') {
                     window.__seerrFinLetterboxdEnsureMounted();
@@ -1213,7 +1213,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     cardsInteractive: self.readAdvancedBool(requests.cardsInteractive ?? requests.CardsInteractive, false),
                     cardsIncludeMetaText: self.readAdvancedBool(requests.cardsIncludeMetaText ?? requests.CardsIncludeMetaText, false),
                     includePartialsInProcessingFilter: self.readAdvancedBool(requests.includePartialsInProcessingFilter ?? requests.IncludePartialsInProcessingFilter, false),
-                    splitPartiallyAvailableFilter: self.readAdvancedBool(requests.splitPartiallyAvailableFilter ?? requests.SplitPartiallyAvailableFilter, false)
+                    splitPartiallyAvailableFilter: self.readAdvancedBool(requests.splitPartiallyAvailableFilter ?? requests.SplitPartiallyAvailableFilter, false),
+                    autoRefreshIntervalSeconds: requests.autoRefreshIntervalSeconds ?? requests.AutoRefreshIntervalSeconds ?? 10,
+                    refreshOnVisibility: self.readAdvancedBool(requests.refreshOnVisibility ?? requests.RefreshOnVisibility, true),
+                    refreshOnTabShow: self.readAdvancedBool(requests.refreshOnTabShow ?? requests.RefreshOnTabShow, true)
                 },
                 requestModal: {
                     tvSeasonPickerEnabled: self.readAdvancedBool(requestModal.tvSeasonPickerEnabled ?? requestModal.TvSeasonPickerEnabled, true),

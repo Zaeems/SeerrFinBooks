@@ -45,9 +45,15 @@ window.seerrFinLog = window.seerrFinLog || {
         page: 1,
         filter: 'all',
         loadId: 0,
+        isLoading: false,
         reloadResultTimer: null,
+        autoRefreshTimer: null,
+        lastAutoRefreshAt: 0,
         clientSettings: null
     };
+
+    const AUTO_REFRESH_DEBOUNCE_MS = 1000;
+    const DEFAULT_AUTO_REFRESH_INTERVAL_SECONDS = 10;
 
     function loadClientSettings() {
         return ApiClient.ajax({
@@ -126,6 +132,26 @@ window.seerrFinLog = window.seerrFinLog || {
 
     function getPageSize() {
         return Number(getRequestsAdvanced().pageSize) || DEFAULT_PAGE_SIZE;
+    }
+
+    function getRefreshSettings() {
+        const settings = getRequestsAdvanced();
+        const rawInterval = settings.autoRefreshIntervalSeconds;
+        let intervalSeconds = DEFAULT_AUTO_REFRESH_INTERVAL_SECONDS;
+        if (rawInterval === 0 || rawInterval === '0') {
+            intervalSeconds = 0;
+        } else if (rawInterval !== undefined && rawInterval !== null && rawInterval !== '') {
+            const parsed = Number(rawInterval);
+            if (!isNaN(parsed)) {
+                intervalSeconds = Math.max(0, Math.min(3600, parsed));
+            }
+        }
+
+        return {
+            intervalSeconds: intervalSeconds,
+            onVisibility: settings.refreshOnVisibility !== false,
+            onTabShow: settings.refreshOnTabShow !== false
+        };
     }
 
     function getCardOptions() {
@@ -712,7 +738,12 @@ window.seerrFinLog = window.seerrFinLog || {
         options = options || {};
         const keepVisible = options.keepVisible === true;
 
+        if (keepVisible && state.isLoading) {
+            return;
+        }
+
         const loadId = ++state.loadId;
+        state.isLoading = true;
         setReloadButtonState(container, 'loading');
 
         const body = container.querySelector('.seerrfin-requests-body');
@@ -760,7 +791,74 @@ window.seerrFinLog = window.seerrFinLog || {
                     body.innerHTML = `<div class="seerrfin-empty-row padded-left">Could not load requests. Check Seerr settings.</div>`;
                 }
                 setReloadButtonState(container, 'idle');
+            })
+            .then(function () {
+                if (loadId === state.loadId) {
+                    state.isLoading = false;
+                }
             });
+    }
+
+    function stopAutoRefresh() {
+        if (state.autoRefreshTimer) {
+            clearInterval(state.autoRefreshTimer);
+            state.autoRefreshTimer = null;
+        }
+    }
+
+    function refreshIfActive(options) {
+        options = options || {};
+        const reason = options.reason || 'manual';
+        const settings = getRefreshSettings();
+
+        if (reason === 'interval' && settings.intervalSeconds <= 0) {
+            return;
+        }
+        if (reason === 'visibility' && !settings.onVisibility) {
+            return;
+        }
+        if (reason === 'tab' && !settings.onTabShow) {
+            return;
+        }
+
+        const container = findActiveContainer();
+        if (!container || !container.querySelector('.seerrfin-requests-panel')) {
+            return;
+        }
+
+        const now = Date.now();
+        if (reason !== 'manual' && now - state.lastAutoRefreshAt < AUTO_REFRESH_DEBOUNCE_MS) {
+            return;
+        }
+        state.lastAutoRefreshAt = now;
+
+        loadRequests(container, { keepVisible: true });
+    }
+
+    function startAutoRefresh() {
+        stopAutoRefresh();
+
+        if (document.hidden) {
+            return;
+        }
+
+        const container = findActiveContainer();
+        if (!container || !container.querySelector('.seerrfin-requests-panel')) {
+            return;
+        }
+
+        const settings = getRefreshSettings();
+        if (settings.intervalSeconds <= 0) {
+            return;
+        }
+
+        state.autoRefreshTimer = setInterval(function () {
+            if (!findActiveContainer()) {
+                stopAutoRefresh();
+                return;
+            }
+            refreshIfActive({ reason: 'interval' });
+        }, settings.intervalSeconds * 1000);
     }
 
     function renderRequestsPanel() {
@@ -809,6 +907,7 @@ window.seerrFinLog = window.seerrFinLog || {
             return loadClientSettings();
         }).then(function () {
             loadRequests(container);
+            startAutoRefresh();
         });
     }
 
@@ -897,11 +996,34 @@ window.seerrFinLog = window.seerrFinLog || {
         });
     }
 
-    function ensureMounted() {
+    function ensureMounted(options) {
+        options = options || {};
         const container = findActiveContainer();
-        if (container) {
-            mount(container);
+        if (!container) {
+            stopAutoRefresh();
+            return;
         }
+
+        const alreadyMounted = !!container.querySelector('.seerrfin-requests-panel');
+        if (!alreadyMounted) {
+            mount(container);
+            return;
+        }
+
+        startAutoRefresh();
+        if (options.tabShown) {
+            refreshIfActive({ reason: 'tab' });
+        }
+    }
+
+    function onVisibilityChange() {
+        if (document.hidden) {
+            stopAutoRefresh();
+            return;
+        }
+
+        startAutoRefresh();
+        refreshIfActive({ reason: 'visibility' });
     }
 
     function init() {
@@ -912,7 +1034,10 @@ window.seerrFinLog = window.seerrFinLog || {
 
         log.info('requests module init');
         window.__seerrFinRequestsEnsureMounted = ensureMounted;
-        document.addEventListener('viewshow', ensureMounted);
+        document.addEventListener('viewshow', function () {
+            ensureMounted();
+        });
+        document.addEventListener('visibilitychange', onVisibilityChange);
         ensureMounted();
     }
 

@@ -45,6 +45,7 @@ public static class AdvancedSettingsHelper
         AdvancedRequestsSettings r = advanced.Requests;
         r.PageSize = Clamp(r.PageSize, 1, 100);
         r.FetchSize = Clamp(r.FetchSize, r.PageSize, 500);
+        r.AutoRefreshIntervalSeconds = Clamp(r.AutoRefreshIntervalSeconds, 0, 3600);
 
         AdvancedTmdbSettings t = advanced.Tmdb;
         t.BackdropBatchConcurrency = Clamp(t.BackdropBatchConcurrency, 1, 20);
@@ -204,7 +205,10 @@ public static class AdvancedSettingsHelper
                 cardsInteractive = advanced.Requests.CardsInteractive,
                 cardsIncludeMetaText = advanced.Requests.CardsIncludeMetaText,
                 includePartialsInProcessingFilter = advanced.Requests.IncludePartialsInProcessingFilter,
-                splitPartiallyAvailableFilter = advanced.Requests.SplitPartiallyAvailableFilter
+                splitPartiallyAvailableFilter = advanced.Requests.SplitPartiallyAvailableFilter,
+                autoRefreshIntervalSeconds = advanced.Requests.AutoRefreshIntervalSeconds,
+                refreshOnVisibility = advanced.Requests.RefreshOnVisibility,
+                refreshOnTabShow = advanced.Requests.RefreshOnTabShow
             },
             requestModal = new
             {

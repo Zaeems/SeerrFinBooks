@@ -1296,6 +1296,29 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="bst-input-row">
+                            <div class="bst-input-group">
+                                <label class="bst-label" for="advRequestsAutoRefreshInterval">Auto-refresh interval (seconds)</label>
+                                <div class="bst-input-stack">
+                                    <input id="advRequestsAutoRefreshInterval" type="number" class="bst-input" min="0" max="3600" />
+                                    <div class="bst-field-desc">How often the Requests tab will be reloaded while it is open. Set to 0 to disable automatic refreshing.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advRequestsRefreshOnVisibility">Refresh when returning to the page</label>
+                                <div class="bst-field-desc">Reload requests when the you return to this browser tab.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advRequestsRefreshOnVisibility" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advRequestsRefreshOnTabShow">Refresh when switching to Requests</label>
+                                <div class="bst-field-desc">Reload requests when switching to the Requests tab (in Jellyfin).</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advRequestsRefreshOnTabShow" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
+                        </div>
                         <div class="bst-toggle-row">
                             <div class="bst-toggle-copy">
                                 <label class="bst-toggle-label" for="advRequestsCardsInteractive">Interactive request cards</label>
@@ -2217,7 +2240,10 @@
                         CardsInteractive: false,
                         CardsIncludeMetaText: false,
                         IncludePartialsInProcessingFilter: false,
-                        SplitPartiallyAvailableFilter: false
+                        SplitPartiallyAvailableFilter: false,
+                        AutoRefreshIntervalSeconds: 10,
+                        RefreshOnVisibility: true,
+                        RefreshOnTabShow: true
                     },
                     RequestModal: {
                         TvSeasonPickerEnabled: true,
@@ -2312,6 +2338,9 @@
                 const r = advanced.Requests;
                 document.querySelector('#advRequestsPageSize').value = r.PageSize || 20;
                 document.querySelector('#advRequestsFetchSize').value = r.FetchSize || 100;
+                document.querySelector('#advRequestsAutoRefreshInterval').value = r.AutoRefreshIntervalSeconds === 0 || r.AutoRefreshIntervalSeconds ? r.AutoRefreshIntervalSeconds : 10;
+                document.querySelector('#advRequestsRefreshOnVisibility').checked = r.RefreshOnVisibility !== false;
+                document.querySelector('#advRequestsRefreshOnTabShow').checked = r.RefreshOnTabShow !== false;
                 document.querySelector('#advRequestsCardsInteractive').checked = r.CardsInteractive === true;
                 document.querySelector('#advRequestsCardsIncludeMetaText').checked = r.CardsIncludeMetaText === true;
                 document.querySelector('#advIncludePartialsInProcessingFilter').checked = r.IncludePartialsInProcessingFilter === true;
@@ -2383,7 +2412,10 @@
                         CardsInteractive: document.querySelector('#advRequestsCardsInteractive').checked,
                         CardsIncludeMetaText: document.querySelector('#advRequestsCardsIncludeMetaText').checked,
                         IncludePartialsInProcessingFilter: document.querySelector('#advIncludePartialsInProcessingFilter').checked,
-                        SplitPartiallyAvailableFilter: document.querySelector('#advSplitPartiallyAvailableFilter').checked
+                        SplitPartiallyAvailableFilter: document.querySelector('#advSplitPartiallyAvailableFilter').checked,
+                        AutoRefreshIntervalSeconds: Math.max(0, parseInt(document.querySelector('#advRequestsAutoRefreshInterval').value, 10) || 0),
+                        RefreshOnVisibility: document.querySelector('#advRequestsRefreshOnVisibility').checked,
+                        RefreshOnTabShow: document.querySelector('#advRequestsRefreshOnTabShow').checked
                     },
                     RequestModal: {
                         TvSeasonPickerEnabled: document.querySelector('#advTvSeasonPickerEnabled').checked,
