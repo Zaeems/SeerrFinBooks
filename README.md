@@ -7,7 +7,7 @@
 	</picture>
 </div>
 
-# SeerrFin (formerly BetterSeerrTabs)
+# SeerrFin
 ![GitHub License](https://www.shieldcn.dev/github/license/varunaditya-plus/SeerrFin.svg?variant=outline&size=sm)
 [![GitHub Downloads (all assets, all releases)](https://shieldcn.dev/github/downloads/varunaditya-plus/SeerrFin.svg?variant=outline&size=sm)](https://github.com/varunaditya-plus/SeerrFin/releases/latest)
 [![GitHub Release](https://shieldcn.dev/github/release/varunaditya-plus/SeerrFin.svg?size=sm)](https://github.com/varunaditya-plus/SeerrFin/releases/latest)
