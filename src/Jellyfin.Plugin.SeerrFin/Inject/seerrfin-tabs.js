@@ -148,21 +148,33 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         },
 
         getDefaultTabConfig: function () {
+            const self = this;
             return Object.keys(this.TAB_DEFS).map(function (id) {
-                return { id: id, enabled: true };
+                return { id: id, enabled: true, title: self.TAB_DEFS[id].defaultTitle };
             });
         },
 
+        resolveTabTitle: function (id, title) {
+            const value = String(title || '').trim();
+            const tabDef = this.TAB_DEFS[id];
+            return value || (tabDef && tabDef.defaultTitle) || id;
+        },
+
         normalizeTabConfig: function (tabs) {
+            const self = this;
             const defaults = this.getDefaultTabConfig();
             const enabledById = {};
+            const titleById = {};
             (Array.isArray(tabs) ? tabs : []).forEach(function (tab) {
                 const id = String(tab && tab.id || '').toLowerCase();
-                if (!defaults.some(function (item) { return item.id === id; }) ||
-                    Object.prototype.hasOwnProperty.call(enabledById, id)) {
+                if (!defaults.some(function (item) { return item.id === id; })) {
                     return;
                 }
                 enabledById[id] = tab.enabled !== false;
+                const title = String(tab.title || '').trim();
+                if (title) {
+                    titleById[id] = title;
+                }
             });
 
             return defaults.map(function (tab) {
@@ -170,7 +182,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     id: tab.id,
                     enabled: Object.prototype.hasOwnProperty.call(enabledById, tab.id)
                         ? enabledById[tab.id]
-                        : true
+                        : true,
+                    title: Object.prototype.hasOwnProperty.call(titleById, tab.id)
+                        ? titleById[tab.id]
+                        : self.resolveTabTitle(tab.id)
                 };
             });
         },
@@ -460,18 +475,39 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             });
         },
 
-        createTabButton: function (id) {
-            const title = document.createElement('div');
-            title.className = 'emby-button-foreground';
-            title.textContent = this.TAB_DEFS[id].defaultTitle;
+        createTabButton: function (id, title) {
+            const titleEl = document.createElement('div');
+            titleEl.className = 'emby-button-foreground';
+            titleEl.textContent = this.resolveTabTitle(id, title);
 
             const button = document.createElement('button');
             button.type = 'button';
             button.setAttribute('is', 'empty-button');
             button.className = 'emby-tab-button emby-button';
             button.setAttribute('data-seerrfin-tab', id);
-            button.appendChild(title);
+            button.appendChild(titleEl);
             return button;
+        },
+
+        setTabButtonTitle: function (button, id, title) {
+            if (!button) {
+                return;
+            }
+            const titleEl = button.querySelector('.emby-button-foreground');
+            if (titleEl) {
+                titleEl.textContent = this.resolveTabTitle(id, title);
+            }
+        },
+
+        applyTabTitles: function (tabsSlider, slots) {
+            const self = this;
+            (slots || []).forEach(function (slot) {
+                if (slot.type !== 'seerrfin') {
+                    return;
+                }
+                const button = tabsSlider.querySelector('[data-seerrfin-tab="' + slot.id + '"]');
+                self.setTabButtonTitle(button, slot.id, slot.title);
+            });
         },
 
         createTabPanel: function (id) {
@@ -531,7 +567,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     if (!tab || tab.enabled === false || !self.TAB_DEFS[id]) {
                         return null;
                     }
-                    return { key: key, type: 'seerrfin', id: id };
+                    return { key: key, type: 'seerrfin', id: id, title: tab.title };
                 }
                 if (key.indexOf('ct:') === 0) {
                     const index = parseInt(key.slice(3), 10);
@@ -685,7 +721,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
                 if (item.slot.type === 'seerrfin') {
                     if (!(button && button.getAttribute('data-seerrfin-tab') === item.slot.id)) {
-                        button = self.createTabButton(item.slot.id);
+                        button = self.createTabButton(item.slot.id, item.slot.title);
+                    } else {
+                        self.setTabButtonTitle(button, item.slot.id, item.slot.title);
                     }
                     if (!(panel && panel.getAttribute('data-seerrfin-tab') === item.slot.id)) {
                         panel = self.createTabPanel(item.slot.id);
@@ -756,6 +794,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     });
 
                     if (desiredSig === currentSig && panelsMatch) {
+                        self.applyTabTitles(tabsSlider, slots);
                         return;
                     }
 

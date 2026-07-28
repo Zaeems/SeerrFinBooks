@@ -6,11 +6,13 @@ public class SeerrFinTabConfig
 
     public bool Enabled { get; set; } = true;
 
+    public string Title { get; set; } = string.Empty;
+
     public static List<SeerrFinTabConfig> CreateDefaults() =>
     [
-        new() { Id = "movies" },
-        new() { Id = "tv" },
-        new() { Id = "requests" },
-        new() { Id = "letterboxd" }
+        new() { Id = "movies", Title = "Movies" },
+        new() { Id = "tv", Title = "TV Shows" },
+        new() { Id = "requests", Title = "Requests" },
+        new() { Id = "letterboxd", Title = "Letterboxd" }
     ];
 }

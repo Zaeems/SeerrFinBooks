@@ -16,6 +16,7 @@ public static class SeerrFinTabConfigHelper
         }
 
         var enabledById = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        var titleById = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (SeerrFinTabConfig tab in tabs)
         {
             string id = (tab.Id ?? string.Empty).Trim().ToLowerInvariant();
@@ -23,6 +24,11 @@ public static class SeerrFinTabConfigHelper
             {
                 // Last entry stays, so duped list remains state that was read recently instead of a default.
                 enabledById[id] = tab.Enabled;
+                string title = (tab.Title ?? string.Empty).Trim();
+                if (!string.IsNullOrEmpty(title))
+                {
+                    titleById[id] = title;
+                }
             }
         }
 
@@ -31,6 +37,11 @@ public static class SeerrFinTabConfigHelper
             if (enabledById.TryGetValue(tab.Id, out bool enabled))
             {
                 tab.Enabled = enabled;
+            }
+
+            if (titleById.TryGetValue(tab.Id, out string? title))
+            {
+                tab.Title = title;
             }
         }
 

@@ -331,6 +331,37 @@
             color: #fff;
         }
 
+        .bst-tab-enable-label {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35em 0.4em;
+            font-size: 1.05em;
+            line-height: 1.4;
+            color: #fff;
+        }
+
+        .bst-tab-title-input {
+            width: 7.5em;
+            max-width: 100%;
+            min-width: 4.5em;
+            padding: 0.2em 0.45em;
+            margin: 0;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 0;
+            background: rgba(0, 0, 0, 0.28);
+            color: #fff;
+            font: inherit;
+            font-size: 0.95em;
+            line-height: 1.3;
+            box-sizing: border-box;
+        }
+
+        .bst-tab-title-input:focus {
+            outline: none;
+            border-color: var(--accent, #00a4dc);
+        }
+
         .bst-toggle {
             position: relative;
             display: inline-block;
@@ -760,10 +791,14 @@
                         <div class="bst-card bst-seerrfin-tab-card" data-bst-tab-id="movies">
                             <div class="bst-toggle-row">
                                 <div class="bst-toggle-copy">
-                                    <label class="bst-toggle-label" for="bstTabEnabled_movies">Enable Movies tab</label>
+                                    <label class="bst-tab-enable-label" for="bstTabTitle_movies">
+                                        <span>Enable</span>
+                                        <input id="bstTabTitle_movies" type="text" class="bst-tab-title-input" data-bst-tab-title="movies" value="Movies" maxlength="40" aria-label="Movies tab name" />
+                                        <span>tab</span>
+                                    </label>
                                 </div>
                                 <div class="bst-toggle-actions">
-                                    <label class="bst-toggle">
+                                    <label class="bst-toggle" for="bstTabEnabled_movies" aria-label="Enable Movies tab">
                                         <input id="bstTabEnabled_movies" type="checkbox" data-bst-tab-enabled="movies" checked />
                                         <span class="bst-toggle-slider bst-tab-slider"></span>
                                     </label>
@@ -773,10 +808,14 @@
                         <div class="bst-card bst-seerrfin-tab-card" data-bst-tab-id="tv">
                             <div class="bst-toggle-row">
                                 <div class="bst-toggle-copy">
-                                    <label class="bst-toggle-label" for="bstTabEnabled_tv">Enable TV Shows tab</label>
+                                    <label class="bst-tab-enable-label" for="bstTabTitle_tv">
+                                        <span>Enable</span>
+                                        <input id="bstTabTitle_tv" type="text" class="bst-tab-title-input" data-bst-tab-title="tv" value="TV Shows" maxlength="40" aria-label="TV Shows tab name" />
+                                        <span>tab</span>
+                                    </label>
                                 </div>
                                 <div class="bst-toggle-actions">
-                                    <label class="bst-toggle">
+                                    <label class="bst-toggle" for="bstTabEnabled_tv" aria-label="Enable TV Shows tab">
                                         <input id="bstTabEnabled_tv" type="checkbox" data-bst-tab-enabled="tv" checked />
                                         <span class="bst-toggle-slider bst-tab-slider"></span>
                                     </label>
@@ -786,10 +825,14 @@
                         <div class="bst-card bst-seerrfin-tab-card" data-bst-tab-id="requests">
                             <div class="bst-toggle-row">
                                 <div class="bst-toggle-copy">
-                                    <label class="bst-toggle-label" for="bstTabEnabled_requests">Enable Requests tab</label>
+                                    <label class="bst-tab-enable-label" for="bstTabTitle_requests">
+                                        <span>Enable</span>
+                                        <input id="bstTabTitle_requests" type="text" class="bst-tab-title-input" data-bst-tab-title="requests" value="Requests" maxlength="40" aria-label="Requests tab name" />
+                                        <span>tab</span>
+                                    </label>
                                 </div>
                                 <div class="bst-toggle-actions">
-                                    <label class="bst-toggle">
+                                    <label class="bst-toggle" for="bstTabEnabled_requests" aria-label="Enable Requests tab">
                                         <input id="bstTabEnabled_requests" type="checkbox" data-bst-tab-enabled="requests" checked />
                                         <span class="bst-toggle-slider bst-tab-slider"></span>
                                     </label>
@@ -799,10 +842,14 @@
                         <div class="bst-card bst-seerrfin-tab-card" data-bst-tab-id="letterboxd">
                             <div class="bst-toggle-row">
                                 <div class="bst-toggle-copy">
-                                    <label class="bst-toggle-label" for="bstTabEnabled_letterboxd">Enable Letterboxd tab</label>
+                                    <label class="bst-tab-enable-label" for="bstTabTitle_letterboxd">
+                                        <span>Enable</span>
+                                        <input id="bstTabTitle_letterboxd" type="text" class="bst-tab-title-input" data-bst-tab-title="letterboxd" value="Letterboxd" maxlength="40" aria-label="Letterboxd tab name" />
+                                        <span>tab</span>
+                                    </label>
                                 </div>
                                 <div class="bst-toggle-actions">
-                                    <label class="bst-toggle">
+                                    <label class="bst-toggle" for="bstTabEnabled_letterboxd" aria-label="Enable Letterboxd tab">
                                         <input id="bstTabEnabled_letterboxd" type="checkbox" data-bst-tab-enabled="letterboxd" checked />
                                         <span class="bst-toggle-slider bst-tab-slider"></span>
                                     </label>
@@ -1734,8 +1781,13 @@
 
             function createDefaultTabs() {
                 return Object.keys(TAB_TITLES).map(function (id) {
-                    return { Id: id, Enabled: true };
+                    return { Id: id, Enabled: true, Title: TAB_TITLES[id] };
                 });
+            }
+
+            function resolveTabTitle(id, title) {
+                const value = String(title || '').trim();
+                return value || TAB_TITLES[id] || id;
             }
 
             let tabSettings = createDefaultTabs();
@@ -1761,17 +1813,26 @@
 
             function normalizeTabsFromConfig(tabs) {
                 const enabledById = {};
+                const titleById = {};
                 (Array.isArray(tabs) ? tabs : []).forEach(function (tab) {
                     const id = String(tab && (tab.Id || tab.id) || '').toLowerCase();
-                    if (!TAB_TITLES[id] || Object.prototype.hasOwnProperty.call(enabledById, id)) {
+                    if (!TAB_TITLES[id]) {
                         return;
                     }
+                    // Last entry wins, matching server Normalize.
                     enabledById[id] = tab.Enabled !== false && tab.enabled !== false;
+                    const title = String(tab.Title || tab.title || '').trim();
+                    if (title) {
+                        titleById[id] = title;
+                    }
                 });
 
                 return createDefaultTabs().map(function (tab) {
                     if (Object.prototype.hasOwnProperty.call(enabledById, tab.Id)) {
                         tab.Enabled = enabledById[tab.Id];
+                    }
+                    if (Object.prototype.hasOwnProperty.call(titleById, tab.Id)) {
+                        tab.Title = titleById[tab.Id];
                     }
                     return tab;
                 });
@@ -1851,7 +1912,7 @@
                     const id = key.slice(3);
                     const tab = getTabById(id);
                     return {
-                        label: TAB_TITLES[id] || id,
+                        label: resolveTabTitle(id, tab && tab.Title),
                         meta: 'SeerrFin',
                         disabled: !!(tab && tab.Enabled === false)
                     };
@@ -1872,8 +1933,12 @@
                 tabSettings.forEach(function (tab) {
                     const card = document.querySelector('.bst-seerrfin-tab-card[data-bst-tab-id="' + tab.Id + '"]');
                     const enabledInput = document.querySelector('[data-bst-tab-enabled="' + tab.Id + '"]');
+                    const titleInput = document.querySelector('[data-bst-tab-title="' + tab.Id + '"]');
                     if (enabledInput) {
                         enabledInput.checked = tab.Enabled !== false;
+                    }
+                    if (titleInput && document.activeElement !== titleInput) {
+                        titleInput.value = resolveTabTitle(tab.Id, tab.Title);
                     }
                     if (card) {
                         card.classList.toggle('is-enabled', tab.Enabled !== false);
@@ -1886,7 +1951,8 @@
                 return tabSettings.map(function (tab) {
                     return {
                         Id: tab.Id,
-                        Enabled: tab.Enabled !== false
+                        Enabled: tab.Enabled !== false,
+                        Title: resolveTabTitle(tab.Id, tab.Title)
                     };
                 });
             }
@@ -1991,6 +2057,31 @@
                         tab.Enabled = input.checked === true;
                         syncTabCardsFromState();
                     });
+                });
+
+                document.querySelectorAll('[data-bst-tab-title]').forEach(function (input) {
+                    function commitTitle() {
+                        const id = input.getAttribute('data-bst-tab-title');
+                        const tab = getTabById(id);
+                        if (!tab) {
+                            return;
+                        }
+                        tab.Title = resolveTabTitle(id, input.value);
+                        input.value = tab.Title;
+                        syncTabCardsFromState();
+                    }
+
+                    input.addEventListener('input', function () {
+                        const id = input.getAttribute('data-bst-tab-title');
+                        const tab = getTabById(id);
+                        if (!tab) {
+                            return;
+                        }
+                        tab.Title = String(input.value || '').trim() || TAB_TITLES[id];
+                        renderTabOrderList();
+                    });
+                    input.addEventListener('change', commitTitle);
+                    input.addEventListener('blur', commitTitle);
                 });
 
                 const list = document.getElementById('bstTabOrderList');

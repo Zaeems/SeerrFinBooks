@@ -191,7 +191,7 @@ public class SeerrFinController : ControllerBase
             config.NativeSearchResults,
             displayCustomizations = DisplayCustomizationsHelper.Resolve(config),
             advanced = AdvancedSettingsHelper.BuildFrontendPayload(config),
-            tabs = tabs.Select(tab => new { id = tab.Id, enabled = tab.Enabled }),
+            tabs = tabs.Select(tab => new { id = tab.Id, enabled = tab.Enabled, title = tab.Title }),
             tabBarOrder = SeerrFinTabConfigHelper.NormalizeBarOrder(config.TabBarOrder)
         });
     }
