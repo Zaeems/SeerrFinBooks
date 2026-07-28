@@ -594,6 +594,38 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             });
         },
 
+        // I figured out that reappending a node detaches it first, with emby itemscontainer dropping its fetchDate/getItemsHtml hooks when detached.
+        // jellyfin's home rows start hidden and only show when hooks deliver items, so when we detach #homeTab, nothing ever loads.
+        // jellyfin indexes tabs relative to .tabContent so nodes already there stay.
+        placeInOrder: function (parent, nodes) {
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                const previous = i > 0 ? nodes[i - 1] : null;
+
+                if (!previous) {
+                    if (node.parentNode !== parent) {
+                        parent.appendChild(node);
+                    }
+                    continue;
+                }
+
+                const alreadyAfter = node.parentNode === parent &&
+                    (previous.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+                if (!alreadyAfter) {
+                    parent.insertBefore(node, previous.nextSibling);
+                }
+            }
+        },
+
+        removeUnplannedTabButtons: function (tabsSlider, plannedButtons) {
+            const keep = new Set(plannedButtons);
+            tabsSlider.querySelectorAll('.emby-tab-button').forEach(function (button) {
+                if (!keep.has(button)) {
+                    button.remove();
+                }
+            });
+        },
+
         applyBarOrder: function (page, tabsSlider, slots) {
             const self = this;
             if (!self.isHomeTabContext() || !page || !tabsSlider) {
@@ -644,8 +676,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             self.removeObsoleteSeerrFinPanels(page, slots);
 
-            const fragmentButtons = document.createDocumentFragment();
-            const fragmentPanels = document.createDocumentFragment();
+            const orderedButtons = [];
+            const orderedPanels = [];
 
             planned.forEach(function (item, placedIndex) {
                 let button = item.button;
@@ -662,18 +694,19 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
                 button.setAttribute('data-index', String(placedIndex));
                 panel.setAttribute('data-index', String(placedIndex));
-                fragmentButtons.appendChild(button);
-                fragmentPanels.appendChild(panel);
+                orderedButtons.push(button);
+                orderedPanels.push(panel);
             });
 
             if (!self.isHomeTabContext()) {
                 return false;
             }
 
-            tabsSlider.replaceChildren(fragmentButtons);
+            self.placeInOrder(tabsSlider, orderedButtons);
+            self.removeUnplannedTabButtons(tabsSlider, orderedButtons);
 
-            // Append Jellyfin, Custom Tabs, and SeerrFin panels in bar order.
-            page.appendChild(fragmentPanels);
+            // Put Jellyfin, Custom Tabs, and SeerrFin panels in bar order.
+            self.placeInOrder(page, orderedPanels);
             return true;
         },
 

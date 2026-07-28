@@ -21,7 +21,8 @@ public static class SeerrFinTabConfigHelper
             string id = (tab.Id ?? string.Empty).Trim().ToLowerInvariant();
             if (KnownTabIds.Contains(id))
             {
-                enabledById.TryAdd(id, tab.Enabled);
+                // Last entry stays, so duped list remains state that was read recently instead of a default.
+                enabledById[id] = tab.Enabled;
             }
         }
 
