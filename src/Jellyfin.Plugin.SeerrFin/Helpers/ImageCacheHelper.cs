@@ -20,6 +20,11 @@ public static class ImageCacheHelper
         PluginConfiguration? config = SeerrFinPlugin.Instance?.Configuration;
         try
         {
+            if (config != null && AdvancedSettingsHelper.Resolve(config).Tmdb.DirectBrowserImages)
+            {
+                return sourceUrl;
+            }
+
             int cacheTimeout = config?.CacheTimeoutSeconds ?? 86400;
 
             // Used in discovery mapping which allows cached images to be used in discovery cards

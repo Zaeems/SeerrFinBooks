@@ -1517,6 +1517,13 @@
                             </div>
                             <label class="bst-toggle"><input id="advFallbackToOriginalImageUrl" type="checkbox" checked /><span class="bst-toggle-slider"></span></label>
                         </div>
+                        <div class="bst-toggle-row">
+                            <div class="bst-toggle-copy">
+                                <label class="bst-toggle-label" for="advDirectBrowserImages">Directly request TMDB images from browser (no cache, open API key)</label>
+                                <div class="bst-field-desc">Skip image caching and load posters/backdrops directly from image.tmdb.org in the browser.</div>
+                            </div>
+                            <label class="bst-toggle"><input id="advDirectBrowserImages" type="checkbox" /><span class="bst-toggle-slider"></span></label>
+                        </div>
                             </div>
                         </div>
 
@@ -2353,7 +2360,8 @@
                         BackdropLanguageFilter: 'en,null,en-US',
                         PreferOriginalLanguageImages: false,
                         GenreBackdropSelectionMode: 'random',
-                        FallbackToOriginalImageUrl: true
+                        FallbackToOriginalImageUrl: true,
+                        DirectBrowserImages: false
                     },
                     JustWatch: {
                         UseWatchRegionForCountry: false,
@@ -2455,6 +2463,7 @@
                 document.querySelector('#advPreferOriginalLanguageImages').checked = t.PreferOriginalLanguageImages === true;
                 document.querySelector('#advGenreBackdropSelectionMode').value = t.GenreBackdropSelectionMode || 'random';
                 document.querySelector('#advFallbackToOriginalImageUrl').checked = t.FallbackToOriginalImageUrl !== false;
+                document.querySelector('#advDirectBrowserImages').checked = t.DirectBrowserImages === true;
 
                 const jw = advanced.JustWatch;
                 document.querySelector('#advJwUseWatchRegion').checked = jw.UseWatchRegionForCountry === true;
@@ -2525,7 +2534,8 @@
                         BackdropLanguageFilter: document.querySelector('#advBackdropLanguageFilter').value.trim() || 'en,null,en-US',
                         PreferOriginalLanguageImages: document.querySelector('#advPreferOriginalLanguageImages').checked,
                         GenreBackdropSelectionMode: document.querySelector('#advGenreBackdropSelectionMode').value || 'random',
-                        FallbackToOriginalImageUrl: document.querySelector('#advFallbackToOriginalImageUrl').checked
+                        FallbackToOriginalImageUrl: document.querySelector('#advFallbackToOriginalImageUrl').checked,
+                        DirectBrowserImages: document.querySelector('#advDirectBrowserImages').checked
                     },
                     JustWatch: {
                         UseWatchRegionForCountry: document.querySelector('#advJwUseWatchRegion').checked,

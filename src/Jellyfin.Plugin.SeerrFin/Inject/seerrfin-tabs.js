@@ -1303,7 +1303,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     backdropLanguageFilter: tmdb.backdropLanguageFilter || tmdb.BackdropLanguageFilter || 'en,null,en-US',
                     preferOriginalLanguageImages: self.readAdvancedBool(tmdb.preferOriginalLanguageImages ?? tmdb.PreferOriginalLanguageImages, false),
                     genreBackdropSelectionMode: tmdb.genreBackdropSelectionMode || tmdb.GenreBackdropSelectionMode || 'random',
-                    fallbackToOriginalImageUrl: self.readAdvancedBool(tmdb.fallbackToOriginalImageUrl ?? tmdb.FallbackToOriginalImageUrl, true)
+                    fallbackToOriginalImageUrl: self.readAdvancedBool(tmdb.fallbackToOriginalImageUrl ?? tmdb.FallbackToOriginalImageUrl, true),
+                    directBrowserImages: self.readAdvancedBool(tmdb.directBrowserImages ?? tmdb.DirectBrowserImages, false)
                 },
                 letterboxd: {
                     usernamePattern: letterboxd.usernamePattern || letterboxd.UsernamePattern || '^[a-zA-Z0-9_-]{1,30}$',

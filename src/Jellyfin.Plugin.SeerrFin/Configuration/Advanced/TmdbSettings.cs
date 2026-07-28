@@ -15,4 +15,6 @@ public class AdvancedTmdbSettings
     public string GenreBackdropSelectionMode { get; set; } = "random";
 
     public bool FallbackToOriginalImageUrl { get; set; } = true;
+
+    public bool DirectBrowserImages { get; set; }
 }

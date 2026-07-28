@@ -225,7 +225,8 @@ public static class AdvancedSettingsHelper
                 backdropLanguageFilter = advanced.Tmdb.BackdropLanguageFilter,
                 preferOriginalLanguageImages = advanced.Tmdb.PreferOriginalLanguageImages,
                 genreBackdropSelectionMode = advanced.Tmdb.GenreBackdropSelectionMode,
-                fallbackToOriginalImageUrl = advanced.Tmdb.FallbackToOriginalImageUrl
+                fallbackToOriginalImageUrl = advanced.Tmdb.FallbackToOriginalImageUrl,
+                directBrowserImages = advanced.Tmdb.DirectBrowserImages
             },
             letterboxd = new
             {
