@@ -11,7 +11,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-        <Version>1.6.4.2</Version>
+        <Version>1.6.5.0</Version>
         <RootNamespace>Jellyfin.Plugin.SeerrFin</RootNamespace>
     </PropertyGroup>
 

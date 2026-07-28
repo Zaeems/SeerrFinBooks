@@ -2,5 +2,5 @@ using System.Reflection;
 
 [assembly: AssemblyTitle("Jellyfin.Plugin.SeerrFin")]
 [assembly: AssemblyDescription("The best way to discover and request Movies and TV Shows through Jellyfin with tabs, using Seerr and TMDB.")]
-[assembly: AssemblyVersion("1.6.4.2")]
-[assembly: AssemblyFileVersion("1.6.4.2")]
+[assembly: AssemblyVersion("1.6.5.0")]
+[assembly: AssemblyFileVersion("1.6.5.0")]
