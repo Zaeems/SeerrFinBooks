@@ -1,14 +1,14 @@
 {
   "category": "General",
-  "changelog": "Added auto-refresh for Requests tab, with customizable options in advanced settings",
+  "changelog": "Fixed disabled tabs reenabling after server restart and Jellyfin home rows disappearing on tab rebuild",
   "description": "The best way to discover and request Movies and TV Shows through Seerr directly in Jellyfin.",
   "guid": "c8e4f2a1-9b3d-4e7f-a6c2-1d5e8f0a3b7c",
   "name": "SeerrFin",
   "overview": "This plugin lets you add two extra tabs to your top bar, allowing you to discover new Movies and TV Shows, and easily request them in any quality profile you want.",
   "owner": "varunaditya-plus",
   "targetAbi": "10.11.0.0",
-  "timestamp": "2026-07-27T18:08:47.0000000Z",
-  "version": "1.6.4.1",
+  "timestamp": "2026-07-28T08:57:31.0000000Z",
+  "version": "1.6.4.2",
   "status": "Active",
   "autoUpdate": true,
   "assemblies": [
