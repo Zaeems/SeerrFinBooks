@@ -947,68 +947,82 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             if (type === 'books') {
                 const self = this;
-                container.dataset.seerrfinLoading = 'false';
-                container.dataset.seerrfinLoaded = 'true';
+                const finishLoading = function () {
+                    container.dataset.seerrfinLoading = 'false';
+                    container.dataset.seerrfinLoaded = 'true';
+                };
 
+                container.dataset.seerrfinLoading = 'true';
                 container.innerHTML = `
-            <div style="padding: 20px 0; max-width: 800px; margin: 0 auto;">
-                <h2 class="sectionTitle sectionTitle-cards" style="margin-bottom: 15px;">📚 Search & Request Books</h2>
-                <div style="display: flex; gap: 10px; margin-bottom: 25px;">
-                    <input type="text" id="sf-book-input" placeholder="Search title or author..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 15px; outline: none;">
-                    <button id="sf-book-search-btn" style="padding: 12px 24px; background: #00a4dc; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer;">Search</button>
+                <div class="verticalSection seerrfin-poster-section" style="padding-top: 10px;">
+                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left padded-right" style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+                        <h2 class="sectionTitle sectionTitle-cards" style="margin: 0; white-space: nowrap;">Books</h2>
+                        <div class="inputContainer flex-grow" style="margin: 0;">
+                            <input id="sf-book-input" class="emby-input" type="text" placeholder="Search title or author..." style="padding: 10px 14px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); width: 100%;">
+                        </div>
+                        <button id="sf-book-search-btn" type="button" class="raised button-submit block emby-button" style="padding: 10px 20px; background: #00a4dc; color: #fff; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">Search</button>
+                    </div>
+                    
+                    <div id="sf-book-results-header" class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                        <h2 class="sectionTitle sectionTitle-cards" id="sf-book-results-title">Popular books</h2>
+                    </div>
+
+                    <div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale emby-scroller" data-centerfocus="true" data-scroll-mode-x="custom">
+                        <div id="sf-book-items-container" class="itemsContainer scrollSlider focuscontainer-x animatedScrollX" style="white-space: nowrap; transition: transform 270ms ease-out;">
+                            <div class="seerrfin-empty-row padded-left" style="color: #00a4dc;">Loading popular books...</div>
+                        </div>
+                    </div>
                 </div>
-                <div id="sf-book-results" style="display: flex; flex-direction: column; gap: 12px;"></div>
-            </div>
-        `;
+            `;
 
                 const searchInput = container.querySelector('#sf-book-input');
                 const searchBtn = container.querySelector('#sf-book-search-btn');
-                const resultsDiv = container.querySelector('#sf-book-results');
+                const resultsTitle = container.querySelector('#sf-book-results-title');
+                const itemsContainer = container.querySelector('#sf-book-items-container');
 
-                const doBookSearch = () => {
-                    const query = searchInput.value.trim();
-                    if (!query) return;
-                    resultsDiv.innerHTML = `<p style="color: #00a4dc; text-align: center;">Searching MyAnonamouse via Chaptarr...</p>`;
+                const fetchAndRenderBooks = (queryTerm, titleLabel) => {
+                    resultsTitle.textContent = titleLabel;
+                    itemsContainer.innerHTML = `<div class="seerrfin-empty-row padded-left" style="color: #00a4dc;">Searching Chaptarr...</div>`;
+
+                    const chaptarrUrl = (self._displaySettings && self._displaySettings.ChaptarrUrl) || 'http://192.168.1.163:8789';
+                    const apiKey = (self._displaySettings && self._displaySettings.ChaptarrApiKey) || '81dbbc0a981a411abaec9b1b6f51a167';
 
                     ApiClient.ajax({
                         type: 'GET',
-                        url: ApiClient.getUrl('SeerrFin/chaptarr/lookup?term=' + encodeURIComponent(query)),
+                        url: ApiClient.getUrl('SeerrFin/chaptarr/lookup?term=' + encodeURIComponent(queryTerm)),
                         dataType: 'json'
                     }).then(data => {
                         if (!data || data.length === 0) {
-                            resultsDiv.innerHTML = `<p style="color: #888; text-align: center;">No books found matching "${query}".</p>`;
+                            itemsContainer.innerHTML = `<div class="seerrfin-empty-row padded-left">No books found.</div>`;
                             return;
                         }
-                        resultsDiv.innerHTML = '';
-                        data.slice(0, 10).forEach(book => {
-                            let cover = (book.images && book.images[0]) ? (book.images[0].remoteUrl || book.images[0].url) : '';
 
-                            const card = document.createElement('div');
-                            card.style.cssText = 'display: flex; gap: 15px; background: #181818; padding: 12px; border-radius: 8px; border: 1px solid #2a2a2a; align-items: center;';
-                            card.innerHTML = `
-                        <img src="${cover}" style="width: 55px; height: 80px; object-fit: cover; border-radius: 6px; background: #000;" onerror="this.style.display='none'">
-                        <div style="flex: 1; min-width: 0;">
-                            <h4 style="margin: 0 0 4px 0; color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${book.title}</h4>
-                            <p style="margin: 0; color: #888; font-size: 13px;">${book.author ? book.author.authorName : 'Unknown Author'}</p>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="sf-req-audio" style="padding: 8px 14px; background: #2e7d32; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold;">🎧 Audiobook</button>
-                            <button class="sf-req-ebook" style="padding: 8px 14px; background: #1565c0; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold;">📖 eBook</button>
-                        </div>
-                    `;
+                        itemsContainer.innerHTML = data.slice(0, 20).map(book => createSeerrFinBookCard(book, chaptarrUrl, apiKey)).join('');
 
-                            card.querySelector('.sf-req-audio').onclick = (e) => executeChaptarrRequest(book, 'audiobook', e.target);
-                            card.querySelector('.sf-req-ebook').onclick = (e) => executeChaptarrRequest(book, 'ebook', e.target);
-
-                            resultsDiv.appendChild(card);
+                        itemsContainer.querySelectorAll('.sf-req-audio-btn').forEach((btn, idx) => {
+                            btn.onclick = (e) => executeChaptarrRequest(data[idx], 'audiobook', e.target);
                         });
+                        itemsContainer.querySelectorAll('.sf-req-ebook-btn').forEach((btn, idx) => {
+                            btn.onclick = (e) => executeChaptarrRequest(data[idx], 'ebook', e.target);
+                        });
+
+                        self.initLazyImages(itemsContainer);
                     }).catch(err => {
-                        resultsDiv.innerHTML = `<p style="color: #ff5252; text-align: center;">Failed to connect to Chaptarr.</p>`;
+                        itemsContainer.innerHTML = `<div class="seerrfin-empty-row padded-left" style="color: #ff5252;">Failed to load books from Chaptarr.</div>`;
                     });
                 };
 
-                searchBtn.onclick = doBookSearch;
-                searchInput.onkeypress = (e) => { if (e.key === 'Enter') doBookSearch(); };
+                fetchAndRenderBooks('popular', 'Popular books');
+
+                const executeSearch = () => {
+                    const q = searchInput.value.trim();
+                    if (q) fetchAndRenderBooks(q, `Search results for "${q}"`);
+                };
+
+                searchBtn.onclick = executeSearch;
+                searchInput.onkeypress = (e) => { if (e.key === 'Enter') executeSearch(); };
+
+                finishLoading();
                 return;
             }
 
@@ -3438,6 +3452,59 @@ if (typeof window.seerrFinPlugin === 'undefined') {
     patch();
 })();
 
+function createSeerrFinBookCard(book, chaptarrUrl, apiKey) {
+    const title = book.title || "Unknown Title";
+    const author = book.author ? book.author.authorName : (book.authorName || "Unknown Author");
+    const rating = book.ratings ? (book.ratings.value || 0).toFixed(1) : "-";
+    
+    let cover = "";
+    if (book.images && book.images.length > 0) {
+        cover = book.images[0].remoteUrl || book.images[0].url;
+        if (cover.startsWith('/')) cover = `${chaptarrUrl}${cover}?apiKey=${apiKey}`;
+    }
+
+    const isAvailable = book.hasFiles === true;
+    const isRequested = book.id > 0 || book.monitored === true;
+
+    let statusText = `<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span> ${rating} • ${author}`;
+    if (isAvailable) {
+        statusText = `<span style="color: #4caf50; font-weight: bold;">Available in Library</span>`;
+    } else if (isRequested) {
+        statusText = `<span style="color: #ff9800; font-weight: bold;">Requested</span>`;
+    }
+
+    const actionButtons = (!isAvailable && !isRequested) ? `
+        <div class="cardOverlayButton-br flex" style="flex-direction: column; gap: 4px; padding: 6px;">
+            <button type="button" class="sf-req-audio-btn cardOverlayButton paper-icon-button-light emby-button" title="Request Audiobook" style="width: auto; height: auto; padding: 4px 8px; border-radius: 4px; background: rgba(46, 125, 50, 0.9); color: #fff; font-size: 11px; font-weight: bold;">
+                Audiobook
+            </button>
+            <button type="button" class="sf-req-ebook-btn cardOverlayButton paper-icon-button-light emby-button" title="Request eBook" style="width: auto; height: auto; padding: 4px 8px; border-radius: 4px; background: rgba(21, 101, 192, 0.9); color: #fff; font-size: 11px; font-weight: bold;">
+                eBook
+            </button>
+        </div>
+    ` : '';
+
+    return `
+        <div class="card overflowPortraitCard seerrfin-discover-card" data-foreign-id="${book.foreignBookId}">
+            <div class="cardBox cardBox-bottompadded">
+                <div class="cardScalable">
+                    <div class="cardPadder cardPadder-overflowPortrait"></div>
+                    <div class="cardImageContainer coveredImage cardContent" style="background-image: url('${cover}');" aria-label="${title}"></div>
+                    <div class="cardOverlayContainer">
+                        ${actionButtons}
+                    </div>
+                </div>
+                <div class="cardText cardTextCentered cardText-first">
+                    <bdi><span title="${title}">${title}</span></bdi>
+                </div>
+                <div class="cardText cardTextCentered cardText-secondary">
+                    <bdi>${statusText}</bdi>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function executeChaptarrRequest(book, type, btn) {
     btn.disabled = true;
     btn.innerText = "Adding Author...";
@@ -3506,7 +3573,7 @@ function executeChaptarrRequest(book, type, btn) {
         }
     }).then(() => {
         btn.style.background = "#4caf50";
-        btn.innerText = "Requested! ✓";
+        btn.innerText = "Requested";
     }).catch(err => {
         console.error("Chaptarr request error:", err);
         btn.style.background = "#d32f2f";
