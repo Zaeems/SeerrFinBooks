@@ -955,18 +955,21 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 container.dataset.seerrfinLoading = 'true';
                 container.innerHTML = `
                 <div class="verticalSection seerrfin-poster-section" style="padding: 15px 0;">
-                    <div style="display: flex; gap: 12px; align-items: center; max-width: 600px; margin: 0 auto 25px auto;">
-                        <input id="sf-book-input" type="text" placeholder="Search title or author..." autocomplete="off" style="flex: 1; padding: 10px 14px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; outline: none; box-sizing: border-box;">
+                    <div class="searchFieldsInner flex align-items-center" style="max-width: 650px; margin: 0 auto 25px auto;">
+                        <span class="material-icons search" aria-hidden="true" style="font-size: 24px; color: #00a4dc; margin-right: 12px;">search</span>
+                        <div class="inputContainer flex-grow" style="margin: 0 12px 0 0;">
+                            <input id="sf-book-input" class="emby-input searchfields-txtSearch" type="text" placeholder="Search title or author..." autocomplete="off" style="width: 100%; box-sizing: border-box;">
+                        </div>
                         <button id="sf-book-search-btn" type="button" class="raised button-submit emby-button" style="padding: 10px 24px; background: #00a4dc; color: #fff; font-weight: bold; border-radius: 6px; cursor: pointer; white-space: nowrap; border: none;">Search</button>
                     </div>
                     
                     <div class="sectionTitleContainer sectionTitleContainer-cards padded-left" style="margin-bottom: 15px;">
-                        <h2 class="sectionTitle sectionTitle-cards" id="sf-book-results-title">Popular books</h2>
+                        <h2 class="sectionTitle sectionTitle-cards" id="sf-book-results-title">Trending books</h2>
                     </div>
 
                     <div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale emby-scroller" data-centerfocus="true" data-scroll-mode-x="custom">
                         <div id="sf-book-items-container" class="itemsContainer scrollSlider focuscontainer-x animatedScrollX" style="white-space: nowrap; padding-left: 20px; transition: transform 270ms ease-out;">
-                            <div class="seerrfin-empty-row" style="color: #00a4dc;">Loading popular books...</div>
+                            <div class="seerrfin-empty-row" style="color: #00a4dc;">Loading trending books...</div>
                         </div>
                     </div>
 
@@ -991,8 +994,44 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 const chaptarrUrl = (self._displaySettings && self._displaySettings.ChaptarrUrl) || 'http://192.168.1.163:8789';
                 const apiKey = (self._displaySettings && self._displaySettings.ChaptarrApiKey) || '81dbbc0a981a411abaec9b1b6f51a167';
 
-                const fetchAndRenderBooks = (queryTerm, titleLabel) => {
-                    resultsTitle.textContent = titleLabel;
+                const fetchAndRenderTrending = () => {
+                    resultsTitle.textContent = 'Trending books';
+                    itemsContainer.innerHTML = `<div class="seerrfin-empty-row" style="color: #00a4dc;">Loading from OpenLibrary...</div>`;
+
+                    fetch('https://openlibrary.org/trending/weekly.json?limit=20')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (!data.works || data.works.length === 0) throw new Error();
+
+                            itemsContainer.innerHTML = data.works.map(work => {
+                                const title = self.escapeHtml(work.title);
+                                const author = self.escapeHtml(work.author_name ? work.author_name[0] : "Unknown");
+                                const cover = work.cover_i ? `https://covers.openlibrary.org/b/id/${work.cover_i}-L.jpg` : '';
+                                const query = self.escapeHtml(`${work.title} ${work.author_name ? work.author_name[0] : ''}`);
+
+                                return `
+                                <div class="card overflowPortraitCard seerrfin-discover-card card-hoverable" style="width: 160px; min-width: 160px; max-width: 160px; display: inline-block; vertical-align: top; margin-right: 14px;" data-ol-query="${query}" data-media-type="book">
+                                    <div class="cardBox cardBox-bottompadded" style="margin: 0;">
+                                        <div class="cardScalable" style="position: relative; width: 160px; height: 240px; border-radius: 8px; overflow: hidden; background: #141414; border: 1px solid #282828;">
+                                            <div style="width: 100%; height: 100%; background-image: url('${cover}'); background-size: cover; background-position: center; background-repeat: no-repeat;"></div>
+                                        </div>
+                                        <div class="cardText cardTextCentered cardText-first" style="padding-top: 8px;">
+                                            <bdi><span title="${title}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; font-weight: 600; color: #fff;">${title}</span></bdi>
+                                        </div>
+                                        <div class="cardText cardTextCentered cardText-secondary" style="padding-top: 2px;">
+                                            <bdi><span style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: #aaa;"><span class="material-icons" style="font-size:14px;vertical-align:middle;color:#00a4dc;">trending_up</span> Trending</span></bdi>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            }).join('');
+                        }).catch(() => {
+                            itemsContainer.innerHTML = `<div class="seerrfin-empty-row" style="color: #ff5252;">Failed to load trending books.</div>`;
+                        });
+                };
+
+                const fetchAndRenderSearch = (queryTerm) => {
+                    resultsTitle.textContent = `Search results for "${queryTerm}"`;
                     itemsContainer.innerHTML = `<div class="seerrfin-empty-row" style="color: #00a4dc;">Searching Chaptarr...</div>`;
 
                     ApiClient.ajax({
@@ -1004,17 +1043,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                             itemsContainer.innerHTML = `<div class="seerrfin-empty-row">No books found.</div>`;
                             return;
                         }
-
                         itemsContainer.innerHTML = data.slice(0, 20).map(book => createSeerrFinBookCard(book, chaptarrUrl, apiKey)).join('');
-
-                        itemsContainer.querySelectorAll('.sf-req-audio-btn').forEach((btn, idx) => {
-                            btn.onclick = (e) => executeChaptarrRequest(data[idx], 'audiobook', e.target);
-                        });
-                        itemsContainer.querySelectorAll('.sf-req-ebook-btn').forEach((btn, idx) => {
-                            btn.onclick = (e) => executeChaptarrRequest(data[idx], 'ebook', e.target);
-                        });
                     }).catch(err => {
-                        itemsContainer.innerHTML = `<div class="seerrfin-empty-row" style="color: #ff5252;">Failed to load books from Chaptarr.</div>`;
+                        itemsContainer.innerHTML = `<div class="seerrfin-empty-row" style="color: #ff5252;">Failed to search Chaptarr.</div>`;
                     });
                 };
 
@@ -1028,19 +1059,20 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                             libraryContainer.innerHTML = `<div class="seerrfin-empty-row">No books in Chaptarr library yet.</div>`;
                             return;
                         }
-
-                        libraryContainer.innerHTML = data.slice(0, 20).map(book => createSeerrFinBookCard(book, chaptarrUrl, apiKey)).join('');
+                        const validBooks = data.filter(b => b.hasFiles || b.monitored).reverse().slice(0, 20);
+                        libraryContainer.innerHTML = validBooks.map(book => createSeerrFinBookCard(book, chaptarrUrl, apiKey)).join('');
                     }).catch(err => {
-                        libraryContainer.innerHTML = `<div class="seerrfin-empty-row">No books in library.</div>`;
+                        libraryContainer.innerHTML = `<div class="seerrfin-empty-row">Failed to load library.</div>`;
                     });
                 };
 
-                fetchAndRenderBooks('popular', 'Popular books');
+                fetchAndRenderTrending();
                 fetchAndRenderLibrary();
 
                 const executeSearch = () => {
                     const q = searchInput.value.trim();
-                    if (q) fetchAndRenderBooks(q, `Search results for "${q}"`);
+                    if (q) fetchAndRenderSearch(q);
+                    else fetchAndRenderTrending();
                 };
 
                 searchBtn.onclick = executeSearch;
@@ -2695,7 +2727,6 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         },
 
         bindCardClickHandler: function () {
-            // Capturing so card opens our modal instead of jellyfin detail page
             document.addEventListener('click', function (e) {
                 if (e.target.closest('.discover-requestbutton')) {
                     return;
@@ -2707,15 +2738,39 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     return;
                 }
 
-                const mediaId = card.dataset.tmdbId || card.dataset.foreignId;
-                const mediaType = card.dataset.mediaType;
-                if (!mediaId || !mediaType) {
-                    return;
-                }
-
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
+
+                const olQuery = card.getAttribute('data-ol-query');
+                if (olQuery) {
+                    document.body.insertAdjacentHTML('beforeend', `
+                        <div id="sf-temp-loader" style="position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;color:#00a4dc;font-size:1.2em;backdrop-filter:blur(4px);">
+                            Resolving metadata via Chaptarr...
+                        </div>
+                    `);
+
+                    ApiClient.ajax({
+                        type: 'GET',
+                        url: ApiClient.getUrl('SeerrFin/chaptarr/lookup?term=' + encodeURIComponent(olQuery)),
+                        dataType: 'json'
+                    }).then(res => {
+                        document.getElementById('sf-temp-loader').remove();
+                        if (res && res.length > 0 && window.seerrFinModal && window.seerrFinModal.open) {
+                            window.seerrFinModal.open(res[0].foreignBookId, 'book');
+                        } else {
+                            Dashboard.alert("Book not found in connected indexers.");
+                        }
+                    }).catch(() => {
+                        document.getElementById('sf-temp-loader').remove();
+                        Dashboard.alert("Failed to connect to Chaptarr.");
+                    });
+                    return;
+                }
+
+                const mediaId = card.dataset.tmdbId || card.dataset.foreignId;
+                const mediaType = card.dataset.mediaType;
+                if (!mediaId || !mediaType) return;
 
                 if (window.seerrFinModal && window.seerrFinModal.open) {
                     window.seerrFinModal.open(mediaId, mediaType);
