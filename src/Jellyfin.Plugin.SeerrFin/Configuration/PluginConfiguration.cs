@@ -5,23 +5,23 @@ namespace Jellyfin.Plugin.SeerrFin.Configuration;
 
 public class PluginConfiguration : BasePluginConfiguration
 {
-    public string? JellyseerrUrl { get; set; } = string.Empty;
+    public string? JellyseerrUrl { get; set; } = "http://192.168.1.180:5055";
 
-    public string? ExternalJellyseerrUrl { get; set; } = string.Empty;
+    public string? ExternalJellyseerrUrl { get; set; } = "http://192.168.1.180:5055";
 
     public string? JellyseerrApiKey { get; set; } = string.Empty;
 
-    public string? RadarrUrl { get; set; } = string.Empty;
+    public string? RadarrUrl { get; set; } = "http://192.168.1.116:7878";
 
     public string? RadarrApiKey { get; set; } = string.Empty;
 
-    public string? SonarrUrl { get; set; } = string.Empty;
+    public string? SonarrUrl { get; set; } = "http://192.168.1.123:8989";
 
     public string? SonarrApiKey { get; set; } = string.Empty;
 
-    public string? ChaptarrUrl { get; set; } = string.Empty;
+    public string? ChaptarrUrl { get; set; } = "http://192.168.1.163:8789";
 
-    public string? ChaptarrApiKey { get; set; } = string.Empty;
+    public string? ChaptarrApiKey { get; set; } = "81dbbc0a981a411abaec9b1b6f51a167";
 
     public int ChaptarrAudiobookQualityProfileId { get; set; } = 2;
 

@@ -3089,6 +3089,8 @@
                 document.querySelector('#radarrApiKey').value = config.RadarrApiKey || '';
                 document.querySelector('#sonarrUrl').value = config.SonarrUrl || '';
                 document.querySelector('#sonarrApiKey').value = config.SonarrApiKey || '';
+                document.querySelector('#chaptarrUrl').value = config.ChaptarrUrl || '';
+                document.querySelector('#chaptarrApiKey').value = config.ChaptarrApiKey || '';
                 document.querySelector('#jellyseerrPreferredLanguages').value = config.JellyseerrPreferredLanguages || 'en';
                 document.querySelector('#watchRegion').value = config.WatchRegion || 'US';
                 document.querySelector('#rowItemLimit').value = config.RowItemLimit || 20;
@@ -3133,6 +3135,8 @@
                     config.RadarrApiKey = document.querySelector('#radarrApiKey').value.trim();
                     config.SonarrUrl = document.querySelector('#sonarrUrl').value.trim();
                     config.SonarrApiKey = document.querySelector('#sonarrApiKey').value.trim();
+                    config.ChaptarrUrl = document.querySelector('#chaptarrUrl').value.trim();
+                    config.ChaptarrApiKey = document.querySelector('#chaptarrApiKey').value.trim();
                     config.JellyseerrPreferredLanguages = document.querySelector('#jellyseerrPreferredLanguages').value;
                     config.WatchRegion = document.querySelector('#watchRegion').value || 'US';
                     config.RowItemLimit = parseInt(document.querySelector('#rowItemLimit').value, 10) || 20;
