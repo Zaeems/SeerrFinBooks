@@ -904,18 +904,30 @@ window.seerrFinLog = window.seerrFinLog || {
 
         if (mediaType === 'book') {
             const coverStyle = data.coverUrl ? `background-image: url('${data.coverUrl}'); background-size: cover; background-position: center; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);` : '';
-            backdrop = data.coverUrl; // Use cover as fallback backdrop
+            backdrop = data.coverUrl;
+
+            const raw = data.rawBook || {};
+            const isAudioAvail = (raw.localAudiobookBooks && raw.localAudiobookBooks.length > 0) || data.isAvailable;
+            const isEbookAvail = (raw.localEbookBooks && raw.localEbookBooks.length > 0) || data.isAvailable;
+
+            const audioText = raw.audiobookMonitored ? "Re-request Audiobook" : "Request Audiobook";
+            const audioBg = raw.audiobookMonitored ? "#ff9800" : "#2e7d32";
+            const audioBorder = raw.audiobookMonitored ? "#f57c00" : "#1b5e20";
+
+            const ebookText = raw.ebookMonitored ? "Re-request eBook" : "Request eBook";
+            const ebookBg = raw.ebookMonitored ? "#ff9800" : "#1565c0";
+            const ebookBorder = raw.ebookMonitored ? "#f57c00" : "#0d47a1";
 
             if (data.isAvailable) {
-                actionButtons = `<span class="bst-btn-request" style="background:#2e7d32; border-color:#1b5e20; cursor:default;">Available in Library</span>`;
-            } else if (data.isRequested) {
-                actionButtons = `<span class="bst-btn-request" style="background:#ff9800; border-color:#f57c00; cursor:default;">Requested</span>`;
-            } else {
-                actionButtons = `
-                    <button type="button" class="bst-btn-request" data-action="request-audiobook" style="background:#2e7d32; border-color:#1b5e20;">Request Audiobook</button>
-                    <button type="button" class="bst-btn-request" data-action="request-ebook" style="background:#1565c0; border-color:#0d47a1;">Request eBook</button>
-                `;
+                actionButtons += `<button type="button" class="bst-btn-request" data-action="open-jellyfin" style="background:#00a4dc; border-color:#007ca8; margin-bottom: 8px; width: 100%;">Open in Jellyfin</button>`;
             }
+
+            actionButtons += `
+                <div style="display: flex; gap: 10px; width: 100%;">
+                    <button type="button" class="bst-btn-request" data-action="request-audiobook" style="background:${audioBg}; border-color:${audioBorder}; flex: 1;">${audioText}</button>
+                    <button type="button" class="bst-btn-request" data-action="request-ebook" style="background:${ebookBg}; border-color:${ebookBorder}; flex: 1;">${ebookText}</button>
+                </div>
+            `;
 
             sidebarHtml = `
                 <div style="width: 100%; aspect-ratio: 2/3; margin-bottom: 20px; ${coverStyle}"></div>
@@ -923,14 +935,7 @@ window.seerrFinLog = window.seerrFinLog || {
                     ${data.author ? `<div><span class="bst-label">Author:</span> ${escapeHtml(data.author)}</div>` : ''}
                     ${data.pageCount ? `<div><span class="bst-label">Pages:</span> ${escapeHtml(String(data.pageCount))}</div>` : ''}
                     ${releaseLabel ? `<div><span class="bst-label">First Published:</span> ${escapeHtml(releaseLabel)}</div>` : ''}
-                    ${data.goodreadsId ? `<div><span class="bst-label">Goodreads ID:</span> ${escapeHtml(String(data.goodreadsId))}</div>` : ''}
                 </div>
-                ${data.goodreadsId ? `
-                    <div class="bst-external-links">
-                        <a class="bst-external-link" href="https://www.goodreads.com/book/show/${data.goodreadsId}" target="_blank" rel="noopener noreferrer" title="View on Goodreads" style="color: #00a4dc; text-decoration: underline;">
-                            View on Goodreads
-                        </a>
-                    </div>` : ''}
             `;
         } else {
             actionButtons = `
@@ -968,13 +973,13 @@ window.seerrFinLog = window.seerrFinLog || {
                                         ${backdrop ? `<div class="bst-hero-backdrop" style="background-image: url(&quot;${backdrop}&quot;)"></div>` : ''}
                                         <div class="bst-hero-title-wrap">
                                             ${logoUrl
-                                                ? `<img class="bst-hero-logo" alt="${escapeHtml(title)}" src="${logoUrl}" data-fallback-title="${escapeHtml(title)}" />`
-                                                : `<h1 class="bst-hero-title-fallback">${escapeHtml(title)}</h1>`}
+                ? `<img class="bst-hero-logo" alt="${escapeHtml(title)}" src="${logoUrl}" data-fallback-title="${escapeHtml(title)}" />`
+                : `<h1 class="bst-hero-title-fallback">${escapeHtml(title)}</h1>`}
                                             ${rating || year ? `
                                                 <div class="bst-hero-meta">
                                                     ${rating ? `
                                                         <div class="bst-tmdb-rating">
-                                                            ${mediaType === 'book' ? '<span class="material-icons" style="font-size:18px; color:#FFD700; padding-right: 5px;">star</span>' : TMDB_LOGO_SVG}
+                                                            ${mediaType === 'book' ? '★' : TMDB_LOGO_SVG}
                                                             <span class="bst-meta-emphasis">${Number(rating).toFixed(1)}</span>
                                                             ${voteCount ? `<span class="bst-vote-muted">(${Number(voteCount).toLocaleString()})</span>` : ''}
                                                         </div>` : ''}
@@ -984,7 +989,7 @@ window.seerrFinLog = window.seerrFinLog || {
                                     </div>
                                     <div class="bst-content">
                                         <div class="bst-actions-row">
-                                            <div class="bst-actions-left">
+                                            <div class="bst-actions-left" style="${mediaType === 'book' ? 'width: 100%; flex-direction: column;' : ''}">
                                                 ${actionButtons}
                                             </div>
                                         </div>
@@ -992,8 +997,8 @@ window.seerrFinLog = window.seerrFinLog || {
                                             <div class="bst-details-main">
                                                 <p class="bst-overview">${escapeHtml(overview)}</p>
                                                 <div class="bst-genres">${genres.map(function (g, i) {
-                                                    return `<span class="bst-genre-pill" style="animation-delay:${i * 60}ms">${escapeHtml(g.name || g)}</span>`;
-                                                }).join('')}</div>
+                    return `<span class="bst-genre-pill" style="animation-delay:${i * 60}ms">${escapeHtml(g.name || g)}</span>`;
+                }).join('')}</div>
                                             </div>
                                             <div class="bst-sidebar" data-quality-slot>
                                                 ${sidebarHtml}
@@ -1018,6 +1023,25 @@ window.seerrFinLog = window.seerrFinLog || {
         root.querySelector('.bst-modal-close').addEventListener('click', closeDetailsModal);
 
         if (mediaType === 'book') {
+            const openBtn = root.querySelector('[data-action="open-jellyfin"]');
+            if (openBtn) {
+                openBtn.addEventListener('click', function() {
+                    ApiClient.getItems(Dashboard.getCurrentUserId(), {
+                        SearchTerm: title,
+                        Recursive: true,
+                        IncludeItemTypes: 'AudioBook,Book',
+                        Limit: 1
+                    }).then(res => {
+                        if (res && res.Items && res.Items.length > 0) {
+                            window.location.hash = '#/details?id=' + res.Items[0].Id + '&serverId=' + ApiClient.serverId();
+                            closeDetailsModal();
+                        } else {
+                            Dashboard.alert('Could not locate item in Jellyfin libraries. Is the scan complete?');
+                        }
+                    });
+                });
+            }
+
             const executeChaptarrRequest = (book, type, btn) => {
                 btn.disabled = true;
                 btn.innerText = "Adding Author...";
@@ -1080,7 +1104,7 @@ window.seerrFinLog = window.seerrFinLog || {
 
                     return req('/api/v1/book', payload);
                 }).then(res => {
-                    btn.innerText = "Searching...";
+                    btn.innerText = "Searching MAM...";
                     if (res && res.id) {
                         return req('/api/v1/command', { name: "BookSearch", bookIds: [res.id] });
                     }
@@ -1088,6 +1112,7 @@ window.seerrFinLog = window.seerrFinLog || {
                     btn.style.background = "#4caf50";
                     btn.innerText = "Requested! ✓";
                 }).catch(err => {
+                    console.error("Chaptarr request error:", err);
                     btn.style.background = "#d32f2f";
                     btn.innerText = "Failed";
                 });
