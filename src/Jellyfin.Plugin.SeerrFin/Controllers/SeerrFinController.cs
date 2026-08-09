@@ -778,6 +778,66 @@ public class SeerrFinController : ControllerBase
         }
     }
 
+    [HttpGet("chaptarr/lookup")]
+    [Authorize]
+    public async Task<IActionResult> ChaptarrLookup([FromQuery] string term)
+    {
+        if (string.IsNullOrWhiteSpace(term))
+        {
+            return BadRequest("Query term is required.");
+        }
+
+        var config = SeerrFinPlugin.Instance.Configuration;
+        var url = config.ChaptarrUrl?.TrimEnd('/');
+        var apiKey = config.ChaptarrApiKey;
+
+        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(apiKey))
+        {
+            return BadRequest("Chaptarr URL or API Key is not configured in SeerrFin settings.");
+        }
+
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+        var requestUrl = $"{url}/api/v1/book/lookup?term={Uri.EscapeDataString(term)}";
+        var response = await client.GetAsync(requestUrl);
+
+        var content = await response.Content.ReadAsStringAsync();
+        return Content(content, "application/json");
+    }
+
+    [HttpPost("chaptarr/proxy")]
+    [Authorize]
+    public async Task<IActionResult> ChaptarrPostProxy([FromQuery] string endpoint, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return BadRequest("Endpoint query param is required.");
+        }
+
+        var config = SeerrFinPlugin.Instance.Configuration;
+        var url = config.ChaptarrUrl?.TrimEnd('/');
+        var apiKey = config.ChaptarrApiKey;
+
+        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(apiKey))
+        {
+            return BadRequest("Chaptarr URL or API Key is not configured in SeerrFin settings.");
+        }
+
+        using StreamReader reader = new(Request.Body, Encoding.UTF8);
+        string body = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+        var requestUrl = $"{url}{endpoint}";
+        using var content = new StringContent(body, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync(requestUrl, content, cancellationToken).ConfigureAwait(false);
+
+        var responseText = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        return Content(responseText, "application/json");
+    }
+
     private ActionResult ServeEmbedded(string resourceName, string contentType)
     {
         Stream? stream = Assembly.GetExecutingAssembly()

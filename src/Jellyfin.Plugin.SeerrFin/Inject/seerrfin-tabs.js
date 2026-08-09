@@ -970,13 +970,9 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     if (!query) return;
                     resultsDiv.innerHTML = `<p style="color: #00a4dc; text-align: center;">Searching MyAnonamouse via Chaptarr...</p>`;
 
-                    const chaptarrUrl = (self._displaySettings && self._displaySettings.ChaptarrUrl) || 'http://192.168.1.163:8789';
-                    const apiKey = (self._displaySettings && self._displaySettings.ChaptarrApiKey) || '81dbbc0a981a411abaec9b1b6f51a167';
-
                     ApiClient.ajax({
                         type: 'GET',
-                        url: `${chaptarrUrl}/api/v1/book/lookup?term=${encodeURIComponent(query)}`,
-                        headers: { 'X-Api-Key': apiKey },
+                        url: ApiClient.getUrl('SeerrFin/chaptarr/lookup?term=' + encodeURIComponent(query)),
                         dataType: 'json'
                     }).then(data => {
                         if (!data || data.length === 0) {
@@ -986,7 +982,6 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         resultsDiv.innerHTML = '';
                         data.slice(0, 10).forEach(book => {
                             let cover = (book.images && book.images[0]) ? (book.images[0].remoteUrl || book.images[0].url) : '';
-                            if (cover.startsWith('/')) cover = `${chaptarrUrl}${cover}?apiKey=${apiKey}`;
 
                             const card = document.createElement('div');
                             card.style.cssText = 'display: flex; gap: 15px; background: #181818; padding: 12px; border-radius: 8px; border: 1px solid #2a2a2a; align-items: center;';
@@ -1002,8 +997,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         </div>
                     `;
 
-                            card.querySelector('.sf-req-audio').onclick = (e) => executeChaptarrRequest(book, 'audiobook', e.target, chaptarrUrl, apiKey);
-                            card.querySelector('.sf-req-ebook').onclick = (e) => executeChaptarrRequest(book, 'ebook', e.target, chaptarrUrl, apiKey);
+                            card.querySelector('.sf-req-audio').onclick = (e) => executeChaptarrRequest(book, 'audiobook', e.target);
+                            card.querySelector('.sf-req-ebook').onclick = (e) => executeChaptarrRequest(book, 'ebook', e.target);
 
                             resultsDiv.appendChild(card);
                         });
@@ -3443,7 +3438,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
     patch();
 })();
 
-function executeChaptarrRequest(book, type, btn, url, apiKey) {
+function executeChaptarrRequest(book, type, btn) {
     btn.disabled = true;
     btn.innerText = "Adding Author...";
 
@@ -3452,11 +3447,11 @@ function executeChaptarrRequest(book, type, btn, url, apiKey) {
     const metaProfileId = isAudio ? 1 : 2;
     const rootPath = isAudio ? '/audiobooks' : '/ebooks';
 
-    const req = (method, endpoint, body) => ApiClient.ajax({
-        type: method,
-        url: `${url}${endpoint}`,
-        headers: { 'X-Api-Key': apiKey, 'Content-Type': 'application/json' },
+    const req = (endpoint, body) => ApiClient.ajax({
+        type: 'POST',
+        url: ApiClient.getUrl('SeerrFin/chaptarr/proxy?endpoint=' + encodeURIComponent(endpoint)),
         data: JSON.stringify(body),
+        contentType: 'application/json',
         dataType: 'json'
     });
 
@@ -3464,7 +3459,7 @@ function executeChaptarrRequest(book, type, btn, url, apiKey) {
     let promise = Promise.resolve();
 
     if (!authorId || authorId === 0) {
-        promise = req('POST', '/api/v1/author', {
+        promise = req('/api/v1/author', {
             authorName: book.author ? book.author.authorName : book.authorName,
             foreignAuthorId: book.author ? book.author.foreignAuthorId : "",
             qualityProfileId: profileId,
@@ -3503,11 +3498,11 @@ function executeChaptarrRequest(book, type, btn, url, apiKey) {
             payload.editions.forEach(ed => { delete ed.path; ed.monitored = true; });
         }
 
-        return req('POST', '/api/v1/book', payload);
+        return req('/api/v1/book', payload);
     }).then(res => {
         btn.innerText = "Searching MAM...";
         if (res && res.id) {
-            return req('POST', '/api/v1/command', { name: "BookSearch", bookIds: [res.id] });
+            return req('/api/v1/command', { name: "BookSearch", bookIds: [res.id] });
         }
     }).then(() => {
         btn.style.background = "#4caf50";
