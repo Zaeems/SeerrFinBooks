@@ -500,6 +500,8 @@ window.seerrFinLog = window.seerrFinLog || {
     }
 
     function getCast(data) {
+        if (!data || data.mediaType === 'book') return [];
+
         const credits = data.credits || data.aggregateCredits;
         const cast = credits && (credits.cast || []);
         const crew = credits && (credits.crew || []);
@@ -883,7 +885,7 @@ window.seerrFinLog = window.seerrFinLog || {
         const year = (data.releaseDate || data.firstAirDate || '').substring(0, 4);
         const rating = data.voteAverage != null ? data.voteAverage : data.vote_average;
         const voteCount = data.voteCount != null ? data.voteCount : data.vote_count;
-        const backdrop = resolveImageUrl(data.backdropUrl || data.backdrop_url || '') || tmdbImage(data.backdropPath || data.backdrop_path, 'original');
+        let backdrop = resolveImageUrl(data.backdropUrl || data.backdrop_url || '') || tmdbImage(data.backdropPath || data.backdrop_path, 'original');
         const runtimeMinutes = data.runtime || (data.episodeRunTime && data.episodeRunTime[0]);
         const runtime = formatRuntime(runtimeMinutes);
         const endsAt = formatEndsAt(runtimeMinutes);
@@ -901,13 +903,13 @@ window.seerrFinLog = window.seerrFinLog || {
         let sidebarHtml = '';
 
         if (mediaType === 'book') {
-            const coverStyle = data.coverUrl ? `style="background-image: url('${data.coverUrl}'); background-size: cover; background-position: center; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);"` : '';
+            const coverStyle = data.coverUrl ? `background-image: url('${data.coverUrl}'); background-size: cover; background-position: center; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);` : '';
             backdrop = data.coverUrl; // Use cover as fallback backdrop
 
             if (data.isAvailable) {
-                actionButtons = `<span style="display:inline-block; padding:8px 16px; background:#4caf50; color:#fff; font-weight:bold; border-radius:6px; border:1px solid #388e3c;">Available in Library</span>`;
+                actionButtons = `<span class="bst-btn-request" style="background:#2e7d32; border-color:#1b5e20; cursor:default;">Available in Library</span>`;
             } else if (data.isRequested) {
-                actionButtons = `<span style="display:inline-block; padding:8px 16px; background:#ff9800; color:#fff; font-weight:bold; border-radius:6px; border:1px solid #f57c00;">Requested</span>`;
+                actionButtons = `<span class="bst-btn-request" style="background:#ff9800; border-color:#f57c00; cursor:default;">Requested</span>`;
             } else {
                 actionButtons = `
                     <button type="button" class="bst-btn-request" data-action="request-audiobook" style="background:#2e7d32; border-color:#1b5e20;">Request Audiobook</button>
@@ -916,6 +918,7 @@ window.seerrFinLog = window.seerrFinLog || {
             }
 
             sidebarHtml = `
+                <div style="width: 100%; aspect-ratio: 2/3; margin-bottom: 20px; ${coverStyle}"></div>
                 <div class="bst-sidebar-lines">
                     ${data.author ? `<div><span class="bst-label">Author:</span> ${escapeHtml(data.author)}</div>` : ''}
                     ${data.pageCount ? `<div><span class="bst-label">Pages:</span> ${escapeHtml(String(data.pageCount))}</div>` : ''}
@@ -965,8 +968,8 @@ window.seerrFinLog = window.seerrFinLog || {
                                         ${backdrop ? `<div class="bst-hero-backdrop" style="background-image: url(&quot;${backdrop}&quot;)"></div>` : ''}
                                         <div class="bst-hero-title-wrap">
                                             ${logoUrl
-                ? `<img class="bst-hero-logo" alt="${escapeHtml(title)}" src="${logoUrl}" data-fallback-title="${escapeHtml(title)}" />`
-                : `<h1 class="bst-hero-title-fallback">${escapeHtml(title)}</h1>`}
+                                                ? `<img class="bst-hero-logo" alt="${escapeHtml(title)}" src="${logoUrl}" data-fallback-title="${escapeHtml(title)}" />`
+                                                : `<h1 class="bst-hero-title-fallback">${escapeHtml(title)}</h1>`}
                                             ${rating || year ? `
                                                 <div class="bst-hero-meta">
                                                     ${rating ? `
@@ -989,11 +992,10 @@ window.seerrFinLog = window.seerrFinLog || {
                                             <div class="bst-details-main">
                                                 <p class="bst-overview">${escapeHtml(overview)}</p>
                                                 <div class="bst-genres">${genres.map(function (g, i) {
-                    return `<span class="bst-genre-pill" style="animation-delay:${i * 60}ms">${escapeHtml(g.name || g)}</span>`;
-                }).join('')}</div>
+                                                    return `<span class="bst-genre-pill" style="animation-delay:${i * 60}ms">${escapeHtml(g.name || g)}</span>`;
+                                                }).join('')}</div>
                                             </div>
                                             <div class="bst-sidebar" data-quality-slot>
-                                                ${mediaType === 'book' ? `<div style="width: 150px; height: 225px; margin: 0 auto 20px auto; ${coverStyle}"></div>` : ''}
                                                 ${sidebarHtml}
                                             </div>
                                         </div>
