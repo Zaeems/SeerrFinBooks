@@ -955,9 +955,12 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 container.dataset.seerrfinLoading = 'true';
                 container.innerHTML = `
                 <div class="verticalSection seerrfin-poster-section" style="padding: 15px 0;">
-                    <div style="display: flex; gap: 12px; align-items: center; max-width: 600px; margin-bottom: 25px; padding-left: 20px;">
-                        <input id="sf-book-input" class="emby-input" type="text" placeholder="Search title or author..." style="flex: 1; padding: 10px 14px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; outline: none;">
-                        <button id="sf-book-search-btn" type="button" class="raised button-submit block emby-button" style="padding: 10px 22px; background: #00a4dc; color: #fff; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">Search</button>
+                    <div class="searchFieldsInner flex align-items-center" style="max-width: 650px; margin: 0 0 25px 20px;">
+                        <span class="material-icons search" aria-hidden="true" style="font-size: 24px; color: #00a4dc; margin-right: 12px;">search</span>
+                        <div class="inputContainer flex-grow" style="margin: 0 12px 0 0;">
+                            <input id="sf-book-input" class="emby-input searchfields-txtSearch" type="text" placeholder="Search title or author..." autocomplete="off" style="width: 100%; box-sizing: border-box;">
+                        </div>
+                        <button id="sf-book-search-btn" type="button" class="raised button-submit emby-button" style="padding: 10px 24px; background: #00a4dc; color: #fff; font-weight: bold; border-radius: 6px; cursor: pointer; white-space: nowrap; border: none;">Search</button>
                     </div>
                     
                     <div class="sectionTitleContainer sectionTitleContainer-cards padded-left" style="margin-bottom: 15px;">
@@ -3451,7 +3454,7 @@ function createSeerrFinBookCard(book, chaptarrUrl, apiKey) {
     const title = book.title || "Unknown Title";
     const author = book.author ? book.author.authorName : (book.authorName || "Unknown Author");
     const rating = book.ratings ? (book.ratings.value || 0).toFixed(1) : "-";
-    
+
     let cover = "";
     if (book.images && book.images.length > 0) {
         cover = book.images[0].remoteUrl || book.images[0].url;
