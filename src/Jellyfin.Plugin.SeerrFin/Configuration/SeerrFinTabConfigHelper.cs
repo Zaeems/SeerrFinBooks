@@ -2,129 +2,86 @@ namespace Jellyfin.Plugin.SeerrFin.Configuration;
 
 public static class SeerrFinTabConfigHelper
 {
-    private const string JellyfinHomeKey = "jf:home";
-    private const string JellyfinFavoritesKey = "jf:favorites";
+    public static readonly string[] ValidTabIds = { "movies", "tv", "books", "requests", "letterboxd" };
 
-    private static readonly HashSet<string> KnownTabIds = new(SeerrFinTabConfig.CreateDefaults().Select(tab => tab.Id), StringComparer.OrdinalIgnoreCase);
-
-    public static List<SeerrFinTabConfig> Normalize(IEnumerable<SeerrFinTabConfig>? tabs)
+    public static List<SeerrFinTabConfig> Normalize(List<SeerrFinTabConfig>? tabs)
     {
-        var defaults = SeerrFinTabConfig.CreateDefaults();
-        if (tabs == null)
+        var defaults = new Dictionary<string, string>
         {
-            return defaults;
+            { "movies", "Movies" },
+            { "tv", "TV Shows" },
+            { "books", "Books" },
+            { "requests", "Requests" },
+            { "letterboxd", "Letterboxd" }
+        };
+
+        var existingById = (tabs ?? new List<SeerrFinTabConfig>())
+            .Where(t => !string.IsNullOrWhiteSpace(t.Id))
+            .ToDictionary(t => t.Id.ToLowerInvariant(), t => t);
+
+        var result = new List<SeerrFinTabConfig>();
+        foreach (var id in ValidTabIds)
+        {
+            if (existingById.TryGetValue(id, out var existing))
+            {
+                result.Add(new SeerrFinTabConfig
+                {
+                    Id = id,
+                    Enabled = existing.Enabled,
+                    Title = string.IsNullOrWhiteSpace(existing.Title) ? defaults[id] : existing.Title.Trim()
+                });
+            }
+            else
+            {
+                result.Add(new SeerrFinTabConfig
+                {
+                    Id = id,
+                    Enabled = true,
+                    Title = defaults[id]
+                });
+            }
         }
 
-        var enabledById = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        var titleById = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (SeerrFinTabConfig tab in tabs)
+        return result;
+    }
+
+    public static List<string> NormalizeBarOrder(List<string>? order)
+    {
+        var result = new List<string>();
+        var seen = new HashSet<string>();
+
+        void Add(string key)
         {
-            string id = (tab.Id ?? string.Empty).Trim().ToLowerInvariant();
-            if (KnownTabIds.Contains(id))
+            if (string.IsNullOrWhiteSpace(key) || seen.Contains(key)) return;
+            seen.Add(key);
+            result.Add(key);
+        }
+
+        Add("jf:home");
+        Add("jf:favorites");
+
+        if (order != null)
+        {
+            foreach (var item in order)
             {
-                // Last entry stays, so duped list remains state that was read recently instead of a default.
-                enabledById[id] = tab.Enabled;
-                string title = (tab.Title ?? string.Empty).Trim();
-                if (!string.IsNullOrEmpty(title))
+                if (string.IsNullOrWhiteSpace(item)) continue;
+                var norm = item.Trim();
+                if (ValidTabIds.Contains(norm.ToLowerInvariant()))
                 {
-                    titleById[id] = title;
+                    norm = "sf:" + norm.ToLowerInvariant();
+                }
+
+                if (norm.StartsWith("sf:", StringComparison.OrdinalIgnoreCase) &&
+                    ValidTabIds.Contains(norm.Substring(3).ToLowerInvariant()))
+                {
+                    Add(norm.ToLowerInvariant());
                 }
             }
         }
 
-        foreach (SeerrFinTabConfig tab in defaults)
+        foreach (var id in ValidTabIds)
         {
-            if (enabledById.TryGetValue(tab.Id, out bool enabled))
-            {
-                tab.Enabled = enabled;
-            }
-
-            if (titleById.TryGetValue(tab.Id, out string? title))
-            {
-                tab.Title = title;
-            }
-        }
-
-        return defaults;
-    }
-
-    private static string SeerrFinKey(string id) => $"sf:{id.Trim().ToLowerInvariant()}";
-
-    private static string CustomTabsKey(int index) => $"ct:{index}";
-
-    private static bool TryParseSeerrFinKey(string? key, out string id)
-    {
-        id = string.Empty;
-        if (string.IsNullOrWhiteSpace(key) || !key.StartsWith("sf:", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        id = key[3..].Trim().ToLowerInvariant();
-        return KnownTabIds.Contains(id);
-    }
-
-    private static bool TryParseCustomTabsKey(string? key, out int index)
-    {
-        index = -1;
-        if (string.IsNullOrWhiteSpace(key) || !key.StartsWith("ct:", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return int.TryParse(key[3..], out index) && index >= 0;
-    }
-
-    public static List<string> NormalizeBarOrder(IEnumerable<string>? barOrder)
-    {
-        var result = new List<string>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        void TryAdd(string key)
-        {
-            if (seen.Add(key))
-            {
-                result.Add(key);
-            }
-        }
-
-        TryAdd(JellyfinHomeKey);
-        TryAdd(JellyfinFavoritesKey);
-
-        foreach (string raw in barOrder ?? Array.Empty<string>())
-        {
-            string key = (raw ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(key))
-            {
-                continue;
-            }
-
-            if (KnownTabIds.Contains(key))
-            {
-                key = SeerrFinKey(key);
-            }
-
-            if (string.Equals(key, JellyfinHomeKey, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(key, JellyfinFavoritesKey, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (TryParseSeerrFinKey(key, out string sfId))
-            {
-                TryAdd(SeerrFinKey(sfId));
-                continue;
-            }
-
-            if (TryParseCustomTabsKey(key, out int ctIndex))
-            {
-                TryAdd(CustomTabsKey(ctIndex));
-            }
-        }
-
-        foreach (SeerrFinTabConfig tab in SeerrFinTabConfig.CreateDefaults())
-        {
-            TryAdd(SeerrFinKey(tab.Id));
+            Add("sf:" + id);
         }
 
         return result;

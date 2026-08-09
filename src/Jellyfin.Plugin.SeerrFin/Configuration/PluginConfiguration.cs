@@ -19,6 +19,14 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public string? SonarrApiKey { get; set; } = string.Empty;
 
+    public string? ChaptarrUrl { get; set; } = string.Empty;
+
+    public string? ChaptarrApiKey { get; set; } = string.Empty;
+
+    public int ChaptarrAudiobookQualityProfileId { get; set; } = 2;
+
+    public int ChaptarrEbookQualityProfileId { get; set; } = 1;
+
     public string? JellyseerrPreferredLanguages { get; set; } = "en";
 
     public string? TmdbApiKey { get; set; } = string.Empty;
@@ -59,7 +67,6 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public string DisplayCustomizationsJson { get; set; } = string.Empty;
 
-    // Start empty because XmlSerializer adds to existing list instead of replacing so a default would survive deserialization and override saved tab states.
     public List<SeerrFinTabConfig> Tabs { get; set; } = new();
 
     public List<string> TabBarOrder { get; set; } = new();

@@ -53,6 +53,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         TAB_DEFS: {
             movies: { sectionClass: 'seerrfin-movies-sections', defaultTitle: 'Movies' },
             tv: { sectionClass: 'seerrfin-tv-sections', defaultTitle: 'TV Shows' },
+            books: { sectionClass: 'seerrfin-books-sections', defaultTitle: 'Books' },
             requests: { sectionClass: 'seerrfin-requests-sections', defaultTitle: 'Requests' },
             letterboxd: { sectionClass: 'seerrfin-letterboxd-sections', defaultTitle: 'Letterboxd' }
         },
@@ -144,6 +145,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 self._renderPending = false;
                 self.renderIfContainerVisible('movies');
                 self.renderIfContainerVisible('tv');
+                self.renderIfContainerVisible('books');
             });
         },
 
@@ -955,6 +957,82 @@ if (typeof window.seerrFinPlugin === 'undefined') {
             }
 
             if (this.isContainerLoading(container) || this.isContainerPopulated(container)) {
+                return;
+            }
+
+            if (type === 'books') {
+                const self = this;
+                const finishLoading = function () {
+                    container.dataset.seerrfinLoading = 'false';
+                    container.dataset.seerrfinLoaded = 'true';
+                };
+
+                container.dataset.seerrfinLoading = 'true';
+                container.innerHTML = `
+                    <div style="padding: 20px 0; max-width: 800px; margin: 0 auto;">
+                        <h2 class="sectionTitle sectionTitle-cards" style="margin-bottom: 15px;">📚 Search & Request Books</h2>
+                        <div style="display: flex; gap: 10px; margin-bottom: 25px;">
+                            <input type="text" id="sf-book-input" placeholder="Search title or author..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 15px; outline: none;">
+                            <button id="sf-book-search-btn" style="padding: 12px 24px; background: #00a4dc; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer;">Search</button>
+                        </div>
+                        <div id="sf-book-results" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                    </div>
+                `;
+
+                const searchInput = container.querySelector('#sf-book-input');
+                const searchBtn = container.querySelector('#sf-book-search-btn');
+                const resultsDiv = container.querySelector('#sf-book-results');
+
+                const doBookSearch = () => {
+                    const query = searchInput.value.trim();
+                    if (!query) return;
+                    resultsDiv.innerHTML = `<p style="color: #00a4dc; text-align: center;">Searching MyAnonamouse via Chaptarr...</p>`;
+
+                    const chaptarrUrl = (self._displaySettings && self._displaySettings.ChaptarrUrl) || 'http://192.168.1.163:8789';
+                    const apiKey = (self._displaySettings && self._displaySettings.ChaptarrApiKey) || '81dbbc0a981a411abaec9b1b6f51a167';
+
+                    ApiClient.ajax({
+                        type: 'GET',
+                        url: `${chaptarrUrl}/api/v1/book/lookup?term=${encodeURIComponent(query)}`,
+                        headers: { 'X-Api-Key': apiKey },
+                        dataType: 'json'
+                    }).then(data => {
+                        if (!data || data.length === 0) {
+                            resultsDiv.innerHTML = `<p style="color: #888; text-align: center;">No books found matching "${query}".</p>`;
+                            return;
+                        }
+                        resultsDiv.innerHTML = '';
+                        data.slice(0, 10).forEach(book => {
+                            let cover = (book.images && book.images[0]) ? (book.images[0].remoteUrl || book.images[0].url) : '';
+                            if (cover.startsWith('/')) cover = `${chaptarrUrl}${cover}?apiKey=${apiKey}`;
+
+                            const card = document.createElement('div');
+                            card.style.cssText = 'display: flex; gap: 15px; background: #181818; padding: 12px; border-radius: 8px; border: 1px solid #2a2a2a; align-items: center;';
+                            card.innerHTML = `
+                                <img src="${cover}" style="width: 55px; height: 80px; object-fit: cover; border-radius: 6px; background: #000;" onerror="this.style.display='none'">
+                                <div style="flex: 1; min-width: 0;">
+                                    <h4 style="margin: 0 0 4px 0; color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${book.title}</h4>
+                                    <p style="margin: 0; color: #888; font-size: 13px;">${book.author ? book.author.authorName : 'Unknown Author'}</p>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="sf-req-audio" style="padding: 8px 14px; background: #2e7d32; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold;">🎧 Audiobook</button>
+                                    <button class="sf-req-ebook" style="padding: 8px 14px; background: #1565c0; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold;">📖 eBook</button>
+                                </div>
+                            `;
+
+                            card.querySelector('.sf-req-audio').onclick = (e) => executeChaptarrRequest(book, 'audiobook', e.target, chaptarrUrl, apiKey);
+                            card.querySelector('.sf-req-ebook').onclick = (e) => executeChaptarrRequest(book, 'ebook', e.target, chaptarrUrl, apiKey);
+
+                            resultsDiv.appendChild(card);
+                        });
+                    }).catch(err => {
+                        resultsDiv.innerHTML = `<p style="color: #ff5252; text-align: center;">Failed to connect to Chaptarr.</p>`;
+                    });
+                };
+
+                searchBtn.onclick = doBookSearch;
+                searchInput.onkeypress = (e) => { if (e.key === 'Enter') doBookSearch(); };
+                finishLoading();
                 return;
             }
 
@@ -3383,3 +3461,79 @@ if (typeof window.seerrFinPlugin === 'undefined') {
     new MutationObserver(patch).observe(document.body, { childList: true, subtree: true });
     patch();
 })();
+
+function executeChaptarrRequest(book, type, btn, url, apiKey) {
+    btn.disabled = true;
+    btn.innerText = "Adding Author...";
+
+    const isAudio = (type === 'audiobook');
+    const profileId = isAudio ? 2 : 1;
+    const metaProfileId = isAudio ? 1 : 2;
+    const rootPath = isAudio ? '/audiobooks' : '/ebooks';
+
+    const req = (method, endpoint, body) => ApiClient.ajax({
+        type: method,
+        url: `${url}${endpoint}`,
+        headers: { 'X-Api-Key': apiKey, 'Content-Type': 'application/json' },
+        data: JSON.stringify(body),
+        dataType: 'json'
+    });
+
+    let authorId = book.authorId;
+    let promise = Promise.resolve();
+
+    if (!authorId || authorId === 0) {
+        promise = req('POST', '/api/v1/author', {
+            authorName: book.author ? book.author.authorName : book.authorName,
+            foreignAuthorId: book.author ? book.author.foreignAuthorId : "",
+            qualityProfileId: profileId,
+            metadataProfileId: metaProfileId,
+            audiobookQualityProfileId: 2,
+            audiobookMetadataProfileId: 1,
+            ebookQualityProfileId: 1,
+            ebookMetadataProfileId: 2,
+            rootFolderPath: rootPath,
+            audiobookRootFolderPath: '/audiobooks',
+            ebookRootFolderPath: '/ebooks',
+            monitored: true,
+            addOptions: { monitor: "none", searchForMissingBooks: false }
+        }).then(res => {
+            if (res && res.id) authorId = res.id;
+        });
+    }
+
+    promise.then(() => {
+        btn.innerText = "Adding Book...";
+        const payload = JSON.parse(JSON.stringify(book));
+        delete payload.path;
+        if (payload.author) delete payload.author.path;
+
+        payload.authorId = authorId;
+        payload.monitored = true;
+        payload.audiobookMonitored = isAudio;
+        payload.ebookMonitored = !isAudio;
+        payload.mediaType = isAudio ? "audiobook" : "ebook";
+        payload.qualityProfileId = profileId;
+        payload.metadataProfileId = metaProfileId;
+        payload.rootFolderPath = rootPath;
+        payload.addOptions = { addType: "automatic", searchForNewBook: true };
+
+        if (payload.editions) {
+            payload.editions.forEach(ed => { delete ed.path; ed.monitored = true; });
+        }
+
+        return req('POST', '/api/v1/book', payload);
+    }).then(res => {
+        btn.innerText = "Searching MAM...";
+        if (res && res.id) {
+            return req('POST', '/api/v1/command', { name: "BookSearch", bookIds: [res.id] });
+        }
+    }).then(() => {
+        btn.style.background = "#4caf50";
+        btn.innerText = "Requested! ✓";
+    }).catch(err => {
+        console.error("Chaptarr request error:", err);
+        btn.style.background = "#d32f2f";
+        btn.innerText = "Failed";
+    });
+}
