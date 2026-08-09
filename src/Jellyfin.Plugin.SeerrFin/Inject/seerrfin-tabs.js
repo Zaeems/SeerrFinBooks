@@ -904,7 +904,10 @@ if (typeof window.seerrFinPlugin === 'undefined') {
         },
 
         renderIfContainerVisible: function (type) {
-            const selector = type === 'movies' ? '.seerrfin-movies-sections' : '.seerrfin-tv-sections';
+            let selector = '.seerrfin-movies-sections';
+            if (type === 'tv') selector = '.seerrfin-tv-sections';
+            if (type === 'books') selector = '.seerrfin-books-sections';
+
             const container = this.findActiveContainer(selector);
             if (!container) {
                 return;
@@ -916,39 +919,21 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             const self = this;
             this.loadDisplaySettings().then(function () {
-                const settingsKey = self.getDisplaySettingsKey();
-
-                if (container.dataset.seerrfinDisplaySettings !== settingsKey) {
-                    log.info(type + ' tab display settings changed, clearing container');
-                    container.dataset.seerrfinDisplaySettings = settingsKey;
-                    if (self.isContainerPopulated(container)) {
-                        container.innerHTML = '';
-                        delete container.dataset.seerrfinLoaded;
-                        delete container.dataset.seerrfinLoading;
-                    }
-                }
-
                 if (self.isContainerPopulated(container)) {
                     return;
                 }
-
-                const hasError = container.querySelector('.seerrfin-empty-row');
-                if (hasError && container.dataset.seerrfinLoaded === 'true') {
-                    return;
-                }
-
                 self.loadTab(type, container);
-            }).catch(function (err) {
-                log.error(type + ' tab render aborted: display settings failed', err);
             });
         },
 
         loadTab: function (type, container) {
             if (!container) {
-                container = this.findActiveContainer(
-                    type === 'movies' ? '.seerrfin-movies-sections' : '.seerrfin-tv-sections'
-                );
+                let selector = '.seerrfin-movies-sections';
+                if (type === 'tv') selector = '.seerrfin-tv-sections';
+                if (type === 'books') selector = '.seerrfin-books-sections';
+                container = this.findActiveContainer(selector);
             }
+
             if (!container || !this.isContainerVisible(container) || this.isGridViewOpen(container)) {
                 if (container && !this.isContainerVisible(container)) {
                     log.info(type + ' tab skip load: container not visible');
@@ -962,22 +947,19 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
             if (type === 'books') {
                 const self = this;
-                const finishLoading = function () {
-                    container.dataset.seerrfinLoading = 'false';
-                    container.dataset.seerrfinLoaded = 'true';
-                };
+                container.dataset.seerrfinLoading = 'false';
+                container.dataset.seerrfinLoaded = 'true';
 
-                container.dataset.seerrfinLoading = 'true';
                 container.innerHTML = `
-                    <div style="padding: 20px 0; max-width: 800px; margin: 0 auto;">
-                        <h2 class="sectionTitle sectionTitle-cards" style="margin-bottom: 15px;">📚 Search & Request Books</h2>
-                        <div style="display: flex; gap: 10px; margin-bottom: 25px;">
-                            <input type="text" id="sf-book-input" placeholder="Search title or author..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 15px; outline: none;">
-                            <button id="sf-book-search-btn" style="padding: 12px 24px; background: #00a4dc; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer;">Search</button>
-                        </div>
-                        <div id="sf-book-results" style="display: flex; flex-direction: column; gap: 12px;"></div>
-                    </div>
-                `;
+            <div style="padding: 20px 0; max-width: 800px; margin: 0 auto;">
+                <h2 class="sectionTitle sectionTitle-cards" style="margin-bottom: 15px;">📚 Search & Request Books</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 25px;">
+                    <input type="text" id="sf-book-input" placeholder="Search title or author..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 15px; outline: none;">
+                    <button id="sf-book-search-btn" style="padding: 12px 24px; background: #00a4dc; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer;">Search</button>
+                </div>
+                <div id="sf-book-results" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+        `;
 
                 const searchInput = container.querySelector('#sf-book-input');
                 const searchBtn = container.querySelector('#sf-book-search-btn');
@@ -1009,16 +991,16 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                             const card = document.createElement('div');
                             card.style.cssText = 'display: flex; gap: 15px; background: #181818; padding: 12px; border-radius: 8px; border: 1px solid #2a2a2a; align-items: center;';
                             card.innerHTML = `
-                                <img src="${cover}" style="width: 55px; height: 80px; object-fit: cover; border-radius: 6px; background: #000;" onerror="this.style.display='none'">
-                                <div style="flex: 1; min-width: 0;">
-                                    <h4 style="margin: 0 0 4px 0; color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${book.title}</h4>
-                                    <p style="margin: 0; color: #888; font-size: 13px;">${book.author ? book.author.authorName : 'Unknown Author'}</p>
-                                </div>
-                                <div style="display: flex; gap: 8px;">
-                                    <button class="sf-req-audio" style="padding: 8px 14px; background: #2e7d32; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold;">🎧 Audiobook</button>
-                                    <button class="sf-req-ebook" style="padding: 8px 14px; background: #1565c0; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold;">📖 eBook</button>
-                                </div>
-                            `;
+                        <img src="${cover}" style="width: 55px; height: 80px; object-fit: cover; border-radius: 6px; background: #000;" onerror="this.style.display='none'">
+                        <div style="flex: 1; min-width: 0;">
+                            <h4 style="margin: 0 0 4px 0; color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${book.title}</h4>
+                            <p style="margin: 0; color: #888; font-size: 13px;">${book.author ? book.author.authorName : 'Unknown Author'}</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="sf-req-audio" style="padding: 8px 14px; background: #2e7d32; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold;">🎧 Audiobook</button>
+                            <button class="sf-req-ebook" style="padding: 8px 14px; background: #1565c0; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold;">📖 eBook</button>
+                        </div>
+                    `;
 
                             card.querySelector('.sf-req-audio').onclick = (e) => executeChaptarrRequest(book, 'audiobook', e.target, chaptarrUrl, apiKey);
                             card.querySelector('.sf-req-ebook').onclick = (e) => executeChaptarrRequest(book, 'ebook', e.target, chaptarrUrl, apiKey);
@@ -1032,7 +1014,6 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
                 searchBtn.onclick = doBookSearch;
                 searchInput.onkeypress = (e) => { if (e.key === 'Enter') doBookSearch(); };
-                finishLoading();
                 return;
             }
 
