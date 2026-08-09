@@ -955,7 +955,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 container.dataset.seerrfinLoading = 'true';
                 container.innerHTML = `
                 <div class="verticalSection seerrfin-poster-section" style="padding: 15px 0;">
-                    <div style="display: flex; gap: 12px; align-items: center; max-width: 600px; margin: 0 0 25px 20px;">
+                    <div style="display: flex; gap: 12px; align-items: center; max-width: 600px; margin: 0 auto 25px auto;">
                         <input id="sf-book-input" type="text" placeholder="Search title or author..." autocomplete="off" style="flex: 1; padding: 10px 14px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; outline: none; box-sizing: border-box;">
                         <button id="sf-book-search-btn" type="button" class="raised button-submit emby-button" style="padding: 10px 24px; background: #00a4dc; color: #fff; font-weight: bold; border-radius: 6px; cursor: pointer; white-space: nowrap; border: none;">Search</button>
                     </div>
@@ -969,6 +969,16 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                             <div class="seerrfin-empty-row" style="color: #00a4dc;">Loading popular books...</div>
                         </div>
                     </div>
+
+                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left" style="margin-top: 35px; margin-bottom: 15px;">
+                        <h2 class="sectionTitle sectionTitle-cards">Books in your library</h2>
+                    </div>
+
+                    <div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale emby-scroller" data-centerfocus="true" data-scroll-mode-x="custom">
+                        <div id="sf-library-items-container" class="itemsContainer scrollSlider focuscontainer-x animatedScrollX" style="white-space: nowrap; padding-left: 20px; transition: transform 270ms ease-out;">
+                            <div class="seerrfin-empty-row" style="color: #00a4dc;">Loading library...</div>
+                        </div>
+                    </div>
                 </div>
             `;
 
@@ -976,13 +986,14 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                 const searchBtn = container.querySelector('#sf-book-search-btn');
                 const resultsTitle = container.querySelector('#sf-book-results-title');
                 const itemsContainer = container.querySelector('#sf-book-items-container');
+                const libraryContainer = container.querySelector('#sf-library-items-container');
+
+                const chaptarrUrl = (self._displaySettings && self._displaySettings.ChaptarrUrl) || 'http://192.168.1.163:8789';
+                const apiKey = (self._displaySettings && self._displaySettings.ChaptarrApiKey) || '81dbbc0a981a411abaec9b1b6f51a167';
 
                 const fetchAndRenderBooks = (queryTerm, titleLabel) => {
                     resultsTitle.textContent = titleLabel;
                     itemsContainer.innerHTML = `<div class="seerrfin-empty-row" style="color: #00a4dc;">Searching Chaptarr...</div>`;
-
-                    const chaptarrUrl = (self._displaySettings && self._displaySettings.ChaptarrUrl) || 'http://192.168.1.163:8789';
-                    const apiKey = (self._displaySettings && self._displaySettings.ChaptarrApiKey) || '81dbbc0a981a411abaec9b1b6f51a167';
 
                     ApiClient.ajax({
                         type: 'GET',
@@ -1007,7 +1018,25 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                     });
                 };
 
+                const fetchAndRenderLibrary = () => {
+                    ApiClient.ajax({
+                        type: 'GET',
+                        url: ApiClient.getUrl('SeerrFin/chaptarr/get?endpoint=' + encodeURIComponent('/api/v1/book')),
+                        dataType: 'json'
+                    }).then(data => {
+                        if (!data || data.length === 0) {
+                            libraryContainer.innerHTML = `<div class="seerrfin-empty-row">No books in Chaptarr library yet.</div>`;
+                            return;
+                        }
+
+                        libraryContainer.innerHTML = data.slice(0, 20).map(book => createSeerrFinBookCard(book, chaptarrUrl, apiKey)).join('');
+                    }).catch(err => {
+                        libraryContainer.innerHTML = `<div class="seerrfin-empty-row">No books in library.</div>`;
+                    });
+                };
+
                 fetchAndRenderBooks('popular', 'Popular books');
+                fetchAndRenderLibrary();
 
                 const executeSearch = () => {
                     const q = searchInput.value.trim();
@@ -2674,11 +2703,11 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
                 const card = e.target.closest('.seerrfin-discover-card, [data-seerrfin-native-card="true"]');
                 if (!card || card.classList.contains('seerrfin-discover-card--static') ||
-                    !card.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, [data-seerrfin-grid-view], .seerrfin-search-section')) {
+                    !card.closest('.seerrfin-movies-sections, .seerrfin-tv-sections, .seerrfin-books-sections, [data-seerrfin-grid-view], .seerrfin-search-section')) {
                     return;
                 }
 
-                const mediaId = card.dataset.tmdbId;
+                const mediaId = card.dataset.tmdbId || card.dataset.foreignId;
                 const mediaType = card.dataset.mediaType;
                 if (!mediaId || !mediaType) {
                     return;
@@ -3468,25 +3497,11 @@ function createSeerrFinBookCard(book, chaptarrUrl, apiKey) {
         statusText = `<span style="color: #ff9800; font-weight: bold; font-size: 11px;">Requested</span>`;
     }
 
-    const actionButtons = (!isAvailable && !isRequested) ? `
-        <div class="cardOverlayContainer" style="position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; background: rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
-            <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
-                <button type="button" class="sf-req-audio-btn emby-button" title="Request Audiobook" style="width: 100%; padding: 6px 0; border-radius: 4px; background: #2e7d32; color: #fff; font-size: 11px; font-weight: bold; border: none; cursor: pointer;">
-                    Audiobook
-                </button>
-                <button type="button" class="sf-req-ebook-btn emby-button" title="Request eBook" style="width: 100%; padding: 6px 0; border-radius: 4px; background: #1565c0; color: #fff; font-size: 11px; font-weight: bold; border: none; cursor: pointer;">
-                    eBook
-                </button>
-            </div>
-        </div>
-    ` : '';
-
     return `
-        <div class="card overflowPortraitCard seerrfin-discover-card" style="width: 160px; min-width: 160px; max-width: 160px; display: inline-block; vertical-align: top; margin-right: 14px;">
+        <div class="card overflowPortraitCard seerrfin-discover-card card-hoverable" style="width: 160px; min-width: 160px; max-width: 160px; display: inline-block; vertical-align: top; margin-right: 14px;" data-foreign-id="${book.foreignBookId}" data-media-type="book">
             <div class="cardBox cardBox-bottompadded" style="margin: 0;">
                 <div class="cardScalable" style="position: relative; width: 160px; height: 240px; border-radius: 8px; overflow: hidden; background: #141414; border: 1px solid #282828;">
                     <div style="width: 100%; height: 100%; background-image: url('${cover}'); background-size: cover; background-position: center; background-repeat: no-repeat;"></div>
-                    ${actionButtons}
                 </div>
                 <div class="cardText cardTextCentered cardText-first" style="padding-top: 8px;">
                     <bdi><span title="${title}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; font-weight: 600; color: #fff;">${title}</span></bdi>
@@ -3497,80 +3512,4 @@ function createSeerrFinBookCard(book, chaptarrUrl, apiKey) {
             </div>
         </div>
     `;
-}
-
-function executeChaptarrRequest(book, type, btn) {
-    btn.disabled = true;
-    btn.innerText = "Adding Author...";
-
-    const isAudio = (type === 'audiobook');
-    const profileId = isAudio ? 2 : 1;
-    const metaProfileId = isAudio ? 1 : 2;
-    const rootPath = isAudio ? '/audiobooks' : '/ebooks';
-
-    const req = (endpoint, body) => ApiClient.ajax({
-        type: 'POST',
-        url: ApiClient.getUrl('SeerrFin/chaptarr/proxy?endpoint=' + encodeURIComponent(endpoint)),
-        data: JSON.stringify(body),
-        contentType: 'application/json',
-        dataType: 'json'
-    });
-
-    let authorId = book.authorId;
-    let promise = Promise.resolve();
-
-    if (!authorId || authorId === 0) {
-        promise = req('/api/v1/author', {
-            authorName: book.author ? book.author.authorName : book.authorName,
-            foreignAuthorId: book.author ? book.author.foreignAuthorId : "",
-            qualityProfileId: profileId,
-            metadataProfileId: metaProfileId,
-            audiobookQualityProfileId: 2,
-            audiobookMetadataProfileId: 1,
-            ebookQualityProfileId: 1,
-            ebookMetadataProfileId: 2,
-            rootFolderPath: rootPath,
-            audiobookRootFolderPath: '/audiobooks',
-            ebookRootFolderPath: '/ebooks',
-            monitored: true,
-            addOptions: { monitor: "none", searchForMissingBooks: false }
-        }).then(res => {
-            if (res && res.id) authorId = res.id;
-        });
-    }
-
-    promise.then(() => {
-        btn.innerText = "Adding Book...";
-        const payload = JSON.parse(JSON.stringify(book));
-        delete payload.path;
-        if (payload.author) delete payload.author.path;
-
-        payload.authorId = authorId;
-        payload.monitored = true;
-        payload.audiobookMonitored = isAudio;
-        payload.ebookMonitored = !isAudio;
-        payload.mediaType = isAudio ? "audiobook" : "ebook";
-        payload.qualityProfileId = profileId;
-        payload.metadataProfileId = metaProfileId;
-        payload.rootFolderPath = rootPath;
-        payload.addOptions = { addType: "automatic", searchForNewBook: true };
-
-        if (payload.editions) {
-            payload.editions.forEach(ed => { delete ed.path; ed.monitored = true; });
-        }
-
-        return req('/api/v1/book', payload);
-    }).then(res => {
-        btn.innerText = "Searching MAM...";
-        if (res && res.id) {
-            return req('/api/v1/command', { name: "BookSearch", bookIds: [res.id] });
-        }
-    }).then(() => {
-        btn.style.background = "#4caf50";
-        btn.innerText = "Requested";
-    }).catch(err => {
-        console.error("Chaptarr request error:", err);
-        btn.style.background = "#d32f2f";
-        btn.innerText = "Failed";
-    });
 }

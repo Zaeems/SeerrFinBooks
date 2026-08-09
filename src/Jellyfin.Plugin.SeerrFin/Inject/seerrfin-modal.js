@@ -377,28 +377,62 @@ window.seerrFinLog = window.seerrFinLog || {
         });
     }
 
+    function fetchChaptarrDetails(mediaId) {
+        return ApiClient.ajax({
+            url: ApiClient.getUrl(`SeerrFin/chaptarr/lookup?term=${encodeURIComponent(mediaId)}`),
+            type: 'GET',
+            dataType: 'json'
+        }).then(res => {
+            if (res && res.length > 0) return res[0];
+            return null;
+        }).catch(() => null);
+    }
+
     function loadModalDetails(mediaId, mediaType) {
-        return loadClientSettings().then(function (config) {
-                const apiKey = getTmdbApiKey(config);
-                const jellyseerrPromise = fetchJellyseerrDetails(mediaId, mediaType);
-
-                if (!apiKey) {
-                    return jellyseerrPromise;
-                }
-
-                // Fetch both sources but prefer TMDB content with Seerr status
-                return Promise.all([
-                    jellyseerrPromise,
-                    fetchTmdbDetailsFromBrowser(mediaId, mediaType, apiKey)
-                ]).then(function (results) {
-                    const jellyseerr = results[0];
-                    const tmdb = results[1];
-                    if (tmdb) {
-                        return mergeJellyseerrOverlay(tmdb, jellyseerr);
-                    }
-                    return jellyseerr;
-                });
+        if (mediaType === 'book') {
+            return fetchChaptarrDetails(mediaId).then(book => {
+                if (!book) throw new Error('Book not found');
+                return {
+                    id: book.foreignBookId,
+                    mediaType: 'book',
+                    title: book.title || 'Unknown Title',
+                    overview: book.overview || 'No synopsis available.',
+                    backdropUrl: '',
+                    logoPath: '',
+                    releaseDate: book.releaseDate || '',
+                    voteAverage: book.ratings ? book.ratings.value : null,
+                    voteCount: book.ratings ? book.ratings.votes : null,
+                    author: book.author ? book.author.authorName : (book.authorName || ''),
+                    pageCount: book.pageCount || 0,
+                    goodreadsId: book.foreignBookId.replace('gr:', ''),
+                    coverUrl: (book.images && book.images[0]) ? (book.images[0].remoteUrl || book.images[0].url) : '',
+                    isAvailable: book.hasFiles === true,
+                    isRequested: book.id > 0 || book.monitored === true,
+                    rawBook: book // Store the raw payload for the request endpoint
+                };
             });
+        }
+
+        return loadClientSettings().then(function (config) {
+            const apiKey = getTmdbApiKey(config);
+            const jellyseerrPromise = fetchJellyseerrDetails(mediaId, mediaType);
+
+            if (!apiKey) {
+                return jellyseerrPromise;
+            }
+
+            return Promise.all([
+                jellyseerrPromise,
+                fetchTmdbDetailsFromBrowser(mediaId, mediaType, apiKey)
+            ]).then(function (results) {
+                const jellyseerr = results[0];
+                const tmdb = results[1];
+                if (tmdb) {
+                    return mergeJellyseerrOverlay(tmdb, jellyseerr);
+                }
+                return jellyseerr;
+            });
+        });
     }
 
     function formatRuntime(minutes) {
@@ -863,6 +897,61 @@ window.seerrFinLog = window.seerrFinLog || {
         const imdbId = data.externalIds && (data.externalIds.imdbId || data.externalIds.imdb_id);
         const logoUrl = getLogoImageUrl(data);
 
+        let actionButtons = '';
+        let sidebarHtml = '';
+
+        if (mediaType === 'book') {
+            const coverStyle = data.coverUrl ? `style="background-image: url('${data.coverUrl}'); background-size: cover; background-position: center; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);"` : '';
+            backdrop = data.coverUrl; // Use cover as fallback backdrop
+
+            if (data.isAvailable) {
+                actionButtons = `<span style="display:inline-block; padding:8px 16px; background:#4caf50; color:#fff; font-weight:bold; border-radius:6px; border:1px solid #388e3c;">Available in Library</span>`;
+            } else if (data.isRequested) {
+                actionButtons = `<span style="display:inline-block; padding:8px 16px; background:#ff9800; color:#fff; font-weight:bold; border-radius:6px; border:1px solid #f57c00;">Requested</span>`;
+            } else {
+                actionButtons = `
+                    <button type="button" class="bst-btn-request" data-action="request-audiobook" style="background:#2e7d32; border-color:#1b5e20;">Request Audiobook</button>
+                    <button type="button" class="bst-btn-request" data-action="request-ebook" style="background:#1565c0; border-color:#0d47a1;">Request eBook</button>
+                `;
+            }
+
+            sidebarHtml = `
+                <div class="bst-sidebar-lines">
+                    ${data.author ? `<div><span class="bst-label">Author:</span> ${escapeHtml(data.author)}</div>` : ''}
+                    ${data.pageCount ? `<div><span class="bst-label">Pages:</span> ${escapeHtml(String(data.pageCount))}</div>` : ''}
+                    ${releaseLabel ? `<div><span class="bst-label">First Published:</span> ${escapeHtml(releaseLabel)}</div>` : ''}
+                    ${data.goodreadsId ? `<div><span class="bst-label">Goodreads ID:</span> ${escapeHtml(String(data.goodreadsId))}</div>` : ''}
+                </div>
+                ${data.goodreadsId ? `
+                    <div class="bst-external-links">
+                        <a class="bst-external-link" href="https://www.goodreads.com/book/show/${data.goodreadsId}" target="_blank" rel="noopener noreferrer" title="View on Goodreads" style="color: #00a4dc; text-decoration: underline;">
+                            View on Goodreads
+                        </a>
+                    </div>` : ''}
+            `;
+        } else {
+            actionButtons = `
+                <button type="button" class="bst-btn-request" data-action="request">Request</button>
+                ${getRequestModalAdvanced().showRequest4kButton !== false ? `<button type="button" class="bst-btn-request-4k" data-action="request-4k">Request 4K</button>` : ''}
+                ${trailerKey ? `<button type="button" class="bst-btn-trailer" data-action="trailer" data-trailer-key="${escapeHtml(trailerKey)}">Trailer</button>` : ''}
+            `;
+
+            sidebarHtml = `
+                <div class="bst-sidebar-lines">
+                    ${runtime ? `<div><span class="bst-label">Runtime:</span> ${escapeHtml(runtime)}${endsAt ? ` <span class="bst-runtime-sep">•</span> Ends at ${escapeHtml(endsAt)}` : ''}</div>` : ''}
+                    ${language ? `<div><span class="bst-label">Language:</span> ${escapeHtml(language)}</div>` : ''}
+                    ${releaseLabel ? `<div><span class="bst-label">Release Date:</span> ${escapeHtml(releaseLabel)}</div>` : ''}
+                    ${certification ? `<div><span class="bst-label">Rating:</span> ${escapeHtml(certification)}</div>` : ''}
+                    ${tmdbId ? `<div><span class="bst-label">ID:</span> ${escapeHtml(String(tmdbId))}</div>` : ''}
+                </div>
+                ${tmdbId || imdbId ? `
+                    <div class="bst-external-links">
+                        ${tmdbId ? `<a class="bst-external-link tmdb" href="https://www.themoviedb.org/${mediaType === 'tv' ? 'tv' : 'movie'}/${tmdbId}" target="_blank" rel="noopener noreferrer" title="View on TMDB" style="animation-delay:60ms">${TMDB_LOGO_SVG}</a>` : ''}
+                        ${imdbId ? `<a class="bst-external-link imdb" href="https://www.imdb.com/title/${imdbId}" target="_blank" rel="noopener noreferrer" title="View on IMDb" style="animation-delay:120ms">${IMDB_ICON}</a>` : ''}
+                    </div>` : ''}
+            `;
+        }
+
         return `
             <div class="bst-popout-wrapper">
                 <div class="bst-popout-backdrop"></div>
@@ -876,13 +965,13 @@ window.seerrFinLog = window.seerrFinLog || {
                                         ${backdrop ? `<div class="bst-hero-backdrop" style="background-image: url(&quot;${backdrop}&quot;)"></div>` : ''}
                                         <div class="bst-hero-title-wrap">
                                             ${logoUrl
-                                                ? `<img class="bst-hero-logo" alt="${escapeHtml(title)}" src="${logoUrl}" data-fallback-title="${escapeHtml(title)}" />`
-                                                : `<h1 class="bst-hero-title-fallback">${escapeHtml(title)}</h1>`}
+                ? `<img class="bst-hero-logo" alt="${escapeHtml(title)}" src="${logoUrl}" data-fallback-title="${escapeHtml(title)}" />`
+                : `<h1 class="bst-hero-title-fallback">${escapeHtml(title)}</h1>`}
                                             ${rating || year ? `
                                                 <div class="bst-hero-meta">
                                                     ${rating ? `
                                                         <div class="bst-tmdb-rating">
-                                                            ${TMDB_LOGO_SVG}
+                                                            ${mediaType === 'book' ? '<span class="material-icons" style="font-size:18px; color:#FFD700; padding-right: 5px;">star</span>' : TMDB_LOGO_SVG}
                                                             <span class="bst-meta-emphasis">${Number(rating).toFixed(1)}</span>
                                                             ${voteCount ? `<span class="bst-vote-muted">(${Number(voteCount).toLocaleString()})</span>` : ''}
                                                         </div>` : ''}
@@ -893,46 +982,22 @@ window.seerrFinLog = window.seerrFinLog || {
                                     <div class="bst-content">
                                         <div class="bst-actions-row">
                                             <div class="bst-actions-left">
-                                                <button type="button" class="bst-btn-request" data-action="request">Request</button>
-                                                ${getRequestModalAdvanced().showRequest4kButton !== false
-                                                    ? `<button type="button" class="bst-btn-request-4k" data-action="request-4k">Request 4K</button>`
-                                                    : ''}
-                                                ${trailerKey
-                                                    ? `<button type="button" class="bst-btn-trailer" data-action="trailer" data-trailer-key="${escapeHtml(trailerKey)}">Trailer</button>`
-                                                    : ''}
+                                                ${actionButtons}
                                             </div>
                                         </div>
                                         <div class="bst-details-layout">
                                             <div class="bst-details-main">
                                                 <p class="bst-overview">${escapeHtml(overview)}</p>
                                                 <div class="bst-genres">${genres.map(function (g, i) {
-                                                    return `<span class="bst-genre-pill" style="animation-delay:${i * 60}ms">${escapeHtml(g.name || g)}</span>`;
-                                                }).join('')}</div>
+                    return `<span class="bst-genre-pill" style="animation-delay:${i * 60}ms">${escapeHtml(g.name || g)}</span>`;
+                }).join('')}</div>
                                             </div>
                                             <div class="bst-sidebar" data-quality-slot>
-                                                <div class="bst-sidebar-lines">
-                                                    ${runtime ? `<div><span class="bst-label">Runtime:</span> ${escapeHtml(runtime)}${endsAt ? ` <span class="bst-runtime-sep">•</span> Ends at ${escapeHtml(endsAt)}` : ''}</div>` : ''}
-                                                    ${language ? `<div><span class="bst-label">Language:</span> ${escapeHtml(language)}</div>` : ''}
-                                                    ${releaseLabel ? `<div><span class="bst-label">Release Date:</span> ${escapeHtml(releaseLabel)}</div>` : ''}
-                                                    ${certification ? `<div><span class="bst-label">Rating:</span> ${escapeHtml(certification)}</div>` : ''}
-                                                    ${tmdbId ? `<div><span class="bst-label">ID:</span> ${escapeHtml(String(tmdbId))}</div>` : ''}
-                                                </div>
-                                                ${tmdbId || imdbId ? `
-                                                    <div class="bst-external-links">
-                                                        ${tmdbId ? `
-                                                            <a class="bst-external-link tmdb" href="https://www.themoviedb.org/${mediaType === 'tv' ? 'tv' : 'movie'}/${tmdbId}"
-                                                                target="_blank" rel="noopener noreferrer" title="View on TMDB" style="animation-delay:60ms">
-                                                                ${TMDB_LOGO_SVG}
-                                                            </a>` : ''}
-                                                        ${imdbId ? `
-                                                            <a class="bst-external-link imdb" href="https://www.imdb.com/title/${imdbId}"
-                                                                target="_blank" rel="noopener noreferrer" title="View on IMDb" style="animation-delay:120ms">
-                                                                ${IMDB_ICON}
-                                                            </a>` : ''}
-                                                    </div>` : ''}
+                                                ${mediaType === 'book' ? `<div style="width: 150px; height: 225px; margin: 0 auto 20px auto; ${coverStyle}"></div>` : ''}
+                                                ${sidebarHtml}
                                             </div>
                                         </div>
-                                        ${cast.length ? renderCast(cast) : ''}
+                                        ${mediaType !== 'book' && cast.length ? renderCast(cast) : ''}
                                     </div>
                                 </div>
                             </div>
@@ -950,6 +1015,90 @@ window.seerrFinLog = window.seerrFinLog || {
         root.querySelector('.bst-popout-backdrop').addEventListener('click', closeDetailsModal);
         root.querySelector('.bst-modal-close').addEventListener('click', closeDetailsModal);
 
+        if (mediaType === 'book') {
+            const executeChaptarrRequest = (book, type, btn) => {
+                btn.disabled = true;
+                btn.innerText = "Adding Author...";
+
+                const isAudio = (type === 'audiobook');
+                const profileId = isAudio ? 2 : 1;
+                const metaProfileId = isAudio ? 1 : 2;
+                const rootPath = isAudio ? '/audiobooks' : '/ebooks';
+
+                const req = (endpoint, body) => ApiClient.ajax({
+                    type: 'POST',
+                    url: ApiClient.getUrl('SeerrFin/chaptarr/proxy?endpoint=' + encodeURIComponent(endpoint)),
+                    data: JSON.stringify(body),
+                    contentType: 'application/json',
+                    dataType: 'json'
+                });
+
+                let authorId = book.authorId;
+                let promise = Promise.resolve();
+
+                if (!authorId || authorId === 0) {
+                    promise = req('/api/v1/author', {
+                        authorName: book.author ? book.author.authorName : book.authorName,
+                        foreignAuthorId: book.author ? book.author.foreignAuthorId : "",
+                        qualityProfileId: profileId,
+                        metadataProfileId: metaProfileId,
+                        audiobookQualityProfileId: 2,
+                        audiobookMetadataProfileId: 1,
+                        ebookQualityProfileId: 1,
+                        ebookMetadataProfileId: 2,
+                        rootFolderPath: rootPath,
+                        audiobookRootFolderPath: '/audiobooks',
+                        ebookRootFolderPath: '/ebooks',
+                        monitored: true,
+                        addOptions: { monitor: "none", searchForMissingBooks: false }
+                    }).then(res => {
+                        if (res && res.id) authorId = res.id;
+                    });
+                }
+
+                promise.then(() => {
+                    btn.innerText = "Adding Book...";
+                    const payload = JSON.parse(JSON.stringify(book));
+                    delete payload.path;
+                    if (payload.author) delete payload.author.path;
+
+                    payload.authorId = authorId;
+                    payload.monitored = true;
+                    payload.audiobookMonitored = isAudio;
+                    payload.ebookMonitored = !isAudio;
+                    payload.mediaType = isAudio ? "audiobook" : "ebook";
+                    payload.qualityProfileId = profileId;
+                    payload.metadataProfileId = metaProfileId;
+                    payload.rootFolderPath = rootPath;
+                    payload.addOptions = { addType: "automatic", searchForNewBook: true };
+
+                    if (payload.editions) {
+                        payload.editions.forEach(ed => { delete ed.path; ed.monitored = true; });
+                    }
+
+                    return req('/api/v1/book', payload);
+                }).then(res => {
+                    btn.innerText = "Searching...";
+                    if (res && res.id) {
+                        return req('/api/v1/command', { name: "BookSearch", bookIds: [res.id] });
+                    }
+                }).then(() => {
+                    btn.style.background = "#4caf50";
+                    btn.innerText = "Requested! ✓";
+                }).catch(err => {
+                    btn.style.background = "#d32f2f";
+                    btn.innerText = "Failed";
+                });
+            };
+
+            const audioBtn = root.querySelector('[data-action="request-audiobook"]');
+            const ebookBtn = root.querySelector('[data-action="request-ebook"]');
+
+            if (audioBtn) audioBtn.onclick = (e) => executeChaptarrRequest(data.rawBook, 'audiobook', e.target);
+            if (ebookBtn) ebookBtn.onclick = (e) => executeChaptarrRequest(data.rawBook, 'ebook', e.target);
+            return;
+        }
+
         const logoImg = root.querySelector('.bst-hero-logo');
         if (logoImg) {
             logoImg.addEventListener('error', function () {
@@ -959,9 +1108,12 @@ window.seerrFinLog = window.seerrFinLog || {
             });
         }
 
-        root.querySelector('[data-action="request"]').addEventListener('click', function () {
-            openQualityModal(mediaId, mediaType, title);
-        });
+        const reqBtn = root.querySelector('[data-action="request"]');
+        if (reqBtn) {
+            reqBtn.addEventListener('click', function () {
+                openQualityModal(mediaId, mediaType, title);
+            });
+        }
 
         const request4kBtn = root.querySelector('[data-action="request-4k"]');
         if (request4kBtn) {
@@ -975,14 +1127,6 @@ window.seerrFinLog = window.seerrFinLog || {
             trailerBtn.addEventListener('click', function () {
                 window.open(`https://www.youtube.com/watch?v=${trailerKey}`, '_blank', 'noopener,noreferrer');
             });
-        }
-
-        const settings = window.seerrFinPlugin && window.seerrFinPlugin._displaySettings;
-        const showQualityRecommendations = !settings || settings.QualityRecommendations !== false;
-        if (showQualityRecommendations && tmdbId) {
-            const qualitySlot = root.querySelector('[data-quality-slot]');
-            const qualityLines = buildJustWatchQualityLines(tmdbId, mediaType);
-            qualitySlot.insertBefore(qualityLines, qualitySlot.firstChild);
         }
     }
 

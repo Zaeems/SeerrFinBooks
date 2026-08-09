@@ -778,6 +778,34 @@ public class SeerrFinController : ControllerBase
         }
     }
 
+    [HttpGet("chaptarr/get")]
+    [Authorize]
+    public async Task<IActionResult> ChaptarrGetProxy([FromQuery] string endpoint, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return BadRequest("Endpoint query param is required.");
+        }
+
+        var config = SeerrFinPlugin.Instance.Configuration;
+        var url = config.ChaptarrUrl?.TrimEnd('/');
+        var apiKey = config.ChaptarrApiKey;
+
+        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(apiKey))
+        {
+            return BadRequest("Chaptarr URL or API Key is not configured in SeerrFin settings.");
+        }
+
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+        var requestUrl = $"{url}{endpoint}";
+        var response = await client.GetAsync(requestUrl, cancellationToken);
+
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+        return Content(content, "application/json");
+    }
+
     [HttpGet("chaptarr/lookup")]
     [Authorize]
     public async Task<IActionResult> ChaptarrLookup([FromQuery] string term)
