@@ -390,8 +390,27 @@ window.seerrFinLog = window.seerrFinLog || {
 
     function loadModalDetails(mediaId, mediaType) {
         if (mediaType === 'book') {
-            return fetchChaptarrDetails(mediaId).then(book => {
-                if (!book) throw new Error('Book not found');
+            return ApiClient.ajax({
+                url: ApiClient.getUrl(`SeerrFin/chaptarr/lookup?term=${encodeURIComponent(mediaId)}`),
+                type: 'GET',
+                dataType: 'json'
+            }).then(res => {
+                if (!res || res.length === 0) throw new Error('Book not found');
+                const book = res[0];
+
+                let hasAudiobook = false;
+                let hasEbook = false;
+
+                if (book.editions && book.editions.length > 0) {
+                    book.editions.forEach(ed => {
+                        if (ed.isEbook) hasEbook = true;
+                        else hasAudiobook = true;
+                    });
+                } else {
+                    hasAudiobook = true;
+                    hasEbook = true;
+                }
+
                 return {
                     id: book.foreignBookId,
                     mediaType: 'book',
@@ -407,10 +426,11 @@ window.seerrFinLog = window.seerrFinLog || {
                     goodreadsId: book.foreignBookId.replace('gr:', ''),
                     coverUrl: (book.images && book.images[0]) ? (book.images[0].remoteUrl || book.images[0].url) : '',
                     isAvailable: book.hasFiles === true,
-                    isRequested: book.id > 0 || book.monitored === true,
-                    rawBook: book // Store the raw payload for the request endpoint
+                    hasAudiobookFormat: hasAudiobook,
+                    hasEbookFormat: hasEbook,
+                    rawBook: book
                 };
-            });
+            }).catch(() => null);
         }
 
         return loadClientSettings().then(function (config) {
@@ -907,8 +927,6 @@ window.seerrFinLog = window.seerrFinLog || {
             backdrop = data.coverUrl;
 
             const raw = data.rawBook || {};
-            const isAudioAvail = (raw.localAudiobookBooks && raw.localAudiobookBooks.length > 0) || data.isAvailable;
-            const isEbookAvail = (raw.localEbookBooks && raw.localEbookBooks.length > 0) || data.isAvailable;
 
             const audioText = raw.audiobookMonitored ? "Re-request Audiobook" : "Request Audiobook";
             const audioBg = raw.audiobookMonitored ? "#ff9800" : "#2e7d32";
@@ -920,14 +938,22 @@ window.seerrFinLog = window.seerrFinLog || {
 
             if (data.isAvailable) {
                 actionButtons += `<button type="button" class="bst-btn-request" data-action="open-jellyfin" style="background:#00a4dc; border-color:#007ca8; margin-bottom: 8px; width: 100%;">Open in Jellyfin</button>`;
-            }
+            } else {
+                actionButtons += `<div style="display: flex; gap: 10px; width: 100%;">`;
 
-            actionButtons += `
-                <div style="display: flex; gap: 10px; width: 100%;">
-                    <button type="button" class="bst-btn-request" data-action="request-audiobook" style="background:${audioBg}; border-color:${audioBorder}; flex: 1;">${audioText}</button>
-                    <button type="button" class="bst-btn-request" data-action="request-ebook" style="background:${ebookBg}; border-color:${ebookBorder}; flex: 1;">${ebookText}</button>
-                </div>
-            `;
+                if (data.hasAudiobookFormat) {
+                    actionButtons += `<button type="button" class="bst-btn-request" data-action="request-audiobook" style="background:${audioBg}; border-color:${audioBorder}; flex: 1;">${audioText}</button>`;
+                }
+                if (data.hasEbookFormat) {
+                    actionButtons += `<button type="button" class="bst-btn-request" data-action="request-ebook" style="background:${ebookBg}; border-color:${ebookBorder}; flex: 1;">${ebookText}</button>`;
+                }
+
+                actionButtons += `</div>`;
+
+                if (!data.hasAudiobookFormat && !data.hasEbookFormat) {
+                    actionButtons += `<span style="color: #ff5252; font-size: 13px; display: block; text-align: center;">No formats available for request on MAM.</span>`;
+                }
+            }
 
             sidebarHtml = `
                 <div style="width: 100%; aspect-ratio: 2/3; margin-bottom: 20px; ${coverStyle}"></div>
@@ -1025,7 +1051,7 @@ window.seerrFinLog = window.seerrFinLog || {
         if (mediaType === 'book') {
             const openBtn = root.querySelector('[data-action="open-jellyfin"]');
             if (openBtn) {
-                openBtn.addEventListener('click', function() {
+                openBtn.addEventListener('click', function () {
                     ApiClient.getItems(Dashboard.getCurrentUserId(), {
                         SearchTerm: title,
                         Recursive: true,
