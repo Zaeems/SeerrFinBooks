@@ -954,22 +954,19 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
                 container.dataset.seerrfinLoading = 'true';
                 container.innerHTML = `
-                <div class="verticalSection seerrfin-poster-section" style="padding-top: 10px;">
-                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left padded-right" style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
-                        <h2 class="sectionTitle sectionTitle-cards" style="margin: 0; white-space: nowrap;">Books</h2>
-                        <div class="inputContainer flex-grow" style="margin: 0;">
-                            <input id="sf-book-input" class="emby-input" type="text" placeholder="Search title or author..." style="padding: 10px 14px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); width: 100%;">
-                        </div>
-                        <button id="sf-book-search-btn" type="button" class="raised button-submit block emby-button" style="padding: 10px 20px; background: #00a4dc; color: #fff; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">Search</button>
+                <div class="verticalSection seerrfin-poster-section" style="padding: 15px 0;">
+                    <div style="display: flex; gap: 12px; align-items: center; max-width: 600px; margin-bottom: 25px; padding-left: 20px;">
+                        <input id="sf-book-input" class="emby-input" type="text" placeholder="Search title or author..." style="flex: 1; padding: 10px 14px; border-radius: 6px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; outline: none;">
+                        <button id="sf-book-search-btn" type="button" class="raised button-submit block emby-button" style="padding: 10px 22px; background: #00a4dc; color: #fff; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">Search</button>
                     </div>
                     
-                    <div id="sf-book-results-header" class="sectionTitleContainer sectionTitleContainer-cards padded-left">
+                    <div class="sectionTitleContainer sectionTitleContainer-cards padded-left" style="margin-bottom: 15px;">
                         <h2 class="sectionTitle sectionTitle-cards" id="sf-book-results-title">Popular books</h2>
                     </div>
 
                     <div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale emby-scroller" data-centerfocus="true" data-scroll-mode-x="custom">
-                        <div id="sf-book-items-container" class="itemsContainer scrollSlider focuscontainer-x animatedScrollX" style="white-space: nowrap; transition: transform 270ms ease-out;">
-                            <div class="seerrfin-empty-row padded-left" style="color: #00a4dc;">Loading popular books...</div>
+                        <div id="sf-book-items-container" class="itemsContainer scrollSlider focuscontainer-x animatedScrollX" style="white-space: nowrap; padding-left: 20px; transition: transform 270ms ease-out;">
+                            <div class="seerrfin-empty-row" style="color: #00a4dc;">Loading popular books...</div>
                         </div>
                     </div>
                 </div>
@@ -982,7 +979,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
 
                 const fetchAndRenderBooks = (queryTerm, titleLabel) => {
                     resultsTitle.textContent = titleLabel;
-                    itemsContainer.innerHTML = `<div class="seerrfin-empty-row padded-left" style="color: #00a4dc;">Searching Chaptarr...</div>`;
+                    itemsContainer.innerHTML = `<div class="seerrfin-empty-row" style="color: #00a4dc;">Searching Chaptarr...</div>`;
 
                     const chaptarrUrl = (self._displaySettings && self._displaySettings.ChaptarrUrl) || 'http://192.168.1.163:8789';
                     const apiKey = (self._displaySettings && self._displaySettings.ChaptarrApiKey) || '81dbbc0a981a411abaec9b1b6f51a167';
@@ -993,7 +990,7 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         dataType: 'json'
                     }).then(data => {
                         if (!data || data.length === 0) {
-                            itemsContainer.innerHTML = `<div class="seerrfin-empty-row padded-left">No books found.</div>`;
+                            itemsContainer.innerHTML = `<div class="seerrfin-empty-row">No books found.</div>`;
                             return;
                         }
 
@@ -1005,10 +1002,8 @@ if (typeof window.seerrFinPlugin === 'undefined') {
                         itemsContainer.querySelectorAll('.sf-req-ebook-btn').forEach((btn, idx) => {
                             btn.onclick = (e) => executeChaptarrRequest(data[idx], 'ebook', e.target);
                         });
-
-                        self.initLazyImages(itemsContainer);
                     }).catch(err => {
-                        itemsContainer.innerHTML = `<div class="seerrfin-empty-row padded-left" style="color: #ff5252;">Failed to load books from Chaptarr.</div>`;
+                        itemsContainer.innerHTML = `<div class="seerrfin-empty-row" style="color: #ff5252;">Failed to load books from Chaptarr.</div>`;
                     });
                 };
 
@@ -3466,39 +3461,38 @@ function createSeerrFinBookCard(book, chaptarrUrl, apiKey) {
     const isAvailable = book.hasFiles === true;
     const isRequested = book.id > 0 || book.monitored === true;
 
-    let statusText = `<span class="material-icons" style="font-size:14px;vertical-align:middle;color:#FFD700;">star</span> ${rating} • ${author}`;
+    let statusText = `<span class="material-icons" style="font-size:13px;vertical-align:middle;color:#FFD700;">star</span> ${rating} • ${author}`;
     if (isAvailable) {
-        statusText = `<span style="color: #4caf50; font-weight: bold;">Available in Library</span>`;
+        statusText = `<span style="color: #4caf50; font-weight: bold; font-size: 11px;">Available</span>`;
     } else if (isRequested) {
-        statusText = `<span style="color: #ff9800; font-weight: bold;">Requested</span>`;
+        statusText = `<span style="color: #ff9800; font-weight: bold; font-size: 11px;">Requested</span>`;
     }
 
     const actionButtons = (!isAvailable && !isRequested) ? `
-        <div class="cardOverlayButton-br flex" style="flex-direction: column; gap: 4px; padding: 6px;">
-            <button type="button" class="sf-req-audio-btn cardOverlayButton paper-icon-button-light emby-button" title="Request Audiobook" style="width: auto; height: auto; padding: 4px 8px; border-radius: 4px; background: rgba(46, 125, 50, 0.9); color: #fff; font-size: 11px; font-weight: bold;">
-                Audiobook
-            </button>
-            <button type="button" class="sf-req-ebook-btn cardOverlayButton paper-icon-button-light emby-button" title="Request eBook" style="width: auto; height: auto; padding: 4px 8px; border-radius: 4px; background: rgba(21, 101, 192, 0.9); color: #fff; font-size: 11px; font-weight: bold;">
-                eBook
-            </button>
+        <div class="cardOverlayContainer" style="position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding: 8px; background: rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">
+            <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                <button type="button" class="sf-req-audio-btn emby-button" title="Request Audiobook" style="width: 100%; padding: 6px 0; border-radius: 4px; background: #2e7d32; color: #fff; font-size: 11px; font-weight: bold; border: none; cursor: pointer;">
+                    Audiobook
+                </button>
+                <button type="button" class="sf-req-ebook-btn emby-button" title="Request eBook" style="width: 100%; padding: 6px 0; border-radius: 4px; background: #1565c0; color: #fff; font-size: 11px; font-weight: bold; border: none; cursor: pointer;">
+                    eBook
+                </button>
+            </div>
         </div>
     ` : '';
 
     return `
-        <div class="card overflowPortraitCard seerrfin-discover-card" data-foreign-id="${book.foreignBookId}">
-            <div class="cardBox cardBox-bottompadded">
-                <div class="cardScalable">
-                    <div class="cardPadder cardPadder-overflowPortrait"></div>
-                    <div class="cardImageContainer coveredImage cardContent" style="background-image: url('${cover}');" aria-label="${title}"></div>
-                    <div class="cardOverlayContainer">
-                        ${actionButtons}
-                    </div>
+        <div class="card overflowPortraitCard seerrfin-discover-card" style="width: 160px; min-width: 160px; max-width: 160px; display: inline-block; vertical-align: top; margin-right: 14px;">
+            <div class="cardBox cardBox-bottompadded" style="margin: 0;">
+                <div class="cardScalable" style="position: relative; width: 160px; height: 240px; border-radius: 8px; overflow: hidden; background: #141414; border: 1px solid #282828;">
+                    <div style="width: 100%; height: 100%; background-image: url('${cover}'); background-size: cover; background-position: center; background-repeat: no-repeat;"></div>
+                    ${actionButtons}
                 </div>
-                <div class="cardText cardTextCentered cardText-first">
-                    <bdi><span title="${title}">${title}</span></bdi>
+                <div class="cardText cardTextCentered cardText-first" style="padding-top: 8px;">
+                    <bdi><span title="${title}" style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; font-weight: 600; color: #fff;">${title}</span></bdi>
                 </div>
-                <div class="cardText cardTextCentered cardText-secondary">
-                    <bdi>${statusText}</bdi>
+                <div class="cardText cardTextCentered cardText-secondary" style="padding-top: 2px;">
+                    <bdi><span style="display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; color: #aaa;">${statusText}</span></bdi>
                 </div>
             </div>
         </div>
